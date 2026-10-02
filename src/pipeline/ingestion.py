@@ -288,12 +288,12 @@ class IngestionPipeline:
                 return
 
             async for event in self._staged_ingest_with_progress(
-                path, content_hash=check.sha256, supersedes=supersedes
+                path, content_hash=check.sha256, supersedes=supersedes, user_id=user_id
             ):
                 yield event
 
     async def _staged_ingest_with_progress(
-        self, path: Path, *, content_hash: str, supersedes: str | None
+        self, path: Path, *, content_hash: str, supersedes: str | None, user_id: str = "system"
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Run Stages 1–10 with SSE progress events, then commit the version.
 
@@ -465,7 +465,7 @@ class IngestionPipeline:
         }
 
     async def replace(
-        self, old_document_id: str, file_path: str | Path
+        self, old_document_id: str, file_path: str | Path, user_id: str = "system"
     ) -> "IngestionResult":
         """Replace an existing document with new content — safe atomic cutover.
 
