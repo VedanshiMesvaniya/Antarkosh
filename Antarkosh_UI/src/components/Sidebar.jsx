@@ -246,7 +246,7 @@ export default function Sidebar() {
         <div className="brand">
           <div className="brand__row">
             <div className="brand__type sidebar__label">
-              <h1 className="brand__title">Local Mind</h1>
+              <h1 className="brand__title">Antarkosh</h1>
               <p className="brand__subtitle">Private data intelligence</p>
             </div>
             <button

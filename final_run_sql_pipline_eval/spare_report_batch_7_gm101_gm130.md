@@ -2,7 +2,7 @@
 
 **Timestamp:** 2026-08-31 12:31:26  
 **Range:** `gm-101` to `gm-130` (30 questions)  
-**Evaluator Run:** [`evals/globalmind/results/full_eval_report_20260831_123126.json`](file:///data/shared/project/Global_Mind/evals/globalmind/results/full_eval_report_20260831_123126.json)  
+**Evaluator Run:** [`evals/Antarkosh/results/full_eval_report_20260831_123126.json`](file:///data/shared/project/Antarkosh/evals/Antarkosh/results/full_eval_report_20260831_123126.json)  
 **Focus Area:** *Phase 3: Endurance & Routing (Sustained Load & Extended Logic Stress — 30 Questions)*
 
 ---

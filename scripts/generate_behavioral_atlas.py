@@ -24,7 +24,7 @@ from src.core.provider_client import ProviderRouter
 console = Console()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-INPUT_SCHEMA_PATH = ROOT_DIR / "evals" / "globalmind" / "globalmind_schema.json"
+INPUT_SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 INPUT_GLOSSARY_PATH = ROOT_DIR / "config" / "sql_column_glossary.json"
 OUTPUT_ATLAS_PATH = ROOT_DIR / "config" / "behavioral_schema_atlas.json"
 
@@ -197,7 +197,7 @@ async def main():
         "_metadata": {
             "version": "2.0.0",
             "generated_at": "2026-08-19",
-            "database": schema_data.get("database", "globalmind"),
+            "database": schema_data.get("database", "Antarkosh"),
             "table_count": len(filtered_tables),
         },
         "tables": {},

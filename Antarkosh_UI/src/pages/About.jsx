@@ -5,7 +5,7 @@ export default function About() {
     <section className="page section">
       <div className="section__header">
         <div>
-          <h2 className="section__title">About Local Mind</h2>
+          <h2 className="section__title">About Antarkosh</h2>
           <p className="section__subtitle">
             A dark, local-first chat interface using static demo data for now.
           </p>

@@ -1,4 +1,4 @@
-# GlobalMind Text-to-SQL Coverage Status
+# Antarkosh Text-to-SQL Coverage Status
 
 ## 1. Summary Metrics
 

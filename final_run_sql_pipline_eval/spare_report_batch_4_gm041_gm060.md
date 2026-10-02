@@ -2,7 +2,7 @@
 
 **Timestamp:** 2026-08-26 17:54:23  
 **Range:** `gm-041` to `gm-060` (20 questions)  
-**Evaluator Run:** [`evals/globalmind/results/full_eval_report_20260826_175423.json`](file:///data/shared/project/Global_Mind/evals/globalmind/results/full_eval_report_20260826_175423.json)  
+**Evaluator Run:** [`evals/Antarkosh/results/full_eval_report_20260826_175423.json`](file:///data/shared/project/Antarkosh/evals/Antarkosh/results/full_eval_report_20260826_175423.json)  
 **Focus Area:** *Phase 2: Complexity Stress Tests (Join Complexity & Multi-Table Aggregations)*
 
 ---

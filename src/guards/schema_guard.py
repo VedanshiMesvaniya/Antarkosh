@@ -15,7 +15,7 @@ from src.models.trace import GuardResult
 from src.utils.error_classification import FailureCategory
 from src.utils.feature_flags import is_feature_enabled
 
-# Common entity/keyword to table mappings in Global_Mind ERP schema
+# Common entity/keyword to table mappings in Antarkosh ERP schema
 _ENTITY_TABLE_MAP: dict[str, str] = {
     "order": "sales_order",
     "orders": "sales_order",

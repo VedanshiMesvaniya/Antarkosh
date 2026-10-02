@@ -1,4 +1,4 @@
-"""Production Smoke Test Suite for Global_Mind V1.
+"""Production Smoke Test Suite for Antarkosh V1.
 
 Executes a 4-probe canary test against a live deployment:
 1. Health & Provider Availability Probe
@@ -28,7 +28,7 @@ def log_step(name: str, status: str, detail: str = "") -> None:
 
 
 def run_production_smoke(base_url: str) -> bool:
-    print(f"\n🚀 Initiating Global_Mind V1 Production Smoke Test against: {base_url}\n")
+    print(f"\n🚀 Initiating Antarkosh V1 Production Smoke Test against: {base_url}\n")
     client = httpx.Client(base_url=base_url, timeout=30.0)
     all_passed = True
 
@@ -159,7 +159,7 @@ def run_production_smoke(base_url: str) -> bool:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Global_Mind V1 Production Smoke Test")
+    parser = argparse.ArgumentParser(description="Antarkosh V1 Production Smoke Test")
     parser.add_argument(
         "--base-url",
         default="http://localhost:8000",

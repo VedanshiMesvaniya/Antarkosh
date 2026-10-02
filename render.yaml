@@ -1,10 +1,10 @@
-# Render.com blueprint — deploys GlobleMind straight from the GitHub repo.
+# Render.com blueprint — deploys Antarkosh straight from the GitHub repo.
 # Render (and Railway, which auto-detects the Dockerfile) run uvicorn natively,
 # so SSE streaming works with no proxy tuning. Create the service from this
 # blueprint, then fill in the secret values in the dashboard.
 services:
   - type: web
-    name: globlemind
+    name: Antarkosh
     runtime: docker
     plan: free                 # free web services sleep after ~15 min idle (cold start on wake)
     dockerfilePath: ./Dockerfile

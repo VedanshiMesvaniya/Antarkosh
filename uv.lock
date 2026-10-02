@@ -56,6 +56,89 @@ wheels = [
 ]
 
 [[package]]
+name = "antarkosh"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "aiomysql" },
+    { name = "aiosqlite" },
+    { name = "camelot-py" },
+    { name = "fastapi" },
+    { name = "filetype" },
+    { name = "httpx" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "openai" },
+    { name = "openpyxl" },
+    { name = "pdfplumber" },
+    { name = "portalocker" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "pymupdf" },
+    { name = "python-docx" },
+    { name = "python-dotenv" },
+    { name = "python-magic" },
+    { name = "python-multipart" },
+    { name = "python-pptx" },
+    { name = "pyyaml" },
+    { name = "qdrant-client" },
+    { name = "rich" },
+    { name = "sqlglot" },
+    { name = "tenacity" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+mysql = [
+    { name = "aiomysql" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiomysql", specifier = ">=0.2" },
+    { name = "aiomysql", marker = "extra == 'mysql'", specifier = ">=0.2" },
+    { name = "aiosqlite", specifier = ">=0.20.0" },
+    { name = "camelot-py", extras = ["base"], specifier = ">=0.11" },
+    { name = "fastapi", specifier = ">=0.111" },
+    { name = "filetype", specifier = ">=1.2" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "openai", specifier = ">=1.30" },
+    { name = "openpyxl", specifier = ">=3.1" },
+    { name = "pdfplumber", specifier = ">=0.11" },
+    { name = "portalocker", specifier = ">=2.8" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "pydantic-settings", specifier = ">=2.0" },
+    { name = "pymupdf", specifier = ">=1.24" },
+    { name = "python-docx", specifier = ">=1.1" },
+    { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "python-magic", specifier = ">=0.4" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
+    { name = "python-pptx", specifier = ">=1.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "qdrant-client", specifier = ">=1.9" },
+    { name = "rich", specifier = ">=13.0" },
+    { name = "sqlglot", specifier = ">=23.0.0" },
+    { name = "tenacity", specifier = ">=8.3" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
+]
+provides-extras = ["mysql"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-asyncio", specifier = ">=0.23" },
+    { name = "ruff", specifier = ">=0.4" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.14.2"
 source = { registry = "https://pypi.org/simple" }
@@ -391,81 +474,6 @@ wheels = [
 ]
 
 [[package]]
-name = "globle-mind"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "aiosqlite" },
-    { name = "camelot-py" },
-    { name = "fastapi" },
-    { name = "filetype" },
-    { name = "httpx" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "openai" },
-    { name = "openpyxl" },
-    { name = "pdfplumber" },
-    { name = "portalocker" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "pymupdf" },
-    { name = "python-docx" },
-    { name = "python-dotenv" },
-    { name = "python-magic" },
-    { name = "python-multipart" },
-    { name = "python-pptx" },
-    { name = "pyyaml" },
-    { name = "qdrant-client" },
-    { name = "rich" },
-    { name = "sqlglot" },
-    { name = "tenacity" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
-]
-mysql = [
-    { name = "aiomysql" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiomysql", marker = "extra == 'mysql'", specifier = ">=0.2" },
-    { name = "aiosqlite", specifier = ">=0.20.0" },
-    { name = "camelot-py", extras = ["base"], specifier = ">=0.11" },
-    { name = "fastapi", specifier = ">=0.111" },
-    { name = "filetype", specifier = ">=1.2" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "numpy", specifier = ">=1.26" },
-    { name = "openai", specifier = ">=1.30" },
-    { name = "openpyxl", specifier = ">=3.1" },
-    { name = "pdfplumber", specifier = ">=0.11" },
-    { name = "portalocker", specifier = ">=2.8" },
-    { name = "pydantic", specifier = ">=2.0" },
-    { name = "pydantic-settings", specifier = ">=2.0" },
-    { name = "pymupdf", specifier = ">=1.24" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
-    { name = "python-docx", specifier = ">=1.1" },
-    { name = "python-dotenv", specifier = ">=1.0" },
-    { name = "python-magic", specifier = ">=0.4" },
-    { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "python-pptx", specifier = ">=1.0" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "qdrant-client", specifier = ">=1.9" },
-    { name = "rich", specifier = ">=13.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
-    { name = "sqlglot", specifier = ">=23.0.0" },
-    { name = "tenacity", specifier = ">=8.3" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
-]
-provides-extras = ["dev", "mysql"]
-
-[[package]]
 name = "grpcio"
 version = "1.83.0"
 source = { registry = "https://pypi.org/simple" }
@@ -565,8 +573,8 @@ name = "httpcore2"
 version = "2.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "sys_platform != 'emscripten'" },
-    { name = "truststore", marker = "sys_platform != 'emscripten'" },
+    { name = "h11" },
+    { name = "truststore" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/83/a896fc59940fc5a6e2aff3a4be1d92fa890112936803b331cae75a993c34/httpcore2-2.10.0.tar.gz", hash = "sha256:13c0cc3d1919d4f28457f60cd2c2abe04113a8af184ccf1142811beba936f9dc", size = 67427, upload-time = "2026-08-09T09:11:32.123Z" }
 wheels = [

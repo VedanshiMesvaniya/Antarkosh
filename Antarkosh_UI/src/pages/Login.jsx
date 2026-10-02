@@ -119,7 +119,7 @@ export default function Login() {
               color: 'var(--color-text)',
             }}
           >
-            LocalMind
+            Antarkosh
           </h1>
           <p
             style={{

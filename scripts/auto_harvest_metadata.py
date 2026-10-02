@@ -25,7 +25,7 @@ async def harvest_full_database() -> None:
 
     # 1. Fetch all base tables
     tables_res = await run_readonly_query(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'globalmind' AND table_type = 'BASE TABLE';"
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'Antarkosh' AND table_type = 'BASE TABLE';"
     )
     table_names = [r["table_name"] for r in tables_res if r.get("table_name")]
     console.print(f"Found [bold green]{len(table_names)}[/bold green] tables.")
@@ -35,7 +35,7 @@ async def harvest_full_database() -> None:
         """
         SELECT table_name, column_name, data_type, column_type, is_nullable, column_comment
         FROM information_schema.columns
-        WHERE table_schema = 'globalmind'
+        WHERE table_schema = 'Antarkosh'
         ORDER BY table_name, ordinal_position;
         """
     )

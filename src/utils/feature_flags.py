@@ -20,6 +20,7 @@ DEFAULT_FLAGS: dict[str, bool] = {
     "sql_safety_enabled": False,
     "zero_row_handling_enabled": False,
     "fast_path_enabled": False,
+    "sql_micro_synthesis_enabled": False,
     "provider_routing_v2_enabled": False,
     # V1 Measurement & Safety Flags
     "enable_branching_traces": True,

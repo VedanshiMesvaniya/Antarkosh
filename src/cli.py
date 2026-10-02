@@ -31,13 +31,13 @@ def main() -> None:
 
     if command == "ingest":
         if len(sys.argv) < 3:
-            console.print("[red]Usage: globle-mind ingest <file_or_directory>[/red]")
+            console.print("[red]Usage: Antarkosh ingest <file_or_directory>[/red]")
             return
         asyncio.run(_ingest(sys.argv[2]))
 
     elif command == "query":
         if len(sys.argv) < 3:
-            console.print("[red]Usage: globle-mind query 'your question here'[/red]")
+            console.print("[red]Usage: Antarkosh query 'your question here'[/red]")
             return
         question = " ".join(sys.argv[2:])
         asyncio.run(_query(question))
@@ -54,7 +54,7 @@ def main() -> None:
 
 
 def _print_usage() -> None:
-    console.print("\n[bold]GlobleMind[/bold] — Zero-Cost Enterprise RAG Pipeline\n")
+    console.print("\n[bold]Antarkosh[/bold] — Zero-Cost Enterprise RAG Pipeline\n")
     console.print("Commands:")
     console.print("  [cyan]ingest[/cyan]  <file_or_dir>  Ingest documents into the pipeline")
     console.print("  [cyan]query[/cyan]   <question>     Query ingested documents")
@@ -160,7 +160,7 @@ def _serve() -> None:
     """Start the FastAPI server."""
     import uvicorn
 
-    console.print("\n[bold]Starting GlobleMind server...[/bold]\n")
+    console.print("\n[bold]Starting Antarkosh server...[/bold]\n")
     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
 
 

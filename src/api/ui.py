@@ -101,18 +101,19 @@ Conversation:
 ---"""
 
 
-_TITLE_PROMPT = """You write very short, 2 to 3-word topic titles for chat conversations.
+_TITLE_PROMPT = """You write very short chat titles from a user's question.
 
-Given the first exchange below, reply with strictly a 2 to 3-word title (maximum 4 words)
-that captures the core topic or entity (e.g., "Warehouse Details", "Unit Name", "Stock Adjustments",
-"Apple Tax Rate", "OCR Engines").
+Read the user's question below and reply with strictly a 3 to 4-word title that captures the core
+meaning of what they are asking (the topic and intent), not the words they typed.
+Examples: "Which warehouses are low on stock right now?" -> "Low Stock Warehouses";
+"show me sales by state" -> "Sales By State"; "what is the apple tax rate" -> "Apple Tax Rate".
 Use Title Case.
-Do NOT formulate as a question or include words like "What", "How", "Why", "Can", "Give", "Chat",
-quotes, or trailing punctuation.
+Do NOT copy the whole question, formulate a question, or include words like "What", "How", "Why",
+"Can", "Give", "Chat", quotes, or trailing punctuation.
 If there is no clear topic (e.g. only a greeting), reply with exactly: New Chat
 
-Conversation:
-{conversation}
+Question:
+{question}
 
 Title:"""
 
@@ -571,18 +572,14 @@ async def generate_chat_title(
     if not first_user or not (first_user.get("content") or "").strip():
         return {"title": None}
 
-    first_assistant = next((m for m in messages if m.get("role") == "assistant"), None)
-
-    conversation = f"User: {first_user['content'][:600]}"
-    if first_assistant and (first_assistant.get("content") or "").strip():
-        conversation += f"\nAssistant: {first_assistant['content'][:600]}"
+    question = first_user["content"].strip()[:600]
 
     title = ""
     try:
         provider_router = ProviderRouter()
         raw = await provider_router.chat(
             "fast_support",
-            messages=[{"role": "user", "content": _TITLE_PROMPT.format(conversation=conversation)}],
+            messages=[{"role": "user", "content": _TITLE_PROMPT.format(question=question)}],
             temperature=0.3,
             max_tokens=20,
         )
@@ -875,4 +872,3 @@ async def get_telemetry_traces(
         "limit": limit,
         "status_filter": status,
     }
-

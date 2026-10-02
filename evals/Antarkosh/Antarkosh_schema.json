@@ -1,6 +1,6 @@
 {
-  "database": "globalmind",
-  "generated_note": "Schema and relationships reverse-engineered from globalmind.sql (phpMyAdmin dump). No explicit FOREIGN KEY constraints exist in the dump; relationships below are inferred from column naming conventions (e.g. `product_id` -> `product`.`id`) and verified against usage context.",
+  "database": "Antarkosh",
+  "generated_note": "Schema and relationships reverse-engineered from Antarkosh.sql (phpMyAdmin dump). No explicit FOREIGN KEY constraints exist in the dump; relationships below are inferred from column naming conventions (e.g. `product_id` -> `product`.`id`) and verified against usage context.",
   "table_count": 70,
   "relationship_count": 294,
   "domains": {

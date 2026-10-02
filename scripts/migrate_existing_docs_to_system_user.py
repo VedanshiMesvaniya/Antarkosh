@@ -6,7 +6,7 @@ while newly ingested documents are isolated to their specific uploaders.
 
 Usage:
     python scripts/migrate_existing_docs_to_system_user.py
-    python scripts/migrate_existing_docs_to_system_user.py --collection globle_mind --dry-run
+    python scripts/migrate_existing_docs_to_system_user.py --collection Antarkosh --dry-run
     python scripts/migrate_existing_docs_to_system_user.py --include-metadata-store
 """
 
@@ -135,8 +135,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Migrate existing Qdrant points to system user.")
     parser.add_argument(
         "--collection",
-        default="globle_mind",
-        help="Target vector collection name (default: globle_mind)",
+        default="Antarkosh",
+        help="Target vector collection name (default: Antarkosh)",
     )
     parser.add_argument(
         "--user-id",
@@ -146,7 +146,7 @@ def main() -> int:
     parser.add_argument(
         "--include-metadata-store",
         action="store_true",
-        help="Also migrate the globle_mind_documents metadata collection",
+        help="Also migrate the Antarkosh_documents metadata collection",
     )
     parser.add_argument(
         "--dry-run",
@@ -185,7 +185,7 @@ def main() -> int:
         if args.include_metadata_store:
             migrate_qdrant_collection(
                 client=client,
-                collection_name="globle_mind_documents",
+                collection_name="Antarkosh_documents",
                 target_user=args.user_id,
                 dry_run=args.dry_run,
                 force=args.force,

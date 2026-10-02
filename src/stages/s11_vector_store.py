@@ -70,7 +70,7 @@ class QdrantStore:
 
     def __init__(
         self,
-        collection_name: str = "globle_mind",
+        collection_name: str = "Antarkosh",
         vector_size: int = 1024,
         embedding_service: EmbeddingService | None = None,
     ) -> None:

@@ -346,7 +346,7 @@ class Generator:
                     )
 
                 # 2. Fallback to micro-synthesis if query was aggregate and direct template returned None
-                if intent == AGGREGATE_QUERY:
+                if intent == AGGREGATE_QUERY and is_feature_enabled("sql_micro_synthesis_enabled"):
                     try:
                         messages = build_aggregate_micro_prompt(query, sql_table_md)
                         summary = await self._router.chat(task="micro_synthesis", messages=messages, max_tokens=150)
@@ -539,7 +539,7 @@ Question: {query}"""
                         sql_payload=sql_payload,
                     )
                     return
-                elif intent == AGGREGATE_QUERY:
+                elif intent == AGGREGATE_QUERY and is_feature_enabled("sql_micro_synthesis_enabled"):
                     try:
                         messages = build_aggregate_micro_prompt(query, sql_table_md)
                         summary = await self._router.chat(task="micro_synthesis", messages=messages, max_tokens=150)

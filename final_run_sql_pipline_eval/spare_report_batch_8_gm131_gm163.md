@@ -2,7 +2,7 @@
 
 **Timestamp:** 2026-08-31 13:10:03  
 **Range:** `gm-131` to `gm-163` (33 questions — Grand Finale)  
-**Evaluator Run:** [`evals/globalmind/results/full_eval_report_20260831_131003.json`](file:///data/shared/project/Global_Mind/evals/globalmind/results/full_eval_report_20260831_131003.json)  
+**Evaluator Run:** [`evals/Antarkosh/results/full_eval_report_20260831_131003.json`](file:///data/shared/project/Antarkosh/evals/Antarkosh/results/full_eval_report_20260831_131003.json)  
 **Focus Area:** *Phase 3: Endurance & Routing (Dual-Route Blending & Master Synthesis — 33 Questions)*
 
 ---
