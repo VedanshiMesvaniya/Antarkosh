@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = ROOT_DIR / "evals" / "globalmind" / "globalmind_schema.json"
+SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 GLOSSARY_PATH = ROOT_DIR / "config" / "sql_column_glossary.json"
 RELS_PATH = ROOT_DIR / "config" / "sql_relationships.json"
 OUTPUT_PATH = ROOT_DIR / "config" / "behavioral_schema_atlas.json"
@@ -388,8 +388,8 @@ def build_behavioral_atlas() -> Dict[str, Any]:
     atlas: Dict[str, Any] = {
         "_metadata": {
             "version": "2.0.0",
-            "title": "GlobalMind Behavioral Schema Atlas & Cognitive Ontology",
-            "database": schema_data.get("database", "globalmind"),
+            "title": "Antarkosh Behavioral Schema Atlas & Cognitive Ontology",
+            "database": schema_data.get("database", "Antarkosh"),
             "table_count": len(tables_list),
             "generated_at": "2026-08-19",
         },

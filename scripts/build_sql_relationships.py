@@ -10,7 +10,7 @@ schema reverse-engineering step) and writes them to config/sql_relationships.jso
 which SQLRetriever injects into the SQL-generation prompt as an explicit join map.
 
 Usage:
-    python scripts/build_sql_relationships.py evals/globalmind/globalmind_schema.json
+    python scripts/build_sql_relationships.py evals/Antarkosh/Antarkosh_schema.json
     python scripts/build_sql_relationships.py path/to/schema.json --out config/sql_relationships.json
 """
 

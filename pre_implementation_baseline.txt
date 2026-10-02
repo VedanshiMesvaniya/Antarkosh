@@ -58,7 +58,7 @@ WARNING  src.stages.s12b_sql_retrieval:s12b_sql_retrieval.py:1001 Blocked unsafe
 WARNING  src.core.provider_client:provider_client.py:999 Query budget exhausted before chat call for task 'general_qa': {'query_id': 'gm-q-2e5a9f76-47c4-42a3-a12c-cd34b913252f', 'llm_calls': 2, 'max_llm_calls': 4, 'repair_attempts': 0, 'max_repairs': 2, 'total_tokens': 12117, 'max_tokens': 8000, 'safety_buffer': 200, 'is_exceeded': False, 'can_proceed': False, 'exhausted': True}
 =============================== warnings summary ===============================
 tests/test_pipeline_e2e_integration.py::test_full_pipeline_e2e_indepth
-  /data/shared/project/Global_Mind/src/stages/s11_vector_store.py:191: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
+  /data/shared/project/Antarkosh/src/stages/s11_vector_store.py:191: UserWarning: Payload indexes have no effect in the local Qdrant. Please use server Qdrant if you need payload indexes.
     await client.create_payload_index(
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html

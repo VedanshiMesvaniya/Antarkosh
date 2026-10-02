@@ -1,6 +1,6 @@
-# GlobalMind Text-to-SQL Evaluation
+# Antarkosh Text-to-SQL Evaluation
 
-An LLM eval for the Text-to-SQL pipeline, grounded in the real **`globalmind`**
+An LLM eval for the Text-to-SQL pipeline, grounded in the real **`Antarkosh`**
 ERP schema (70 tables, reverse-engineered from the phpMyAdmin dump). It tests the
 questions a real, non-technical business owner would ask — phrased casually —
 plus deliberately **hard, twisted** questions that exploit the schema's traps.
@@ -31,7 +31,7 @@ probes, subjective/contradictory questions).
 - `questions.jsonl` — the canonical question bank (163 questions covering 46 tables). One JSON object per line.
 - `build_questions.py` — regenerates `questions.jsonl`. Edit here, not the JSONL.
 - `run_eval.py` — offline validator + live LLM-as-judge runner.
-- `globalmind_schema.json` — the 70-table schema the questions are grounded in.
+- `Antarkosh_schema.json` — the 70-table schema the questions are grounded in.
 - `reports/` — detailed coverage matrices, evaluation summaries, and benchmark reports:
   - `reports/SQL_COVERAGE_STATUS.md` — current coverage status (88.5% domain tables, 65.7% total schema).
   - `reports/SQL_EXPANSION_SUMMARY.md` — detailed per-question and per-table test mappings.
@@ -56,7 +56,7 @@ Each question record:
 ### 1. Offline — validate the dataset (no DB, no API keys)
 
 ```bash
-python evals/globalmind/run_eval.py --offline
+python evals/Antarkosh/run_eval.py --offline
 ```
 
 Confirms every referenced table exists in the schema and prints coverage by
@@ -69,13 +69,13 @@ exactly like the app.
 
 ```bash
 # everything
-python evals/globalmind/run_eval.py --out evals/globalmind/results.json
+python evals/Antarkosh/run_eval.py --out evals/Antarkosh/results.json
 
 # just the hard ones
-python evals/globalmind/run_eval.py --difficulty hard_twisted
+python evals/Antarkosh/run_eval.py --difficulty hard_twisted
 
 # a quick 10-question smoke test
-python evals/globalmind/run_eval.py --limit 10
+python evals/Antarkosh/run_eval.py --limit 10
 ```
 
 For each question the runner:
@@ -106,6 +106,6 @@ Add questions in `build_questions.py` (`_curated()` for depth, `_TABLE_NOUNS`
 for per-table breadth), then:
 
 ```bash
-python evals/globalmind/build_questions.py     # regenerate questions.jsonl
-python evals/globalmind/run_eval.py --offline  # re-validate
+python evals/Antarkosh/build_questions.py     # regenerate questions.jsonl
+python evals/Antarkosh/run_eval.py --offline  # re-validate
 ```

@@ -72,7 +72,7 @@ export default function Settings() {
           <Palette size={15} />
           <h3 className="settings-card__title">Appearance</h3>
         </div>
-        <p className="settings-card__desc">Choose how LocalMind looks.</p>
+        <p className="settings-card__desc">Choose how Antarkosh looks.</p>
 
         <div className="theme-picker" role="radiogroup" aria-label="Theme">
           {THEME_OPTIONS.map((option) => {
@@ -108,7 +108,7 @@ export default function Settings() {
           <h3 className="settings-card__title">Database Sync</h3>
         </div>
         <p className="settings-card__desc">
-          Keep LocalMind's understanding of your database up to date.
+          Keep Antarkosh's understanding of your database up to date.
         </p>
 
         <div className="sync-card">

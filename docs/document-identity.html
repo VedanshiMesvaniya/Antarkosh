@@ -1,4 +1,4 @@
-<title>GlobleMind — Document Identity &amp; Versioning Reference</title>
+<title>Antarkosh — Document Identity &amp; Versioning Reference</title>
 <style>
   /* ── Tokens ── */
   :root {
@@ -661,10 +661,10 @@
 
 <main class="page">
   <header class="doc-header">
-    <div class="doc-header__eyebrow">GlobleMind Engineering Reference</div>
+    <div class="doc-header__eyebrow">Antarkosh Engineering Reference</div>
     <h1>Document Identity, Versioning &amp; Deduplication</h1>
     <p class="doc-header__subtitle">
-      How GlobleMind decides whether a file is new, a duplicate, or a replacement &mdash;
+      How Antarkosh decides whether a file is new, a duplicate, or a replacement &mdash;
       and what happens at every step from upload through embedding to the frontend Documents page.
     </p>
     <div class="doc-header__meta">
@@ -1203,11 +1203,11 @@
         <table class="scenario__table">
           <tr>
             <td>Chunk embeddings</td>
-            <td>Qdrant collection <code>globle_mind</code> &mdash; dense + sparse vectors, payload includes <code>active</code> flag</td>
+            <td>Qdrant collection <code>Antarkosh</code> &mdash; dense + sparse vectors, payload includes <code>active</code> flag</td>
           </tr>
           <tr>
             <td>Document metadata</td>
-            <td>Qdrant collection <code>globle_mind_documents</code> &mdash; version state, lineage, dedup hashes</td>
+            <td>Qdrant collection <code>Antarkosh_documents</code> &mdash; version state, lineage, dedup hashes</td>
           </tr>
           <tr>
             <td>Local JSON fallback</td>
@@ -1318,9 +1318,9 @@
         <tr><td><code>src/stages/s11_vector_store.py</code></td><td>Chunk upsert, active flag filtering, <code>set_document_active()</code></td></tr>
         <tr><td><code>src/api/upload.py</code></td><td>Upload + replace endpoints (streaming and non-streaming)</td></tr>
         <tr><td><code>src/api/ui.py</code></td><td>Documents list, version history, delete endpoint, frontend data shaping</td></tr>
-        <tr><td><code>LocalMind_UI/src/pages/Documents.jsx</code></td><td>Documents page with Replace/Delete buttons and version badges</td></tr>
-        <tr><td><code>LocalMind_UI/src/store/store.js</code></td><td>Store actions: ingestDocument, replaceDocument, deleteDocument</td></tr>
-        <tr><td><code>LocalMind_UI/src/services/api.js</code></td><td>API client functions for replace, delete, version history</td></tr>
+        <tr><td><code>Antarkosh_UI/src/pages/Documents.jsx</code></td><td>Documents page with Replace/Delete buttons and version badges</td></tr>
+        <tr><td><code>Antarkosh_UI/src/store/store.js</code></td><td>Store actions: ingestDocument, replaceDocument, deleteDocument</td></tr>
+        <tr><td><code>Antarkosh_UI/src/services/api.js</code></td><td>API client functions for replace, delete, version history</td></tr>
       </tbody>
     </table>
   </div>

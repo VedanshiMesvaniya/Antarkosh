@@ -44,7 +44,7 @@ async def test_full_pipeline_e2e_indepth() -> None:
     # 1. Force local in-memory Qdrant store for the test
     settings.qdrant_url = ""
     settings.qdrant_api_key = ""
-    test_collection = "globle_mind_e2e_integration_test_collection"
+    test_collection = "Antarkosh_e2e_integration_test_collection"
     vector_store = QdrantStore(collection_name=test_collection)
     
     # Enforce cleanup in case of test failures

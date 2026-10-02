@@ -2,7 +2,7 @@
 
 **Timestamp:** 2026-08-26 17:20:02  
 **Range:** `gm-021` to `gm-040` (20 questions)  
-**Evaluator Run:** [`evals/globalmind/results/full_eval_report_20260826_172002.json`](file:///data/shared/project/Global_Mind/evals/globalmind/results/full_eval_report_20260826_172002.json)
+**Evaluator Run:** [`evals/Antarkosh/results/full_eval_report_20260826_172002.json`](file:///data/shared/project/Antarkosh/evals/Antarkosh/results/full_eval_report_20260826_172002.json)
 
 ---
 

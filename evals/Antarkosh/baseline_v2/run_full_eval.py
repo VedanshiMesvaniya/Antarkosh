@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GlobalMind Live Evaluation & Validator Hardening Suite (Baseline v2)
+"""Antarkosh Live Evaluation & Validator Hardening Suite (Baseline v2)
 
 ----------------------------------------------------------------------
 Runs all 163 questions (gm-001 to gm-163) + 5 Adversarial Queries.
@@ -41,7 +41,7 @@ import sqlglot
 
 
 class LiveEvaluator:
-    def __init__(self, db_path: str = "global_mind.db"):
+    def __init__(self, db_path: str = "Antarkosh.db"):
         self.db_path = db_path
         self._pipeline = None
         self.results: list[dict[str, Any]] = []
@@ -63,7 +63,7 @@ class LiveEvaluator:
         }
 
     def _load_schema_context(self) -> dict[str, list[str]]:
-        schema_path = REPO_ROOT / "evals" / "globalmind" / "globalmind_schema.json"
+        schema_path = REPO_ROOT / "evals" / "Antarkosh" / "Antarkosh_schema.json"
         if not schema_path.exists():
             return {}
         try:
@@ -361,7 +361,7 @@ class LiveEvaluator:
         """Run evaluation on all questions maintaining a persistent async event loop"""
         asyncio.run(self._run_full_evaluation_async(questions, max_workers=max_workers, delay=delay))
 
-    def generate_report(self, output_dir: str = "evals/globalmind/results") -> None:
+    def generate_report(self, output_dir: str = "evals/Antarkosh/results") -> None:
         """Generate comprehensive JSON and CSV reports"""
         out_path = Path(output_dir)
         if not out_path.is_absolute():
@@ -388,7 +388,7 @@ class LiveEvaluator:
         total_q = max(self.metrics["total_questions"], 1)
         with open(summary_path, "w", encoding="utf-8") as f:
             f.write("=" * 60 + "\n")
-            f.write("GLOBALMIND LIVE EVALUATION SUMMARY (BASELINE V2)\n")
+            f.write("Antarkosh LIVE EVALUATION SUMMARY (BASELINE V2)\n")
             f.write("=" * 60 + f"\nTimestamp: {timestamp}\n\n")
 
             f.write("📊 PERFORMANCE METRICS\n")
@@ -455,14 +455,14 @@ class LiveEvaluator:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run GlobalMind Live Evaluation (Baseline v2)")
+    parser = argparse.ArgumentParser(description="Run Antarkosh Live Evaluation (Baseline v2)")
     parser.add_argument(
         "--questions",
         type=str,
-        default="evals/globalmind/questions.jsonl",
+        default="evals/Antarkosh/questions.jsonl",
         help="Path to questions file",
     )
-    parser.add_argument("--db", type=str, default="global_mind.db", help="Path to SQLite database")
+    parser.add_argument("--db", type=str, default="Antarkosh.db", help="Path to SQLite database")
     parser.add_argument("--adversarial-only", action="store_true", help="Run only adversarial tests")
     parser.add_argument("--start", type=int, default=1, help="1-indexed start question index (default: 1)")
     parser.add_argument("--limit", type=int, help="Limit number of questions to run")
@@ -497,7 +497,7 @@ def main() -> None:
     evaluator.run_full_evaluation(questions, max_workers=args.max_workers, delay=args.delay)
     evaluator.generate_report()
 
-    print("\n✅ Evaluation Complete! Check 'evals/globalmind/results/' for reports.")
+    print("\n✅ Evaluation Complete! Check 'evals/Antarkosh/results/' for reports.")
 
 
 if __name__ == "__main__":

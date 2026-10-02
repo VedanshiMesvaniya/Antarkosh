@@ -44,7 +44,7 @@ export default function Header() {
   )
   const canExport = Boolean(activeChat) && exportableMessages.length > 0
   const pageTitle = isChatRoute
-    ? (activeChat?.title || 'LocalMind')
+    ? (activeChat?.title || 'Antarkosh')
     : location.pathname.slice(1).charAt(0).toUpperCase() + location.pathname.slice(2)
 
   useDismiss(downloadRef, () => setDownloadOpen(false), downloadOpen)

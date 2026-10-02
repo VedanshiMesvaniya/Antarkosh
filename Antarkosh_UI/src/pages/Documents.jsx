@@ -136,7 +136,7 @@ export default function Documents() {
         <div>
           <h2 className="section__title">Documents</h2>
           <p className="section__subtitle">
-            Add source material for LocalMind to search and analyze.
+            Add source material for Antarkosh to search and analyze.
           </p>
         </div>
         <div className="section__header-actions">

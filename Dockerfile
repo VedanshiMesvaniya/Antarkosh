@@ -1,4 +1,4 @@
-# Runtime image for GlobleMind — FastAPI API + the bundled React UI in one
+# Runtime image for Antarkosh — FastAPI API + the bundled React UI in one
 # process. Runs from source (WORKDIR /app) so PROJECT_ROOT resolves to the repo
 # root and the committed frontend/ + config/ are found. An editable install
 # links src/ in place and installs the dependencies from pyproject.toml.

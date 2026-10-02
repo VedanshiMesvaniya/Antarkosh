@@ -35,4 +35,4 @@ jobs:
 
       - name: Run Offline Eval Dataset Validator
         run: |
-          python evals/globalmind/run_eval.py --offline
+          python evals/Antarkosh/run_eval.py --offline

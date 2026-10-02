@@ -1,7 +1,7 @@
 # SQL Expansion Summary: Priority Batch 1 & 2
 
 ## Overview
-The evaluation question bank for GlobalMind Text-to-SQL expands to **163 questions** (`gm-001` to `gm-163`) covering **46 tables** (88.5% domain tables, 65.7% total schema).
+The evaluation question bank for Antarkosh Text-to-SQL expands to **163 questions** (`gm-001` to `gm-163`) covering **46 tables** (88.5% domain tables, 65.7% total schema).
 
 ---
 
@@ -60,4 +60,4 @@ The evaluation question bank for GlobalMind Text-to-SQL expands to **163 questio
 ---
 
 ## Validation Status
-All 163 questions verified with `python evals/globalmind/run_eval.py --offline` against `globalmind_schema.json` with 100% table resolution and 0 schema errors.
+All 163 questions verified with `python evals/Antarkosh/run_eval.py --offline` against `Antarkosh_schema.json` with 100% table resolution and 0 schema errors.

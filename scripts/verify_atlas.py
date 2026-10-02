@@ -18,7 +18,7 @@ console = Console()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ATLAS_PATH = ROOT_DIR / "config" / "behavioral_schema_atlas.json"
-SCHEMA_PATH = ROOT_DIR / "evals" / "globalmind" / "globalmind_schema.json"
+SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 
 
 def run_verification():

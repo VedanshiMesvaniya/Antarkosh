@@ -40,7 +40,7 @@ from src.core.file_lock import LockMode, locked
 logger = logging.getLogger(__name__)
 
 _REGISTRY_FILE = DATA_DIR / "ingested_files.json"
-_DOCUMENTS_COLLECTION = "globle_mind_documents"
+_DOCUMENTS_COLLECTION = "Antarkosh_documents"
 
 
 # ---------------------------------------------------------------------------
