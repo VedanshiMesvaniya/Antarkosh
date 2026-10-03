@@ -103,7 +103,7 @@ Conversation:
 
 _TITLE_PROMPT = """You write very short chat titles from a user's question.
 
-Read the user's question below and reply with strictly a 3 to 4-word title that captures the core
+Read the user's question below and reply with strictly a 5 to 6-word title that captures the core
 meaning of what they are asking (the topic and intent), not the words they typed.
 Examples: "Which warehouses are low on stock right now?" -> "Low Stock Warehouses";
 "show me sales by state" -> "Sales By State"; "what is the apple tax rate" -> "Apple Tax Rate".
@@ -119,7 +119,7 @@ Title:"""
 
 
 def _clean_title(raw: str) -> str:
-    """Normalize an LLM title response into a clean, bounded 2-3 word title string."""
+    """Normalize an LLM title response into a clean, bounded 5-6 word title string."""
     text = (raw or "").strip()
     if not text:
         return ""
@@ -131,8 +131,8 @@ def _clean_title(raw: str) -> str:
     text = text.strip().strip("\"'“”‘’").strip()
     text = text.rstrip(".!?,;:").strip()
     words = text.split()
-    if len(words) > 4:
-        words = words[:3]
+    if len(words) > 6:
+        words = words[:6]
     stop_words = {"of", "for", "in", "on", "at", "to", "from", "by", "and", "the", "a", "an", "with"}
     while len(words) > 1 and words[-1].lower() in stop_words:
         words.pop()
@@ -143,7 +143,7 @@ def _clean_title(raw: str) -> str:
 
 
 def _fallback_title(prompt: str) -> str:
-    """Deterministic fallback when LLM titling is unavailable: extract a 2-3 word topic."""
+    """Deterministic fallback when LLM titling is unavailable: extract a 5-6 word topic."""
     text = (prompt or "").strip()
     if not text:
         return "New Chat"
@@ -176,7 +176,7 @@ def _fallback_title(prompt: str) -> str:
         "of", "for", "in", "on", "at", "to", "from", "by", "and", "the", "a", "an", "with",
         "are", "is", "were", "was", "does", "do",
     }
-    selected = words[:3]
+    selected = words[:6]
     while len(selected) > 1 and selected[-1].lower() in stop_words:
         selected.pop()
 
@@ -581,7 +581,7 @@ async def generate_chat_title(
             "fast_support",
             messages=[{"role": "user", "content": _TITLE_PROMPT.format(question=question)}],
             temperature=0.3,
-            max_tokens=20,
+            max_tokens=120,
         )
         title = _clean_title(raw)
     except Exception:
