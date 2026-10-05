@@ -15,7 +15,7 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import sqlglot
 from sqlglot import exp
@@ -31,6 +31,9 @@ from src.core.pattern_learner import PatternLearner
 from src.core.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
 from src.stages.s10_embeddings import EmbeddingService
+
+if TYPE_CHECKING:  # annotation only; avoids a runtime import of the vector-store stage
+    from src.stages.s11_vector_store import QdrantStore
 from src.utils.circuit_breaker import CircuitBreakerOpenError, get_shared_circuit_breaker
 from src.utils.empty_result_classifier import classify_empty_result
 from src.utils.error_classification import classify_error

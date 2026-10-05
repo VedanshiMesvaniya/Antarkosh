@@ -1,38 +1,248 @@
 name: CI
 
+# Runs on every push to the long-lived branches and on pull requests into main.
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master, sql_update]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
+  workflow_dispatch:
+
+# A newer push to the same branch/PR cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "22"
 
 jobs:
-  test-and-lint:
+  # ---------------------------------------------------------------------------
+  # Fast, dependency-light checks of the committed config/eval data.
+  # ---------------------------------------------------------------------------
+  config-validation:
+    name: Config & eval data
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
-      - name: Install dependencies
+      # These scripts only need a handful of packages — no torch, no Qdrant.
+      - name: Install minimal dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest pytest-asyncio sqlglot qdrant-client pydantic pydantic-settings
+          pip install sqlglot pydantic pydantic-settings pyyaml python-dotenv numpy
 
-      - name: Run SQL Glossary & Relationship Drift Validator
+      - name: Config files parse (YAML + JSON)
         run: |
-          python src/core/sql_drift_validator.py
+          python - <<'PY'
+          import json, pathlib, sys, yaml
+          bad = []
+          for p in sorted(pathlib.Path("config").glob("*.yaml")):
+              try:
+                  yaml.safe_load(p.read_text(encoding="utf-8"))
+              except Exception as e:
+                  bad.append(f"{p}: {e}")
+          for p in sorted(pathlib.Path("config").glob("*.json")):
+              try:
+                  json.loads(p.read_text(encoding="utf-8"))
+              except Exception as e:
+                  bad.append(f"{p}: {e}")
+          if bad:
+              sys.exit("Invalid config files:\n" + "\n".join(bad))
+          print("All config/*.yaml and config/*.json files parse.")
+          PY
 
-      - name: Run Test Suite
-        env:
-          DB_ENGINE: sqlite
-        run: |
-          pytest -v tests/test_sql_*.py tests/test_query_pipeline.py tests/test_citations_and_routing.py
+      - name: SQL glossary & relationship drift validator
+        run: python src/core/sql_drift_validator.py
 
-      - name: Run Offline Eval Dataset Validator
+      - name: Offline eval dataset validator
+        run: python evals/Antarkosh/run_eval.py --offline
+
+  # ---------------------------------------------------------------------------
+  # Python lint. Only real-error rules block the build; the wider ruleset has a
+  # large pre-existing backlog, so it is reported without failing the job.
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Python lint (ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - run: pip install ruff
+
+      - name: Syntax errors and undefined names (blocking)
+        run: ruff check src tests scripts --select E9,F63,F7,F82 --output-format github
+
+      - name: Full ruleset (report only)
+        continue-on-error: true
+        run: ruff check src tests scripts --statistics
+
+  # ---------------------------------------------------------------------------
+  # Backend unit + integration tests. Embeddings/reranking tests use a fake
+  # FlagEmbedding, and vision calls use fakes, so no model download, GPU, API
+  # key or database is needed. Tests that do need those are marked `live`.
+  # ---------------------------------------------------------------------------
+  backend-tests:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_ENGINE: sqlite
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: System libraries
         run: |
-          python evals/Antarkosh/run_eval.py --offline
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libmagic1 ghostscript libgl1 libglib2.0-0
+
+      # Install every dependency declared in pyproject.toml EXCEPT FlagEmbedding
+      # (it pulls in torch, ~GBs). The tests replace it with a fake that has the
+      # real library's call/return shapes. The list is read from pyproject.toml,
+      # so it cannot drift from the real dependencies.
+      - name: Install dependencies (without torch/FlagEmbedding)
+        run: |
+          python -m pip install --upgrade pip
+          python - <<'PY' > ci-requirements.txt
+          import tomllib
+          with open("pyproject.toml", "rb") as f:
+              deps = tomllib.load(f)["project"]["dependencies"]
+          for dep in deps:
+              if not dep.lower().startswith("flagembedding"):
+                  print(dep)
+          PY
+          pip install -r ci-requirements.txt
+          pip install -e . --no-deps
+          pip install pytest pytest-asyncio
+
+      - name: Run tests (excluding `live`)
+        run: pytest -v -m "not live" --ignore=tests/golden -ra
+
+  # ---------------------------------------------------------------------------
+  # Same fake embeddings, but a REAL Qdrant server: collection schema, dense +
+  # sparse upsert, RRF hybrid search, payloads, embedding-model mismatch warning.
+  # ---------------------------------------------------------------------------
+  qdrant-integration:
+    name: Qdrant integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+    env:
+      DB_ENGINE: sqlite
+      QDRANT_TEST_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libmagic1 ghostscript libgl1 libglib2.0-0
+
+      - name: Install dependencies (without torch/FlagEmbedding)
+        run: |
+          python -m pip install --upgrade pip
+          python - <<'PY' > ci-requirements.txt
+          import tomllib
+          with open("pyproject.toml", "rb") as f:
+              deps = tomllib.load(f)["project"]["dependencies"]
+          for dep in deps:
+              if not dep.lower().startswith("flagembedding"):
+                  print(dep)
+          PY
+          pip install -r ci-requirements.txt
+          pip install -e . --no-deps
+          pip install pytest pytest-asyncio
+
+      - name: Wait for Qdrant
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:6333/readyz >/dev/null 2>&1; then echo "Qdrant is ready"; exit 0; fi
+            sleep 2
+          done
+          echo "Qdrant did not become ready" >&2
+          exit 1
+
+      - name: Run Qdrant integration tests
+        run: pytest -v tests/test_local_qdrant_integration.py -ra
+
+  # ---------------------------------------------------------------------------
+  # React UI (Antarkosh_UI). The build output is committed to frontend/ and
+  # served by FastAPI, so a broken build must fail CI.
+  # ---------------------------------------------------------------------------
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: Antarkosh_UI
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: Antarkosh_UI/package-lock.json
+
+      - run: npm ci
+
+      # The UI has existing react-hooks/no-unreachable lint errors; reported, not blocking yet.
+      - name: Lint (report only)
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  # ---------------------------------------------------------------------------
+  # The deployable image (Render / Railway use this Dockerfile). Build only.
+  # ---------------------------------------------------------------------------
+  docker-build:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
