@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     qdrant_api_key: str = ""
     openrouter_api_key: str = ""
 
-    # --- Local models (ingestion and embeddings run entirely on this machine) ---
+    # --- Local models (embeddings + reranking run on this machine; vision stays online) ---
     # Embeddings: BGE-M3 (dense + sparse in one model), run through FlagEmbedding.
     bge_m3_model: str = "BAAI/bge-m3"
     bge_m3_use_fp16: bool = False  # keep False on CPU
@@ -54,18 +54,13 @@ class Settings(BaseSettings):
     bge_reranker_use_fp16: bool = False
     bge_reranker_max_length: int = 512
     bge_reranker_batch_size: int = 16
-    # Vision + document classification during ingestion: Qwen3-VL served over an
-    # OpenAI-compatible API (Ollama by default). OCR, layout, tables, charts,
-    # images and the document-type classifier all use it — no cloud fallback.
-    local_vision_base_url: str = "http://localhost:11434/v1"
-    local_vision_model: str = "qwen3-vl:4b"
-    local_vision_api_key: str = "local"  # Ollama ignores it but the client needs a value
-    # CPU inference is slow, so these limits are generous.
-    local_vision_timeout_seconds: float = 300.0        # per image / page
-    local_vision_stage_timeout_seconds: float = 1800.0  # whole visual-analysis stage
-    local_classification_timeout_seconds: float = 120.0
-    # A CPU model serves one image at a time; parallel calls only queue and time out.
-    local_vision_concurrency: int = 1
+    # Vision + document classification during ingestion use the online provider
+    # chain (Gemini first, see config/providers.yaml). Limits are sized for API calls.
+    vision_timeout_seconds: float = 30.0         # per image / page
+    vision_stage_timeout_seconds: float = 120.0  # whole visual-analysis stage
+    classification_timeout_seconds: float = 10.0
+    # Parallel vision calls; keep modest so the Gemini free-tier RPM limit is respected.
+    vision_concurrency: int = 3
     # Save extracted figures to data/processed/figures and record the path.
     save_figure_images: bool = True
 

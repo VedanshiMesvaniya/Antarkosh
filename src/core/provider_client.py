@@ -625,9 +625,6 @@ class TaskRoute:
     options: list[ProviderOption] = field(default_factory=list)
 
 
-# Provider name used for the local OpenAI-compatible vision server.
-LOCAL_PROVIDER = "local"
-
 # Tasks that require a vision-capable model. When a user pins a provider that
 # isn't already in one of these routes (e.g. OpenRouter), we must select a
 # vision model, not a text model, or the call will fail.
@@ -816,7 +813,7 @@ def get_shared_routes() -> dict[str, TaskRoute]:
 
 
 # ---------------------------------------------------------------------------
-# Local-only routing for document ingestion
+# Routing for document ingestion (online vision, Gemini first)
 # ---------------------------------------------------------------------------
 
 # Every LLM/vision call made while ingesting a document: OCR, layout, tables,
@@ -824,14 +821,12 @@ def get_shared_routes() -> dict[str, TaskRoute]:
 INGESTION_TASKS = frozenset(_VISION_TASKS | {"semantic_classification"})
 
 
-def local_ingestion_routes() -> dict[str, TaskRoute]:
-    """One-option routes: every ingestion task is served by the local model only."""
-    option = ProviderOption(LOCAL_PROVIDER, settings.local_vision_model, priority=0)
-    return {task: TaskRoute([option]) for task in INGESTION_TASKS}
-
-
 def build_ingestion_router() -> "ProviderRouter":
-    """Router for document ingestion with Gemini preferred and configured fallbacks."""
+    """Router for document ingestion (OCR, layout, tables, charts, images, classification).
+
+    Embeddings are local, but these calls go to the online provider chain with Gemini
+    preferred, falling back through the routes in config/providers.yaml.
+    """
     routes = get_shared_routes()
     ingestion_routes = {
         task: routes[task]
