@@ -1,4 +1,5 @@
-"""Tests for the fully local stack (BGE-M3, BGE reranker, local vision/OCR, local Qdrant).
+"""Tests for the local retrieval stack (BGE-M3, BGE reranker, local Qdrant) and the
+Gemini-first online vision/OCR ingestion router.
 
 The real model weights are never downloaded here: FlagEmbedding is replaced by a
 tiny fake module whose method signatures and return shapes mirror the real
@@ -165,21 +166,19 @@ async def test_local_reranker_failure_falls_back_to_lexical(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Ingestion is local-only: routing
+# Ingestion routing: embeddings are local, vision/OCR/classification are online
 # ---------------------------------------------------------------------------
 
-def test_ingestion_router_reaches_only_the_local_model(monkeypatch):
-    """Even with every cloud key configured, ingestion can only call the local server."""
-    from src.core.provider_client import (
-        INGESTION_TASKS, LOCAL_PROVIDER, build_ingestion_router,
-    )
-    for key in ("gemini_api_key", "nvidia_nim_api_key", "groq_api_key", "openrouter_api_key"):
-        monkeypatch.setattr(settings, key, "cloud-key")
+def test_ingestion_router_prefers_gemini_for_every_ingestion_task():
+    """OCR, layout, tables, charts, images and classification all try Gemini first."""
+    from src.core.provider_client import INGESTION_TASKS, build_ingestion_router
     router = build_ingestion_router()
-    assert list(router._providers) == [LOCAL_PROVIDER]
+    assert router._preferred_provider == "gemini"
     for task in INGESTION_TASKS:
-        opts = router._get_route(task).options
-        assert [(o.provider_name, o.model) for o in opts] == [(LOCAL_PROVIDER, settings.local_vision_model)]
+        options = sorted(router._get_route(task).options, key=lambda o: o.priority)
+        assert options, f"no provider route configured for ingestion task '{task}'"
+        assert options[0].provider_name == "gemini", task
+        assert "local" not in {o.provider_name for o in options}, task
 
 
 def test_ingestion_tasks_cover_every_stage_that_calls_a_model():
@@ -190,20 +189,20 @@ def test_ingestion_tasks_cover_every_stage_that_calls_a_model():
     }
 
 
-def test_pipeline_default_router_is_the_local_one(tmp_path, monkeypatch):
+def test_pipeline_default_router_is_the_gemini_first_ingestion_router(tmp_path):
     from src.core.ingestion_registry import IngestionRegistry
     from src.pipeline.ingestion import IngestionPipeline
-    monkeypatch.setattr(settings, "gemini_api_key", "cloud-key")
     pipe = IngestionPipeline(
         embedding_service=EmbeddingService(primary=BGEM3EmbeddingAdapter()),
         vector_store=object(),  # type: ignore[arg-type]
         registry=IngestionRegistry(registry_path=tmp_path / "r.json"),
     )
-    assert list(pipe._router._providers) == ["local"]
+    assert pipe._router._preferred_provider == "gemini"
+    assert {"ocr_vision", "semantic_classification"} <= set(pipe._router._routes)
 
 
-def test_query_router_still_has_cloud_providers_for_answers(monkeypatch):
-    """Only ingestion is local-only; answer generation keeps using the normal router."""
+def test_providers_are_online_only_there_is_no_local_vision_provider(monkeypatch):
+    """Gemini is built from its API key; no local/Ollama vision provider exists any more."""
     from src.core.provider_client import ProviderRouter, _build_providers
     from src.core.rate_limiter import RateLimiter
     monkeypatch.setattr(settings, "gemini_api_key", "cloud-key")
@@ -212,11 +211,12 @@ def test_query_router_still_has_cloud_providers_for_answers(monkeypatch):
     assert ProviderRouter(preferred_provider="auto")._get_route("general_qa").options
 
 
-def test_local_vision_defaults():
-    assert settings.local_vision_base_url == "http://localhost:11434/v1"
-    assert settings.local_vision_model == "qwen3-vl:4b"
-    assert settings.local_vision_concurrency == 1
-    assert settings.local_vision_timeout_seconds >= 300
+def test_vision_limits_are_sized_for_online_apis():
+    assert settings.vision_timeout_seconds <= 60
+    assert settings.vision_stage_timeout_seconds <= 300
+    assert settings.vision_concurrency >= 1
+    assert not hasattr(settings, "local_vision_base_url")
+    assert not hasattr(settings, "local_vision_model")
 
 
 def test_removed_cloud_settings_are_gone_and_old_env_files_still_load(tmp_path):
@@ -224,12 +224,15 @@ def test_removed_cloud_settings_are_gone_and_old_env_files_still_load(tmp_path):
     from src.core.config import Settings
     assert not hasattr(settings, "jina_api_key") and not hasattr(settings, "ocr_space_api_key")
     env = tmp_path / ".env"
-    env.write_text("JINA_API_KEY=abc\nOCR_SPACE_API_KEY=def\nEMBEDDING_PROVIDER=jina\nGROQ_API_KEY=g\n")
+    env.write_text(
+        "JINA_API_KEY=abc\nOCR_SPACE_API_KEY=def\nEMBEDDING_PROVIDER=jina\n"
+        "LOCAL_VISION_MODEL=qwen3-vl:4b\nGROQ_API_KEY=g\n"
+    )
     loaded = Settings(_env_file=str(env))
     assert loaded.groq_api_key == "g"
 
 
-async def test_ocr_stage_uses_only_the_local_vision_model():
+async def test_ocr_stage_goes_through_the_vision_router_only():
     from src.stages import s04_ocr
 
     class _Router:

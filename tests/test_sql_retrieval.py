@@ -231,7 +231,9 @@ async def test_unsafe_queries_are_blocked(live_db, sql):
     retriever = SQLRetriever(_router_returning(sql))
     chunks = await retriever.retrieve("something")
     assert chunks == []
-    assert retriever.last_query_status == "failed"
+    # Non-SELECT / unparseable output is treated as an abstention ("not_applicable");
+    # SQL that parses but trips the safety validator is "failed". Never a success.
+    assert retriever.last_query_status in {"failed", "not_applicable"}
     # The data is untouched — the read-only path never executed a write.
     con = sqlite3.connect(live_db)
     assert con.execute("SELECT COUNT(*) FROM customers").fetchone()[0] == 2
@@ -244,7 +246,7 @@ async def test_malformed_sql_falls_back(live_db):
     retriever = SQLRetriever(_router_returning("SELCT nope FROM"))
     chunks = await retriever.retrieve("broken")
     assert chunks == []
-    assert retriever.last_query_status == "failed"
+    assert retriever.last_query_status in {"failed", "not_applicable"}
 
 
 @pytest.mark.asyncio

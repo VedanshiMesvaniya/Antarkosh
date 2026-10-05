@@ -1,15 +1,13 @@
-"""The REAL ingestion pipeline, fully local, end to end.
+"""The REAL ingestion pipeline, end to end: local embeddings + store, online vision.
 
 A real PDF (one text page with an embedded image) goes through every stage —
 detection, classification, parsing, vision, chunking, embedding, vector store,
-registry — and is then retrieved. Only the model servers are stand-ins:
+registry — and is then retrieved. Only the model backends are stand-ins:
 
-  * a tiny HTTP server answers as Ollama would (OpenAI-compatible API),
+  * the real Gemini-first ingestion router is used, but its Gemini provider is a
+    fake that answers vision calls (no network, no API key needed),
   * FlagEmbedding is a fake with the real library's call/return shapes,
   * Qdrant is the in-memory engine of qdrant-client (same code as the server).
-
-Nothing here can reach a cloud provider: the ingestion router only knows the
-local server, and no cloud keys are set.
 """
 
 from __future__ import annotations
@@ -27,7 +25,6 @@ from src.core import local_models  # noqa: E402
 from src.core.config import settings  # noqa: E402
 from src.core.ingestion_registry import IngestionRegistry  # noqa: E402
 from src.models.schemas import ChunkType  # noqa: E402
-from tests.test_local_vision_provider import _FakeOllama  # noqa: E402
 
 
 class _BagOfWordsM3:
@@ -49,6 +46,23 @@ class _BagOfWordsM3:
         return {"dense_vecs": np.stack(dense), "lexical_weights": lex, "colbert_vecs": None}
 
 
+class _FakeGemini:
+    """Stands in for GeminiProvider: records vision calls, answers in the requested format."""
+
+    name = "gemini"
+    is_available = True
+
+    def __init__(self) -> None:
+        self.vision_calls: list[dict] = []
+
+    async def chat(self, messages, *, model, **kw) -> str:
+        return '{"document_type": "general", "confidence": 0.9}'
+
+    async def vision(self, image_data, prompt, *, model, **kw) -> str:
+        self.vision_calls.append({"model": model, "bytes": len(image_data), "prompt": prompt})
+        return "VISIBLE TEXT:\nHello\n\nMEANING:\nA greeting card."
+
+
 @pytest.fixture
 def local_world(monkeypatch, tmp_path):
     from src.stages import s11_vector_store as s11
@@ -58,17 +72,13 @@ def local_world(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "FlagEmbedding", fake)
     local_models.reset_cache()
 
-    for key in ("gemini_api_key", "nvidia_nim_api_key", "groq_api_key", "openrouter_api_key"):
-        monkeypatch.setattr(settings, key, "")
     monkeypatch.setattr(settings, "qdrant_url", "")  # in-memory Qdrant
     monkeypatch.setattr(settings, "processed_dir", tmp_path / "processed")
     s11._global_client = None
     s11._global_client_loop = None
 
-    with _FakeOllama() as ollama:
-        monkeypatch.setattr(settings, "local_vision_base_url", ollama.base_url)
-        monkeypatch.setattr(settings, "local_vision_timeout_seconds", 10.0)
-        yield ollama
+    gemini = _FakeGemini()
+    yield gemini
     s11._global_client = None
     s11._global_client_loop = None
     local_models.reset_cache()
@@ -108,7 +118,9 @@ async def test_pdf_ingests_locally_and_is_retrievable(local_world, tmp_path):
     embeddings = EmbeddingService()
     store = QdrantStore(embedding_service=embeddings)
     pipe = IngestionPipeline(embedding_service=embeddings, vector_store=store, registry=registry)
-    assert list(pipe._router._providers) == ["local"]
+    # real Gemini-first ingestion router, with the Gemini backend swapped for the fake
+    assert pipe._router._preferred_provider == "gemini"
+    pipe._router._providers = {"gemini": local_world}
 
     try:
         result = await pipe.ingest(pdf)
@@ -117,11 +129,8 @@ async def test_pdf_ingests_locally_and_is_retrievable(local_world, tmp_path):
 
     assert not result.skipped and result.total_chunks >= 2
 
-    # the image was analysed by the local model (vision calls hit the fake Ollama)
-    assert any(
-        isinstance(m["content"], list)
-        for r in local_world.requests for m in r["body"]["messages"]
-    )
+    # the embedded image was analysed by the (online) vision model
+    assert local_world.vision_calls, "the figure was never sent to the vision model"
 
     # registry knows which model built the document
     (entry,) = registry.get_active()

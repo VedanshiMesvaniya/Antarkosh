@@ -31,7 +31,13 @@ def test_rate_limiter_token_tracking():
 
 
 @pytest.mark.asyncio
-async def test_get_provider_usage_api():
+async def test_get_provider_usage_api(monkeypatch):
+    # Providers are only built for configured API keys, so don't rely on a local .env.
+    from src.core import provider_client
+    from src.core.config import settings
+    monkeypatch.setattr(settings, "gemini_api_key", "test-key")
+    monkeypatch.setattr(settings, "groq_api_key", "test-key")
+    monkeypatch.setattr(provider_client, "_shared_providers", None)
     res = await get_provider_usage()
     assert "providers" in res
     providers = res["providers"]

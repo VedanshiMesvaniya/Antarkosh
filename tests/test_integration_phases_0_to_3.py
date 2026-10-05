@@ -29,8 +29,11 @@ def test_phase_0_scaffolding_wiring():
         "zero_row_handling_enabled",
         "fast_path_enabled",
     ]
+    from src.utils.feature_flags import DEFAULT_FLAGS
     for flag in flags:
-        assert is_feature_enabled(flag) is False, f"Flag {flag} must default to False"
+        # Built-in defaults stay off; config/feature_flags.yaml switches them on per deployment.
+        assert DEFAULT_FLAGS[flag] is False, f"Flag {flag} must default to False"
+        assert isinstance(is_feature_enabled(flag), bool)
 
     parsed = parse_sql("SELECT * FROM test")
     assert parsed["is_valid"] is True

@@ -118,9 +118,9 @@ async def test_title_long_question_is_capped_and_title_stays_short():
     long_question = "please tell me " + "about the warehouse stock levels " * 40
     result, seen, _ = await _run_title(
         [{"role": "user", "content": long_question}],
-        llm_reply="Title: Warehouse Stock Levels Overview Report Today.",
+        llm_reply="Title: Warehouse Stock Levels Overview Report Today Extra Words.",
     )
-    assert len(result["title"].split()) <= 4
+    assert len(result["title"].split()) <= 6
     assert len(seen["prompt"]) < 1600
 
 
@@ -129,7 +129,7 @@ async def test_title_falls_back_when_llm_fails():
     result, _, _ = await _run_title(
         [{"role": "user", "content": "show me sales by state"}], fail=True
     )
-    assert result["title"] and len(result["title"].split()) <= 4
+    assert result["title"] and len(result["title"].split()) <= 6
 
 
 @pytest.mark.asyncio

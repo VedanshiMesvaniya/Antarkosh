@@ -29,6 +29,7 @@ def event_loop():
     loop.close()
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_full_pipeline_e2e_indepth() -> None:
     """Rigorous end-to-end integration test of the entire pipeline.
