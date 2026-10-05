@@ -76,6 +76,7 @@ def chunk_document(document: ParsedDocument) -> list[Chunk]:
                     document_type=document.document_type,
                     source_file=document.file_path,
                     confidence=figure.confidence,
+                    metadata={"image_path": figure.image_path} if figure.image_path else {},
                 ))
 
         # 3. Prose → semantic chunking within structural boundaries
@@ -266,4 +267,6 @@ def _figure_to_text(figure: FigureData) -> str:
         parts.append(f"Figure {figure.figure_index + 1}: {figure.caption}")
     if figure.description:
         parts.append(figure.description)
+    if figure.ocr_text:
+        parts.append(f"Text in image: {figure.ocr_text}")
     return "\n".join(parts)

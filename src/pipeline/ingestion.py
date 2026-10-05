@@ -18,7 +18,7 @@ from typing import Any, AsyncGenerator
 
 from src.core.config import settings
 from src.core.ingestion_registry import IngestionRegistry, RegistryStatus
-from src.core.provider_client import ProviderRouter
+from src.core.provider_client import ProviderRouter, build_ingestion_router
 from src.core.rate_limiter import get_shared_rate_limiter
 from src.models.schemas import Chunk, ParsedDocument
 from src.stages.s01_file_detection import detect_file
@@ -102,10 +102,16 @@ class IngestionPipeline:
         registry: IngestionRegistry | None = None,
     ) -> None:
         self._rate_limiter = get_shared_rate_limiter()
-        self._router = router or ProviderRouter()
-        self._embeddings = embedding_service or EmbeddingService(self._rate_limiter)
+        # Ingestion is fully local: the default router can only reach the local model.
+        self._router = router or build_ingestion_router()
+        self._embeddings = embedding_service or EmbeddingService()
         self._store = vector_store or QdrantStore(embedding_service=self._embeddings)
         self._registry = registry or IngestionRegistry()
+
+    @property
+    def _embedding_model_id(self) -> str:
+        """Identifier of the embedding model this pipeline writes vectors with."""
+        return str(getattr(self._embeddings, "model_id", "") or "")
 
     async def ingest(self, file_path: str | Path, user_id: str = "system") -> "IngestionResult":
         """Ingest a single document through the full pipeline.
@@ -126,7 +132,9 @@ class IngestionPipeline:
         # ── Deduplication check ──────────────────────────────────────────────
         # ARCH-9: registry.check() hashes the file (blocking for large PDFs)
         # and reads the JSON/Qdrant registry — both must run off the event loop.
-        check = await asyncio.to_thread(self._registry.check, path, user_id)
+        check = await asyncio.to_thread(
+            self._registry.check, path, user_id, self._embedding_model_id
+        )
 
         if check.status == RegistryStatus.ALREADY_INGESTED:
             entry = check.old_entry or {}
@@ -152,7 +160,9 @@ class IngestionPipeline:
             dupe = await asyncio.to_thread(
                 self._registry.active_entry_for_hash, check.sha256, user_id
             )
-            if dupe is not None:
+            if dupe is not None and self._registry.is_current_embedding(
+                dupe, self._embedding_model_id
+            ):
                 logger.info(
                     "Skipping '%s' — identical content ingested concurrently", path.name
                 )
@@ -168,19 +178,49 @@ class IngestionPipeline:
                     document_id=dupe.get("document_id", ""),
                 )
 
+            # A surviving ``dupe`` here is registered but embedded with another
+            # model: re-index it and cut over from the stale version.
+            stale_id = await self._discard_stale_chunks(dupe)
+
             result = await self._run_pipeline(path, user_id=user_id)
 
-            # Register after successful ingestion (brand-new document, no supersede)
+            # Register after successful ingestion (a brand-new document, or the
+            # re-indexed replacement of a stale one).
             await self._commit_version(
                 path,
                 document_id=result.document_id,
                 total_chunks=result.total_chunks,
                 content_hash=check.sha256,
-                supersedes=None,
+                supersedes=stale_id,
                 user_id=user_id,
             )
 
         return result
+
+    async def _discard_stale_chunks(self, stale_entry: dict[str, Any] | None) -> str | None:
+        """Remove the vectors of a registered document that must be re-embedded.
+
+        Vectors from another embedding model can't be compared with the current
+        model's, so they are useless — and leaving them in place would pollute
+        search. Returns the stale document's id (to supersede), or None when
+        there is nothing stale.
+        """
+        if not stale_entry:
+            return None
+        stale_id = stale_entry.get("document_id") or None
+        if not stale_id:
+            return None
+        logger.info(
+            "Re-indexing '%s': registered with embedding model '%s', current is '%s'",
+            stale_entry.get("filename", stale_id),
+            stale_entry.get("embedding_model") or "unknown",
+            self._embedding_model_id,
+        )
+        try:
+            await self._store.delete_document(stale_id)
+        except Exception:
+            logger.exception("Could not remove stale chunks of %s — continuing", stale_id)
+        return stale_id
 
     async def _commit_version(
         self,
@@ -203,6 +243,11 @@ class IngestionPipeline:
         For a brand-new document (``supersedes is None``) only the first step
         runs.
         """
+        # Re-indexing the same upload path yields the same document_id: the new
+        # entry simply overwrites the stale one, there is nothing to supersede.
+        if supersedes == document_id:
+            supersedes = None
+
         # ARCH-9: registry writes (JSON file I/O or Qdrant upsert) must not
         # block the event loop — run them in the default thread-pool executor.
         await asyncio.to_thread(
@@ -213,6 +258,7 @@ class IngestionPipeline:
             document_id,
             supersedes,
             user_id,
+            self._embedding_model_id,
         )
         if not supersedes:
             return
@@ -247,7 +293,9 @@ class IngestionPipeline:
         # new, distinct document (a same-name file never displaces an existing
         # one), so there is nothing to delete first.
         # ARCH-9: SHA-256 hashing blocks; run off the event loop.
-        check = await asyncio.to_thread(self._registry.check, path, user_id)
+        check = await asyncio.to_thread(
+            self._registry.check, path, user_id, self._embedding_model_id
+        )
         if check.status == RegistryStatus.ALREADY_INGESTED:
             entry = check.old_entry or {}
             _discard_redundant_upload(path)
@@ -272,7 +320,9 @@ class IngestionPipeline:
             dupe = await asyncio.to_thread(
                 self._registry.active_entry_for_hash, check.sha256, user_id
             )
-            if dupe is not None:
+            if dupe is not None and self._registry.is_current_embedding(
+                dupe, self._embedding_model_id
+            ):
                 _discard_redundant_upload(path)
                 yield {"type": "skipped", "file": path.name, "reason": "Already ingested (identical content)"}
                 yield {
@@ -287,6 +337,11 @@ class IngestionPipeline:
                 }
                 return
 
+            # A surviving ``dupe`` here is registered but embedded with another
+            # model: re-index it and cut over from the stale version.
+            stale_id = await self._discard_stale_chunks(dupe)
+            if stale_id and not supersedes:
+                supersedes = stale_id
             async for event in self._staged_ingest_with_progress(
                 path, content_hash=check.sha256, supersedes=supersedes, user_id=user_id
             ):
@@ -489,7 +544,7 @@ class IngestionPipeline:
             raise ValueError(f"Cannot replace unknown document_id={old_document_id!r}")
 
         # Identical content → nothing to replace.
-        check = self._registry.check(path)
+        check = self._registry.check(path, embedding_model=self._embedding_model_id)
         if check.status == RegistryStatus.ALREADY_INGESTED:
             logger.info(
                 "Replace '%s' → identical content already active; no-op", path.name

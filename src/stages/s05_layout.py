@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pymupdf as fitz  # PyMuPDF
 
+from src.core.config import settings
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import PageContent, PageStructure, ParsedDocument
 
@@ -154,7 +155,7 @@ Output the structured Markdown:"""
                 mime_type="image/png",
                 max_tokens=8192,
             ),
-            timeout=30.0,
+            timeout=settings.local_vision_timeout_seconds,
         )
     except asyncio.TimeoutError:
         logger.warning("Vision layout analysis timed out for page %d", page_number)

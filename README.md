@@ -82,7 +82,7 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
 ```text
 [Input File] ──> s01: MIME Detection ──> s02: Classification ──> s03: Parsing
                      │                                                │
-                     ├── Scanned? ──> s04: OCR.space Fallback ────────┤
+                     ├── Scanned? ──> s04: Gemini Vision OCR ─────────┤
                      │                                                │
                      ├── Multi-Column? ──> s05: Layout Analysis ──────┤
                      │                                                │
@@ -94,7 +94,7 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
                                    s09: Semantic Token Chunking
                                                 │
                                                 ▼
-                              s10: Jina V3 Dense + Sparse Vectors
+                              s10: BGE-M3 Dense + Sparse (local)
                                                 │
                                                 ▼
                            s11: Qdrant Cloud Hybrid Index Commit (RRF)
@@ -110,7 +110,7 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
 3. **Deep Text Extraction (`s03_parsing.py`)**:
    - Employs PyMuPDF (`fitz`) and `pdfplumber` for PDFs, `python-docx` for Word documents, `python-pptx` for PowerPoint decks, and `openpyxl` for Excel spreadsheets.
 4. **OCR Fallback (`s04_ocr.py`)**:
-   - Evaluates text yield; if the document is a scanned image or text extraction confidence falls below `OCR_CONFIDENCE_THRESHOLD` (0.75), seamlessly routes pages to the `OCR.space` API (25,000 free requests/month).
+   - Evaluates text yield; if the document is a scanned image or text extraction confidence falls below `OCR_CONFIDENCE_THRESHOLD` (0.75), routes pages to Google Gemini Vision for OCR.
 5. **Layout & Multi-Column Analysis (`s05_layout.py`)**:
    - Sends dense multi-column pages to Gemini 2.5 Flash Vision to determine natural reading flow and strip recurring headers and footers.
 6. **High-Fidelity Table Extraction (`s06_tables.py`)**:
@@ -121,13 +121,13 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
 8. **Semantic Chunking (`s09_chunking.py`)**:
    - Splits content into target token blocks (~500 tokens) with fractional overlap (~12%) while respecting sentence and paragraph boundaries.
 9. **Dual-Representation Embeddings (`s10_embeddings.py`)**:
-   - Sends chunks to Jina AI's V3 model to generate **1024-dimensional dense semantic vectors** alongside **lexical sparse vectors** for precise keyword matching.
+   - Embeds chunks locally with **BGE-M3**, producing **1024-dimensional dense semantic vectors** alongside **lexical sparse vectors** for precise keyword matching.
 10. **Vector Store Commit & RRF (`s11_vector_store.py`)**:
     - Upserts dense and sparse vectors with complete payload metadata into Qdrant Cloud. Enables **Reciprocal Rank Fusion (RRF)** for hybrid search.
 11. **Hybrid Retrieval (`s12`)**:
     - Pulls top 50 candidates using dense cosine similarity and sparse BM25 scores, enforcing document diversity and exhaustive query detection.
 12. **Cross-Encoder Reranking (`s13`)**:
-    - Re-scores candidates using Jina's Cross-Encoder Reranker, selecting the top 25 contextually most relevant chunks.
+    - Re-scores candidates using the local `bge-reranker-v2-m3` cross-encoder, selecting the top 25 contextually most relevant chunks.
 13. **Generative Synthesis & Citations (`s14`)**:
     - Feeds the top reranked chunks into the `ProviderRouter`. Automatically generates inline footnote citations (`[1]`, `[2]`) and formats outputs with Markdown tables and inline Mermaid diagrams.
 
@@ -231,7 +231,7 @@ User Request
 
 ### Layer 1: Semantic Cache (`src/utils/semantic_cache.py`) — The "Instant" Path
 - **Sub-Second Response:** Delivers answers to cached or semantically identical questions in **$<0.8\text{s}$ (measured $0.0008\text{s} - 0.64\text{s}$)** with **0 LLM tokens consumed**.
-- **Dense Cosine Distance:** Uses Jina embeddings with a strict cosine threshold ($\ge 0.95$).
+- **Dense Cosine Distance:** Uses BGE-M3 embeddings with a strict cosine threshold ($\ge 0.95$).
 - **Dynamic TTL Policy:**
   - `COUNT`: 60 seconds
   - `SUM`: 60 seconds
@@ -291,8 +291,8 @@ The pool automatically rotates round-robin across keys upon encountering rate li
 | **Vision & Layout** | Google Gemini Flash Vision | NVIDIA NIM (Llama 3.2 11B Vision) | — | — |
 | **Chart Analysis** | Google Gemini Flash Vision | NVIDIA NIM (Llama 3.2 11B Vision) | — | — |
 | **Micro-Synthesis** | Groq (GPT-OSS 20B) | Google Gemini Flash | NVIDIA NIM (Nemotron 3.5) | — |
-| **Embeddings** | Jina AI V3 (1024-dim Dense + Sparse) | — | — | — |
-| **Reranking** | Jina AI Cross-Encoder | — | — | — |
+| **Embeddings** | BGE-M3 local (1024-dim Dense + Sparse) | — | — | — |
+| **Reranking** | bge-reranker-v2-m3 local cross-encoder | — | — | — |
 | **Vector DB** | Qdrant Cloud (Free Tier) / In-Memory | — | — | — |
 
 - **In-App Soft Pinning:** Users can select a preferred model/provider in the UI (`Settings` or header dropdown). The chosen provider is soft-pinned at priority 0 while preserving the rest of the chain as a safety net.
@@ -556,12 +556,12 @@ Antarkosh/
 │   │   ├── s01_file_detection.py# MIME & magic file inspection
 │   │   ├── s02_classification.py# Zero-shot document classification
 │   │   ├── s03_parsing.py       # PDF, DOCX, PPTX, XLSX parsers
-│   │   ├── s04_ocr.py           # OCR.space fallback
+│   │   ├── s04_ocr.py           # Gemini vision OCR
 │   │   ├── s05_layout.py        # Gemini layout analysis
 │   │   ├── s06_tables.py        # Camelot table extraction
 │   │   ├── s07_s08_visuals.py   # Vision chart extraction & captioning
 │   │   ├── s09_chunking.py      # Semantic token chunking
-│   │   ├── s10_embeddings.py    # Jina V3 dense + sparse vectors
+│   │   ├── s10_embeddings.py    # BGE-M3 dense + sparse vectors (local)
 │   │   ├── s11_vector_store.py  # Qdrant upsert & RRF
 │   │   ├── s12_s13_s14_retrieval.py # Hybrid search, reranking & synthesis
 │   │   ├── s12b_sql_retrieval.py# 9-stage Text-to-SQL engine
@@ -586,7 +586,9 @@ Antarkosh/
 ### Prerequisites
 - **Python 3.11 or newer**
 - **Node.js 18+ and npm** (for compiling the frontend)
-- Free-tier API keys for **Google AI Studio**, **Groq**, **NVIDIA NIM**, and **Jina AI**
+- At least one free-tier API key for **Google AI Studio**, **Groq** or **NVIDIA NIM** (vision, answer generation and text-to-SQL)
+- Document embeddings and reranking run **locally** with BGE-M3 and `bge-reranker-v2-m3`.
+- Qdrant can run locally without Docker.
 
 ### 1. Clone & Set Up Python Virtual Environment
 ```bash
@@ -610,9 +612,31 @@ Copy `.env.example` to `.env` and insert your API keys:
 ```bash
 cp .env.example .env
 ```
-*(See the [Configuration Reference](#-configuration-reference-env) section below for details).*
 
-### 3. Build the Frontend
+For local Qdrant, use `QDRANT_URL=http://localhost:6333` and leave
+`QDRANT_API_KEY` empty. Keep at least one of `GEMINI_API_KEY`, `GROQ_API_KEY` or
+`NVIDIA_NIM_API_KEY` configured. Vision ingestion uses Google Gemini, while
+embeddings and reranking remain local. The first ingest and first question download
+the BGE-M3 and reranker models from Hugging Face into the user cache.
+
+*(See the [Configuration Reference](#-configuration-reference-env) section below for details.)*
+
+### 3. Start Qdrant locally (optional)
+
+Download the latest Qdrant release from
+<https://github.com/qdrant/qdrant/releases>, extract it into its own folder outside
+the project, and start it there:
+
+```powershell
+.\qdrant.exe
+```
+
+On macOS or Linux, run `./qdrant`. Keep the process running while using Antarkosh
+and check <http://localhost:6333/dashboard>. No API key is needed for a local server.
+If `QDRANT_URL` is empty, the application uses a temporary in-memory store and all
+ingested data is lost when the process stops.
+
+### 4. Build the Frontend
 ```bash
 cd Antarkosh_UI
 npm install
@@ -621,18 +645,41 @@ cd ..
 ```
 The compiled files are automatically written to `frontend/`, which FastAPI serves.
 
-### 4. Initialize Demo Database (Optional)
+### 5. Initialize Demo Database (Optional)
 If querying the local demonstration database:
 ```bash
 python scripts/setup_db.py
 ```
 
-### 5. Launch the Web Application
+### 6. Launch the Web Application
 ```bash
 # Start the FastAPI server on port 8000
 uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 Open **[http://localhost:8000](http://localhost:8000)** in your browser.
+
+The first time you ingest a document, BGE-M3 is downloaded for dense and sparse
+embeddings. The first question downloads `bge-reranker-v2-m3`. On CPU, keep
+`RETRIEVAL_TOP_K=60` and `RERANK_TOP_K=25` (or lower) for shorter query times.
+
+Old documents are automatically re-indexed when their recorded embedding model is
+missing or differs from the current model. Documents already using the current model
+continue to be skipped.
+
+### Local troubleshooting
+
+- **`FlagEmbedding is not installed`**: run `pip install -e .` in the same environment used to start the app.
+- **Embedding or reranking is slow**: this is expected on CPU; reduce retrieval and reranking limits.
+- **Connection refused on port 6333**: start Qdrant or leave `QDRANT_URL` empty to use the temporary in-memory store.
+- **Linux CPU-only setup**: install the CPU Torch build before the project dependencies with `pip install torch --index-url https://download.pytorch.org/whl/cpu`.
+- **Windows + VS Code**: close VS Code before `uv sync` if Ruff reports that `.venv\Scripts\ruff.exe` is locked.
+
+### Local verification
+
+```bash
+pytest
+QDRANT_TEST_URL=http://localhost:6333 pytest tests/test_local_qdrant_integration.py
+```
 
 ---
 
@@ -643,10 +690,8 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 | `GEMINI_API_KEY` | Google AI Studio API key (Gemini 2.5/3.5 Flash). | `AIzaSy...` | **Yes** |
 | `GROQ_API_KEY` | Groq API key(s). Comma-separate multiple keys for auto-rotation. | `gsk_key1,gsk_key2` | **Yes** |
 | `NVIDIA_NIM_API_KEY` | NVIDIA NIM API key (Nemotron, Llama Vision). | `nvapi-...` | **Yes** |
-| `JINA_API_KEY` | Jina AI key for V3 dense+sparse embeddings & reranker. | `jina_...` | **Yes** |
-| `QDRANT_URL` | Qdrant Cloud cluster endpoint or local server. | `https://xyz.qdrant.tech:6333` | **Yes** |
-| `QDRANT_API_KEY` | Qdrant Cloud API key. | `your_qdrant_key` | **Yes** |
-| `OCR_SPACE_API_KEY` | OCR.space API key for scanned document fallback. | `K8...` | Optional |
+| `QDRANT_URL` | Qdrant Cloud cluster endpoint or local server. | `http://localhost:6333` | **Yes** |
+| `QDRANT_API_KEY` | Qdrant Cloud API key; leave empty for local Qdrant. | `your_qdrant_key` | **Yes for cloud** |
 | `OPENROUTER_API_KEY` | OpenRouter API key for aggregator models. | `sk-or-...` | Optional |
 | `DEFAULT_PROVIDER` | Soft-pin provider (`openrouter`, `gemini`, `groq`, `nvidia_nim`, or `auto`). | `openrouter` | No |
 | `DB_ENGINE` | Database engine for Text-to-SQL (`sqlite` or `mysql`). | `sqlite` | No |
@@ -682,7 +727,7 @@ Antarkosh includes a `render.yaml` blueprint:
 1. Push your repository to GitHub.
 2. In Render, select **New $\rightarrow$ Blueprint** and connect this repository.
 3. Render reads `render.yaml`, configures the Python web service, and sets health endpoints.
-4. Input your secret environment variables (`GEMINI_API_KEY`, `GROQ_API_KEY`, `NVIDIA_NIM_API_KEY`, `JINA_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`) in the Render dashboard.
+4. Input your secret environment variables (`GEMINI_API_KEY`, `GROQ_API_KEY`, `NVIDIA_NIM_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`) — embeddings and reranking still require the BGE models to be available to the server.
 5. Deploy. Every subsequent push to `main` redeploys automatically.
 
 ---

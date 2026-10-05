@@ -99,6 +99,9 @@ class FigureData(BaseModel):
     figure_index: int = 0
     caption: str = ""
     description: str = ""
+    # Text that appears inside the image, verbatim (OCR). Kept apart from the
+    # description, which says what the image *means*.
+    ocr_text: str = ""
     image_path: str = ""
     confidence: float = 1.0
     extraction_method: str = ""

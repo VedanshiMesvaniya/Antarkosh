@@ -36,8 +36,9 @@ dependencies = [
     # Stage 6: Table extraction
     "camelot-py[base]>=0.11",
 
-    # Stage 10: Embeddings
+    # Stage 10: Embeddings (local BGE-M3) and reranking (local bge-reranker-v2-m3)
     "numpy>=1.26",
+    "FlagEmbedding>=1.3.5",
 
     # Stage 11: Vector store
     "qdrant-client>=1.9",

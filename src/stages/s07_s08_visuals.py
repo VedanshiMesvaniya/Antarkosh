@@ -10,18 +10,22 @@ Stage 8: Qwen3-VL primary → Gemini Flash → Nemotron-Nano-VL fallback
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import re
 from pathlib import Path
 
 import pymupdf as fitz  # PyMuPDF
 
+from src.core.config import PROJECT_ROOT, settings
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import FigureData, PageContent, ParsedDocument
 
 logger = logging.getLogger(__name__)
 
 
-_STAGE_TIMEOUT = 120.0  # seconds for the entire visual analysis stage
+# Timeouts and concurrency come from settings (core/config.py) and are sized for a
+# CPU-local vision model: long per-image and per-stage limits, one image at a time.
 
 
 async def analyze_visuals(
@@ -39,12 +43,12 @@ async def analyze_visuals(
     try:
         return await asyncio.wait_for(
             _analyze_visuals_impl(document, router),
-            timeout=_STAGE_TIMEOUT,
+            timeout=settings.local_vision_stage_timeout_seconds,
         )
     except asyncio.TimeoutError:
         logger.warning(
             "Visual analysis timed out after %.0fs for '%s' — continuing without figures",
-            _STAGE_TIMEOUT, document.file_path,
+            settings.local_vision_stage_timeout_seconds, document.file_path,
         )
         return document
 
@@ -77,8 +81,8 @@ async def _analyze_visuals_impl(
 
         import asyncio
 
-        semaphore = asyncio.Semaphore(3)
-        _VISION_TIMEOUT = 30.0  # seconds per image — prevents hung 503s from blocking
+        semaphore = asyncio.Semaphore(settings.local_vision_concurrency)
+        _VISION_TIMEOUT = settings.local_vision_timeout_seconds  # per image — prevents hung 503s from blocking
 
         async def process_figure(fig_idx: int, img_info: tuple) -> FigureData | None:
             xref = img_info[0]
@@ -120,11 +124,27 @@ async def _analyze_visuals_impl(
                         )
                         return None
 
+                # Both prompts ask for "VISIBLE TEXT / MEANING" sections. If a model
+                # ignores the format the whole answer is kept as the description.
+                ocr_text, description = _split_image_analysis(description)
+
+                image_path = ""
+                if description or ocr_text:
+                    image_path = _save_figure_image(
+                        document.file_path,
+                        page_content.page_number,
+                        fig_idx,
+                        image_data,
+                        base_image.get("ext", "png"),
+                    )
+
                 return FigureData(
                     page_number=page_content.page_number,
                     figure_index=fig_idx,
                     description=description,
-                    confidence=0.85 if description else 0.0,
+                    ocr_text=ocr_text,
+                    image_path=image_path,
+                    confidence=0.85 if (description or ocr_text) else 0.0,
                     extraction_method=task_used,
                 )
 
@@ -163,19 +183,25 @@ async def _analyze_chart(
     router: ProviderRouter,
 ) -> str:
     """Analyze a chart/graph image — extract data, axes, trends."""
-    prompt = """Analyze this chart or graph in detail.
+    prompt = """Analyze this chart, graph or diagram in detail.
 
+Answer in exactly this format, with these two labels:
+
+VISIBLE TEXT:
+Every word and number of text that appears in the image, verbatim, one line per
+text element (title, axis labels, legend, node or box labels, annotations).
+Write "none" if the image contains no text.
+
+MEANING:
 Extract and describe:
-1. Chart type (bar, line, pie, scatter, etc.)
-2. Title and axis labels
+1. Type (bar, line, pie, scatter, flowchart, architecture diagram, etc.)
+2. Title and axis labels, or what the boxes and arrows represent
 3. All data points or values visible (be precise with numbers)
-4. Key trends, patterns, or comparisons shown
+4. Key trends, patterns, relationships or comparisons shown
 5. Any legends or annotations
 
 Be precise with numbers — if a bar shows 42.3%, report 42.3%, not "about 40%".
-If you cannot read a value clearly, say so rather than guessing.
-
-Analysis:"""
+If you cannot read a value clearly, say so rather than guessing."""
 
     try:
         return await router.vision(
@@ -198,15 +224,18 @@ async def _analyze_image(
     """Analyze a general image — describe content, context, relevance."""
     prompt = """Describe this image in the context of a document.
 
-Include:
-1. What the image shows (objects, people, scenes, diagrams)
-2. Any text visible in the image
-3. How it relates to a document context (is it a diagram, photo, logo, screenshot?)
-4. Any important details that would help someone understand the document without seeing this image
+Answer in exactly this format, with these two labels:
 
-Be factual and concise. Do not speculate beyond what is visible.
+VISIBLE TEXT:
+Every word of text that appears in the image, verbatim, one line per text element.
+Write "none" if the image contains no text.
 
-Description:"""
+MEANING:
+What the image shows (objects, people, scenes, diagrams), what kind of image it is
+(diagram, photo, logo, screenshot), and any important details that would help
+someone understand the document without seeing this image.
+
+Be factual and concise. Do not speculate beyond what is visible."""
 
     try:
         return await router.vision(
@@ -218,4 +247,61 @@ Description:"""
         )
     except Exception as e:
         logger.warning("Image analysis failed: %s", e)
+        return ""
+
+
+_NO_TEXT_MARKERS = frozenset({"", "none", "n/a", "na", "-", "no text", "no visible text", "none."})
+_LABEL_VISIBLE = re.compile(r"(?im)^[\W_]*VISIBLE\s+TEXT[\W_]*?:[\W_]*")
+_LABEL_MEANING = re.compile(r"(?im)^[\W_]*MEANING[\W_]*?:[\W_]*")
+
+
+def _split_image_analysis(raw: str) -> tuple[str, str]:
+    """Split a vision answer into (ocr_text, meaning).
+
+    Tolerant by design: if the model ignored the requested format, the whole
+    answer is kept as the meaning and ocr_text stays empty — nothing is lost.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return "", ""
+    visible = _LABEL_VISIBLE.search(raw)
+    meaning = _LABEL_MEANING.search(raw)
+    if not meaning:
+        return "", raw
+    meaning_text = raw[meaning.end():].strip()
+    ocr_text = ""
+    if visible and visible.end() <= meaning.start():
+        ocr_text = raw[visible.end():meaning.start()].strip()
+    elif visible is None:
+        # Only a MEANING label: anything before it is preamble, drop nothing important.
+        pass
+    if ocr_text.strip().lower() in _NO_TEXT_MARKERS:
+        ocr_text = ""
+    return ocr_text, meaning_text or raw
+
+
+def _save_figure_image(
+    file_path: str, page_number: int, figure_index: int, image_data: bytes, ext: str
+) -> str:
+    """Save an extracted figure under data/processed/figures and return its path.
+
+    The returned path is relative to the project root when possible. Best-effort:
+    any failure returns "" and never blocks ingestion.
+    """
+    if not settings.save_figure_images:
+        return ""
+    try:
+        safe_ext = re.sub(r"[^a-z0-9]", "", str(ext).lower())[:5] or "png"
+        stem = re.sub(r"[^A-Za-z0-9_.-]", "_", Path(file_path).stem)[:40] or "doc"
+        digest = hashlib.sha256(str(file_path).encode("utf-8")).hexdigest()[:10]
+        folder = settings.processed_dir / "figures" / f"{stem}_{digest}"
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / f"p{page_number:04d}_f{figure_index:02d}.{safe_ext}"
+        target.write_bytes(image_data)
+        try:
+            return target.resolve().relative_to(PROJECT_ROOT).as_posix()
+        except ValueError:
+            return target.resolve().as_posix()
+    except Exception as e:  # noqa: BLE001
+        logger.debug("Could not save figure image: %s", e)
         return ""

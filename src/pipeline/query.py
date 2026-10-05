@@ -187,17 +187,17 @@ class QueryPipeline:
         vector_store: QdrantStore | None = None,
         preferred_provider: str | None = None,
     ) -> None:
-        # Shared process-wide limiter so embedding/rerank quota (Jina) and 429
+        # Shared process-wide limiter so provider quota and 429
         # backoff span requests, exactly like the LLM providers.
         self._rate_limiter = get_shared_rate_limiter()
         # A single router drives retrieval, reranking, and generation, so the
         # soft pin applies uniformly across the whole query.
         self._router = router or ProviderRouter(preferred_provider=preferred_provider)
-        self._embeddings = embedding_service or EmbeddingService(self._rate_limiter)
+        self._embeddings = embedding_service or EmbeddingService()
         self._store = vector_store or QdrantStore(embedding_service=self._embeddings)
         self._retriever = Retriever(self._store, self._embeddings)
         self._sql_retriever = SQLRetriever(self._router, self._store, self._embeddings)
-        self._reranker = Reranker(self._rate_limiter)
+        self._reranker = Reranker()
         self._generator = Generator(self._router)
 
     async def query(

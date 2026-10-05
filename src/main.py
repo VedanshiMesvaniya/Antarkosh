@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
     Everything here is best-effort — a failure must never block the app from
     serving.
     """
-    if settings.qdrant_url and settings.qdrant_api_key:
+    if settings.qdrant_configured:
         try:
             from src.pipeline.ingestion import reconcile_active_flags
 

@@ -232,7 +232,7 @@ class QdrantMetadataBackend:
             from qdrant_client import QdrantClient
 
             self._client = QdrantClient(
-                url=settings.qdrant_url, api_key=settings.qdrant_api_key
+                url=settings.qdrant_url, api_key=settings.qdrant_api_key_or_none
             )
             self._ensure_collection()
             self._seed_if_empty()
@@ -351,7 +351,7 @@ def create_metadata_backend(seed_path: Path = _REGISTRY_FILE) -> MetadataBackend
     Qdrant when configured (the durable, host-independent source of truth);
     otherwise a local JSON file for development.
     """
-    if settings.qdrant_url and settings.qdrant_api_key:
+    if settings.qdrant_configured:
         return QdrantMetadataBackend(seed_path=seed_path)
     logger.info("Metadata: Qdrant not configured — using local JSON store (dev mode)")
     return JsonMetadataBackend(seed_path)

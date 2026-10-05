@@ -131,7 +131,7 @@ async def sync_live_schema(
     from src.core.rate_limiter import get_shared_rate_limiter
 
     rate_limiter = get_shared_rate_limiter()
-    embeddings = embedding_service or EmbeddingService(rate_limiter)
+    embeddings = embedding_service or EmbeddingService()
     store = vector_store or QdrantStore(embedding_service=embeddings)
 
     dialect = get_dialect_profile(settings.db_engine)

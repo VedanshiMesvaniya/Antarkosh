@@ -31,7 +31,7 @@ class QueryEmbeddingCache:
     """Process-scoped LRU cache for query embeddings.
 
     ARCH-10: query-time embeds are called on every request for the same
-    question text. Caching them eliminates the Jina API round-trip for
+    question text. Caching them skips re-encoding for
     repeated questions — especially impactful for SQL queries, where the
     same analytical questions are asked frequently and the SQL result is
     already cached by SQLRetriever._result_cache.
