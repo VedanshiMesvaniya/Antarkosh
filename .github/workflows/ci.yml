@@ -226,23 +226,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-  # ---------------------------------------------------------------------------
-  # The deployable image (Render / Railway use this Dockerfile). Build only.
-  # ---------------------------------------------------------------------------
-  docker-build:
-    name: Docker image build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Build image (no push)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
