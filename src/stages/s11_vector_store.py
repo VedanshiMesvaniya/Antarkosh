@@ -102,7 +102,7 @@ class QdrantStore:
                 logger.warning(
                     "QDRANT_URL is not set — using a throw-away in-memory Qdrant. "
                     "Everything ingested is lost when the app stops. Start Qdrant and "
-                    "set QDRANT_URL=http://localhost:6333 (see LOCAL_SETUP.md)."
+                    "set QDRANT_URL=http://localhost:6333 (see the Local setup section of README.md)."
                 )
 
             _global_client_loop = current_loop

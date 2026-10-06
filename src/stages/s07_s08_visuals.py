@@ -4,8 +4,8 @@ Combined into one module because they share the same vision-LLM infrastructure.
 Separated by prompt and routing — charts get chart-specific prompts and
 model preferences, general images get broader understanding prompts.
 
-Stage 7: Qwen3-VL primary → Gemini Flash escalation → optional cross-check
-Stage 8: Qwen3-VL primary → Gemini Flash → Nemotron-Nano-VL fallback
+Stage 7: Gemini Flash primary → fallback providers → optional cross-check
+Stage 8: Gemini Flash primary → Nemotron-Nano-VL fallback
 """
 
 from __future__ import annotations
@@ -24,8 +24,8 @@ from src.models.schemas import FigureData, PageContent, ParsedDocument
 logger = logging.getLogger(__name__)
 
 
-# Timeouts and concurrency come from settings (core/config.py) and are sized for a
-# CPU-local vision model: long per-image and per-stage limits, one image at a time.
+# Timeouts and concurrency come from settings (core/config.py), sized for online
+# vision APIs: short per-image limit, a few images in flight at once.
 
 
 async def analyze_visuals(
@@ -43,12 +43,12 @@ async def analyze_visuals(
     try:
         return await asyncio.wait_for(
             _analyze_visuals_impl(document, router),
-            timeout=settings.local_vision_stage_timeout_seconds,
+            timeout=settings.vision_stage_timeout_seconds,
         )
     except asyncio.TimeoutError:
         logger.warning(
             "Visual analysis timed out after %.0fs for '%s' — continuing without figures",
-            settings.local_vision_stage_timeout_seconds, document.file_path,
+            settings.vision_stage_timeout_seconds, document.file_path,
         )
         return document
 
@@ -81,8 +81,8 @@ async def _analyze_visuals_impl(
 
         import asyncio
 
-        semaphore = asyncio.Semaphore(settings.local_vision_concurrency)
-        _VISION_TIMEOUT = settings.local_vision_timeout_seconds  # per image — prevents hung 503s from blocking
+        semaphore = asyncio.Semaphore(settings.vision_concurrency)
+        _VISION_TIMEOUT = settings.vision_timeout_seconds  # per image — prevents hung 503s from blocking
 
         async def process_figure(fig_idx: int, img_info: tuple) -> FigureData | None:
             xref = img_info[0]

@@ -45,6 +45,7 @@ def test_auto_mode_classification_broadened_keywords():
     assert _classify_auto_mode("How many products are in warehouse 1") == "sql"
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_purchase_invoice_gt0091_db_execution():
     query = """
@@ -61,6 +62,7 @@ async def test_purchase_invoice_gt0091_db_execution():
     assert "FORTUNE PACKAGING" in rows[0]["party_name"]
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_active_categories_count_db_execution():
     query = """
@@ -73,6 +75,7 @@ async def test_active_categories_count_db_execution():
     assert rows[0]["count"] == 20
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_hdblow_quantity_adjusted_db_execution():
     query = """
@@ -88,6 +91,7 @@ async def test_hdblow_quantity_adjusted_db_execution():
     assert int(rows[0]["total_qty"]) == 158298
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_invoice_gt0091_schema_retrieval_and_sql_gen():
     router = ProviderRouter()
@@ -102,6 +106,7 @@ async def test_invoice_gt0091_schema_retrieval_and_sql_gen():
     assert "gt/0091" in sql.lower() or "0091" in sql.lower()
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_hdblow_quantity_adjusted_temporal_intent_sql_gen():
     """Verify Q5 generated SQL does not narrow scope to current_year and returns 158,298."""
@@ -149,6 +154,7 @@ def test_answer_rules_structured_prompt():
     assert "The Nasdaq Stock Market LLC" in _ANSWER_RULES
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_q2_apple_fte_retrieval_and_reranking():
     from src.stages.s11_vector_store import QdrantStore
@@ -172,6 +178,7 @@ async def test_q2_apple_fte_retrieval_and_reranking():
     assert "8485b2df1a08f2fc_chunk_0018" in top_chunk_ids, f"Target chunk should be in top 3, got: {top_chunk_ids}"
 
 
+@pytest.mark.live
 @pytest.mark.asyncio
 async def test_q8_rag_architecture_5_layers_retrieval_and_reranking():
     from src.stages.s11_vector_store import QdrantStore

@@ -1,7 +1,7 @@
-"""Stage 4 — OCR (local vision model).
+"""Stage 4 — OCR (online vision model).
 
-Scanned pages and standalone images are transcribed by the local vision model
-(Qwen3-VL through Ollama, see ``local_vision_*`` in core/config.py) — no cloud OCR.
+Scanned pages and standalone images are transcribed by the vision model (Gemini
+first, then the configured fallbacks — see config/providers.yaml).
 The transcription is then confidence-checked (garbage ratio, word ratio) and the
 result is recorded on the page.
 
@@ -95,7 +95,7 @@ async def _ocr_chain(
     image_data: bytes,
     router: ProviderRouter,
 ) -> tuple[str, float, str]:
-    """Transcribe a page image with the local vision model.
+    """Transcribe a page image with the vision model.
 
     Returns (text, confidence_score, method_used). An empty transcription gets
     confidence 0.0, so downstream stages see the page as unreadable.

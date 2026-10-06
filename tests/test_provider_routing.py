@@ -52,9 +52,11 @@ def test_task_routing_configuration_parsed():
     assert "synthesis" in rules
     assert "micro_synthesis" in rules
 
-    assert rules["reasoning"]["preferred"] == ["gemini", "nvidia_nim"]
-    assert rules["repair"]["preferred"] == ["groq", "nvidia_nim"]
-    assert rules["micro_synthesis"]["preferred"] == ["groq", "nvidia_nim"]
+    # Mirrors provider_routing in config/providers.yaml: Gemini first for the heavy tasks,
+    # Groq first for the tiny micro-synthesis task.
+    assert rules["reasoning"]["preferred"] == ["gemini", "groq"]
+    assert rules["repair"]["preferred"] == ["gemini", "groq"]
+    assert rules["micro_synthesis"]["preferred"] == ["groq", "gemini"]
 
 
 @pytest.mark.asyncio
@@ -83,8 +85,8 @@ async def test_reasoning_task_routes_to_preferred_gemini():
 
 
 @pytest.mark.asyncio
-async def test_repair_task_routes_to_preferred_groq():
-    """Test 3: Repair task routes to ultra-fast Groq when provider_routing_v2_enabled is True."""
+async def test_repair_task_routes_to_preferred_gemini():
+    """Test 3: Repair task routes to Gemini (first in provider_routing.repair) when v2 routing is on."""
     gemini_prov = _DummyProvider("gemini", "gemini response")
     groq_prov = _DummyProvider("groq", "groq response")
     nim_prov = _DummyProvider("nvidia_nim", "nim response")
@@ -101,10 +103,10 @@ async def test_repair_task_routes_to_preferred_groq():
     with patch("src.utils.feature_flags.is_feature_enabled", side_effect=lambda flag: flag == "provider_routing_v2_enabled"):
         result = await router.chat(task="repair", messages=[{"role": "user", "content": "Fix SQL"}])
 
-        assert result == "groq response"
-        assert groq_prov.calls == 1
-        assert gemini_prov.calls == 0
-        assert router.last_used.startswith("groq/")
+        assert result == "gemini response"
+        assert gemini_prov.calls == 1
+        assert groq_prov.calls == 0
+        assert router.last_used.startswith("gemini/")
 
 
 @pytest.mark.asyncio
@@ -153,13 +155,13 @@ async def test_feature_flag_disabled_uses_default_chain():
         "nvidia_nim": nim_prov,
     }
 
-    # In default routes, reasoning has groq as priority 1
+    # With v2 routing off, the authored chain in providers.yaml applies: gemini is priority 1
     router = ProviderRouter()
     router._providers = providers
 
     with patch("src.utils.feature_flags.is_feature_enabled", return_value=False):
         result = await router.chat(task="reasoning", messages=[{"role": "user", "content": "SELECT 1"}])
 
-        assert result == "groq response"
-        assert groq_prov.calls == 1
-        assert gemini_prov.calls == 0
+        assert result == "gemini response"
+        assert gemini_prov.calls == 1
+        assert groq_prov.calls == 0

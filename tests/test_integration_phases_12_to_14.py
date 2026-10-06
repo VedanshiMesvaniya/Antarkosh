@@ -89,9 +89,11 @@ async def test_1_fast_path_and_phase_11_harmony():
     with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", return_value=True):
         empty_res = await generator.generate(list_query, [empty_chunk])
 
-    # Assert: Fast Path was bypassed, respecting Phase 11 empty result handling
+    # Assert: Fast Path was bypassed (Phase 11 empty-result handling). SQL-only results are
+    # returned directly and never sent to the LLM, so no synthesis call is made either.
     assert empty_res.model_used != "fast_path/list"
-    assert mock_router.chat.call_count == 1
+    assert empty_res.model_used == "sql/direct"
+    assert mock_router.chat.call_count == 0
 
 
 @pytest.mark.asyncio

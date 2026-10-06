@@ -155,7 +155,7 @@ Output the structured Markdown:"""
                 mime_type="image/png",
                 max_tokens=8192,
             ),
-            timeout=settings.local_vision_timeout_seconds,
+            timeout=settings.vision_timeout_seconds,
         )
     except asyncio.TimeoutError:
         logger.warning("Vision layout analysis timed out for page %d", page_number)

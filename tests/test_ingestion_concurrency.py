@@ -42,7 +42,7 @@ async def test_concurrent_identical_ingest_runs_pipeline_once(tmp_path):
 
     run_calls = 0
 
-    async def fake_run_pipeline(path):
+    async def fake_run_pipeline(path, user_id="system"):
         nonlocal run_calls
         run_calls += 1
         # Yield control so the second coroutine reaches the lock while we're

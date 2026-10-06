@@ -9,8 +9,9 @@ FROM python:3.11-slim
 #    the app fails to import.
 #  - ghostscript / libgl1 / libglib2.0-0 back camelot + opencv (table-extraction
 #    dependency) so the pip install never trips on a missing shared library.
-# OCR (OCR.space) and the vector store (Qdrant Cloud) are network APIs — there
-# are no local services to install.
+# Embeddings/reranking (BGE-M3, bge-reranker-v2-m3) run in-process via
+# FlagEmbedding and download from Hugging Face on first use. Vision (Gemini) is an
+# online API. Qdrant is a separate server reached through QDRANT_URL.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libmagic1 \
         ghostscript \
@@ -26,7 +27,10 @@ COPY pyproject.toml requirements.txt ./
 COPY src ./src
 # pyproject holds the full dependency list; requirements.txt is installed too as
 # a backstop so nothing pinned only there is ever missed.
-RUN pip install --no-cache-dir -e . \
+# FlagEmbedding (BGE-M3 / reranker) needs torch. Install the CPU-only build first so pip
+# does not pull the multi-GB CUDA wheels from PyPI into the image.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -e . \
     && pip install --no-cache-dir -r requirements.txt
 
 # Bring in the rest: the built frontend, provider config, etc.

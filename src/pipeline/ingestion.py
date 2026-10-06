@@ -102,7 +102,7 @@ class IngestionPipeline:
         registry: IngestionRegistry | None = None,
     ) -> None:
         self._rate_limiter = get_shared_rate_limiter()
-        # Ingestion is fully local: the default router can only reach the local model.
+        # Embeddings are local (BGE-M3); vision/OCR/classification use the Gemini-first router.
         self._router = router or build_ingestion_router()
         self._embeddings = embedding_service or EmbeddingService()
         self._store = vector_store or QdrantStore(embedding_service=self._embeddings)

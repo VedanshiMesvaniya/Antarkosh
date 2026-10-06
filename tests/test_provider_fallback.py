@@ -243,16 +243,23 @@ def test_is_transient_failure_classification():
     assert _is_transient_failure(RuntimeError("Provider 'x' is currently rate-limited (backoff).")) is True
 
 
-def test_default_routes_include_openrouter_for_sql_generation():
-    router = ProviderRouter(preferred_provider="auto")
-    reasoning = [(opt.provider_name, opt.model) for opt in router._get_route("reasoning").options]
-    classification = [
-        (opt.provider_name, opt.model)
-        for opt in router._get_route("semantic_classification").options
-    ]
+def test_openrouter_is_injected_for_sql_generation_when_pinned(monkeypatch):
+    """OpenRouter is an optional lane: config/providers.yaml doesn't list it, but pinning it
+    must still put it at the front of the reasoning / classification chains."""
+    from src.core.config import settings
+    monkeypatch.setattr(settings, "openrouter_text_model", "test/text-model")
+    router = ProviderRouter(preferred_provider="openrouter")
+    for task in ("reasoning", "semantic_classification"):
+        options = sorted(router._get_route(task).options, key=lambda o: o.priority)
+        assert options[0].provider_name == "openrouter", task
+        assert len(options) > 1, f"{task}: the normal chain must remain as fallback"
 
-    assert any(opt[0] == "openrouter" for opt in reasoning)
-    assert any(opt[0] == "openrouter" for opt in classification)
+
+def test_default_chains_are_gemini_first_for_reasoning_and_classification():
+    router = ProviderRouter(preferred_provider="auto")
+    for task in ("reasoning", "semantic_classification"):
+        options = sorted(router._get_route(task).options, key=lambda o: o.priority)
+        assert options and options[0].provider_name == "gemini", task
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +287,16 @@ def test_routers_share_one_rate_limiter_across_requests():
 def test_usage_snapshot_includes_unused_providers_with_zeros():
     rl = RateLimiter(limits={"gemini": ProviderLimits(rpm=10, rpd=1500)})
     snap = rl.usage_snapshot(["gemini", "groq"])
-    assert snap["gemini"] == {
+    assert {k: snap["gemini"][k] for k in (
+        "rpm_used", "rpm_limit", "rpd_used", "rpd_limit", "backoff_seconds",
+    )} == {
         "rpm_used": 0,
         "rpm_limit": 10,
         "rpd_used": 0,
         "rpd_limit": 1500,
         "backoff_seconds": 0.0,
     }
+    # Token windows are reported too (unused → zero).
+    assert snap["gemini"]["tpm_used"] == 0 and snap["gemini"]["tpd_used"] == 0
     # A provider with no explicit limits still appears (default limits).
     assert "groq" in snap

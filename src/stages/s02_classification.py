@@ -156,7 +156,7 @@ async def classify_semantic(
     detection: FileDetectionResult,
     router: ProviderRouter,
 ) -> DocumentType:
-    """Stage 2b — Semantic classification via the local model.
+    """Stage 2b — Semantic classification via LLM.
 
     Takes the first ~2000 characters of extracted text and classifies
     the document type to drive downstream extraction behavior.
@@ -193,7 +193,7 @@ async def classify_semantic(
                 response_format={"type": "json_object"},
                 max_tokens=100,
             ),
-            timeout=settings.local_classification_timeout_seconds,
+            timeout=settings.classification_timeout_seconds,
         )
 
         data = json.loads(response)

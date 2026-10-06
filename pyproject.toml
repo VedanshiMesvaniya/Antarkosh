@@ -56,6 +56,7 @@ dependencies = [
     # Utilities
     "rich>=13.0",
     "tenacity>=8.3",
+    "tiktoken>=0.7",     # stream token counting (src/utils/stream_token_counter.py)
     "portalocker>=2.8",  # cross-platform advisory file locking (Windows-safe)
 ]
 
@@ -81,3 +82,6 @@ line-length = 100
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "live: needs real services (the populated MySQL database, API keys or real model weights); excluded from CI",
+]
