@@ -55,6 +55,13 @@ async def lifespan(app: FastAPI):
     Everything here is best-effort — a failure must never block the app from
     serving.
     """
+    # Ensure local or remote Qdrant is active before vector operations
+    try:
+        from src.core.qdrant_service import ensure_qdrant_running, stop_qdrant
+        await ensure_qdrant_running()
+    except Exception:
+        logger.exception("Failed to initialize Qdrant service — continuing without it")
+
     if settings.qdrant_configured:
         try:
             from src.pipeline.ingestion import reconcile_active_flags
@@ -90,6 +97,11 @@ async def lifespan(app: FastAPI):
                 await scan_task
             except asyncio.CancelledError:
                 pass
+        try:
+            from src.core.qdrant_service import stop_qdrant
+            stop_qdrant()
+        except Exception:
+            pass
 
 
 app = FastAPI(

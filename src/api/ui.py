@@ -12,9 +12,10 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
-from src.api.auth import get_current_user_optional
+from src.api.auth import get_current_user_optional, require_admin
+from src.core import db_settings
 from src.core.config import settings
 from src.core.provider_client import ProviderRouter
 from src.core.state import state_manager
@@ -821,6 +822,51 @@ async def sync_schema() -> dict[str, Any]:
     except Exception as e:
         logger.error("Schema sync failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Schema sync failed: {e}")
+
+
+class DBConnectionPayload(BaseModel):
+    """Body for the admin Database Connection form. Omit ``password`` to keep the stored one."""
+
+    engine: str
+    host: str = ""
+    port: int | None = None
+    database: str = ""
+    username: str = ""
+    password: str | None = None
+
+    @field_validator("port", mode="before")
+    @classmethod
+    def _blank_port_is_none(cls, v: Any) -> Any:
+        return None if v == "" else v
+
+
+@router.get("/settings/database")
+async def get_db_connection(_admin: str = Depends(require_admin)) -> dict[str, Any]:
+    """Current live-DB connection (password never returned) + the engine/field catalogue."""
+    return db_settings.current_config()
+
+
+@router.post("/settings/database/test")
+async def test_db_connection(
+    body: DBConnectionPayload, _admin: str = Depends(require_admin)
+) -> dict[str, Any]:
+    """Try the credentials without saving anything."""
+    try:
+        await db_settings.test_only(body.model_dump())
+    except db_settings.DBSettingsError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"ok": True}
+
+
+@router.post("/settings/database")
+async def save_db_connection(
+    body: DBConnectionPayload, _admin: str = Depends(require_admin)
+) -> dict[str, Any]:
+    """Test, then persist to .env and apply live. Nothing is written if the test fails."""
+    try:
+        return await db_settings.save(body.model_dump())
+    except db_settings.DBSettingsError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 # ---------------------------------------------------------------------------

@@ -80,6 +80,13 @@ def get_current_user_optional(request: Request) -> str:
     return "anonymous"
 
 
+def require_admin(user: str = Depends(get_current_user)) -> str:
+    """Dependency for admin-only endpoints (the alpha ``admin`` account)."""
+    if user != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    return user
+
+
 @router.get("/me")
 async def get_me(user: str = Depends(get_current_user_optional)) -> dict[str, Any]:
     """Get currently logged-in user."""

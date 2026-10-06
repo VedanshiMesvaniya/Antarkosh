@@ -263,6 +263,22 @@ export async function syncSchema() {
   return response.data
 }
 
+// Admin-only: live database connection (password is never returned by the server).
+export async function getDbConnection() {
+  const response = await http.get('/settings/database')
+  return response.data
+}
+
+export async function testDbConnection(payload) {
+  const response = await http.post('/settings/database/test', payload)
+  return response.data
+}
+
+export async function saveDbConnection(payload) {
+  const response = await http.post('/settings/database', payload)
+  return response.data
+}
+
 // ---------------------------------------------------------------------------
 // Alpha Authentication API
 // ---------------------------------------------------------------------------

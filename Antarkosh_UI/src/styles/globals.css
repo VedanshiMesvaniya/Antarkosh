@@ -1388,3 +1388,9 @@ button:disabled { cursor: not-allowed; }
   gap: 10px;
 }
 
+/* Settings > Database Connection (admin) */
+.db-form { display: flex; flex-direction: column; gap: 12px; }
+.db-form__row { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--color-text); }
+.db-form__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+
