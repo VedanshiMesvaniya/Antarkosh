@@ -2,7 +2,7 @@
 
 Stage 12: True hybrid dense+sparse retrieval with RRF fusion (top 20-50)
           BM25-lite heuristic REMOVED — replaced by real Qdrant sparse vectors.
-Stage 13: Jina Reranker v3 → top 5-8
+Stage 13: local bge-reranker-v2-m3 → top 5-8
 Stage 14: Task-routed LLM generation with citations
 """
 
@@ -15,11 +15,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-import httpx
-
 from src.core.config import settings
 from src.core.provider_client import ProviderRouter
-from src.core.rate_limiter import RateLimiter, get_shared_rate_limiter
 from src.models.schemas import Citation, Chunk, ChunkType, QueryResult, RetrievedChunk
 from src.stages.s10_embeddings import EmbeddingService
 from src.stages.s11_vector_store import QdrantStore
@@ -41,8 +38,6 @@ from src.utils.query_classifier import (
 from src.utils.telemetry import log_telemetry
 
 logger = logging.getLogger(__name__)
-
-_JINA_RERANK_URL = "https://api.jina.ai/v1/rerank"
 
 _ACRONYM_MAP_CACHE: dict[str, str] | None = None
 
@@ -81,7 +76,7 @@ def _expand_query_acronyms(query: str) -> str:
 # ---------------------------------------------------------------------------
 
 class Retriever:
-    """True hybrid retriever: Jina dense + Jina sparse vectors, RRF-fused in Qdrant.
+    """True hybrid retriever: BGE-M3 dense + sparse vectors, RRF-fused in Qdrant.
 
     Supports optional metadata filters to constrain retrieval to specific
     document types, source files, page ranges, etc.
@@ -148,16 +143,11 @@ class Retriever:
 # ---------------------------------------------------------------------------
 
 class Reranker:
-    """Reranks retrieved chunks using Jina Reranker v3."""
+    """Reranks retrieved chunks with the local bge-reranker-v2-m3 cross-encoder.
 
-    def __init__(self, rate_limiter: RateLimiter | None = None) -> None:
-        self._rate_limiter = rate_limiter or get_shared_rate_limiter()
-        self._http: httpx.AsyncClient | None = None
-
-    def _get_http(self) -> httpx.AsyncClient:
-        if self._http is None:
-            self._http = httpx.AsyncClient(timeout=30.0)
-        return self._http
+    The model runs on this machine (no API). If it cannot run, the chunks are
+    ranked by query-term overlap instead and a warning is logged.
+    """
 
     async def rerank(
         self, query: str, chunks: list[RetrievedChunk], top_k: int = 6
@@ -166,54 +156,44 @@ class Reranker:
         if not chunks:
             return []
 
-        if settings.jina_api_key:
-            try:
-                return await self._rerank_jina(query, chunks, top_k)
-            except Exception as e:
-                logger.warning("Jina reranking failed: %s — using lexical fallback", e)
+        try:
+            return await self._rerank_local(query, chunks, top_k)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Local BGE reranking failed: %s — using lexical fallback", e)
 
-        # Fallback (no Jina / Jina down): rank by lexical relevance to the query,
-        # NOT raw retrieval score. Retrieval scores aren't comparable across
+        # Fallback (local reranker unavailable): rank by lexical relevance to the
+        # query, NOT raw retrieval score. Retrieval scores aren't comparable across
         # sources — a SQL result is hard-coded to score 1.0, so a plain
         # score-sort would always float an off-topic SQL row above the truly
         # relevant document chunks (e.g. GPU rows dominating a "cheapest iPhone"
         # answer). Query-term overlap demotes chunks that don't match the words.
         return _lexical_rerank(query, chunks, top_k)
 
-    async def _rerank_jina(
+    async def _rerank_local(
         self, query: str, chunks: list[RetrievedChunk], top_k: int
     ) -> list[RetrievedChunk]:
-        """Rerank via Jina Reranker API."""
-        await self._rate_limiter.acquire("jina")
-        http = self._get_http()
+        """Score every chunk against the query with the local cross-encoder."""
+        import asyncio
+
+        from src.core import local_models
 
         documents = [c.chunk.content for c in chunks]
-
-        response = await http.post(
-            _JINA_RERANK_URL,
-            headers={
-                "Authorization": f"Bearer {settings.jina_api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "jina-reranker-v2-base-multilingual",
-                "query": query,
-                "documents": documents,
-                "top_n": top_k,
-            },
+        scores = await asyncio.to_thread(
+            local_models.rerank_scores_sync,
+            query,
+            documents,
+            model_name=settings.bge_reranker_model,
+            use_fp16=settings.bge_reranker_use_fp16,
+            max_length=settings.bge_reranker_max_length,
+            batch_size=settings.bge_reranker_batch_size,
         )
-        response.raise_for_status()
-        data = response.json()
-
+        order = sorted(range(len(chunks)), key=lambda i: scores[i], reverse=True)[:top_k]
         reranked: list[RetrievedChunk] = []
-        for result in data.get("results", []):
-            idx = result["index"]
-            score = result["relevance_score"]
-            reranked_chunk = chunks[idx]
-            reranked_chunk.score = score
-            reranked_chunk.retrieval_method = "reranked"
-            reranked.append(reranked_chunk)
-
+        for idx in order:
+            chunk = chunks[idx]
+            chunk.score = scores[idx]
+            chunk.retrieval_method = "reranked"
+            reranked.append(chunk)
         return reranked
 
 
@@ -237,7 +217,7 @@ def _lexical_terms(text: str) -> set[str]:
 def _lexical_rerank(
     query: str, chunks: list[RetrievedChunk], top_k: int
 ) -> list[RetrievedChunk]:
-    """Relevance-rank chunks by query-term overlap (Jina-less fallback).
+    """Relevance-rank chunks by query-term overlap (fallback when the local reranker can't run).
 
     Score = fraction of the query's content words that appear in the chunk,
     with the original retrieval score as a tiny tiebreaker. A chunk that shares
@@ -346,7 +326,7 @@ class Generator:
                     )
 
                 # 2. Fallback to micro-synthesis if query was aggregate and direct template returned None
-                if intent == AGGREGATE_QUERY:
+                if intent == AGGREGATE_QUERY and is_feature_enabled("sql_micro_synthesis_enabled"):
                     try:
                         messages = build_aggregate_micro_prompt(query, sql_table_md)
                         summary = await self._router.chat(task="micro_synthesis", messages=messages, max_tokens=150)
@@ -539,7 +519,7 @@ Question: {query}"""
                         sql_payload=sql_payload,
                     )
                     return
-                elif intent == AGGREGATE_QUERY:
+                elif intent == AGGREGATE_QUERY and is_feature_enabled("sql_micro_synthesis_enabled"):
                     try:
                         messages = build_aggregate_micro_prompt(query, sql_table_md)
                         summary = await self._router.chat(task="micro_synthesis", messages=messages, max_tokens=150)

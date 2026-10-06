@@ -28,6 +28,7 @@ from src.stages.s12_s13_s14_retrieval import (
 from src.stages.s12b_sql_retrieval import SQLRetriever
 from src.utils.query_classifier import QueryType, classify_query
 from src.utils.semantic_cache import get_semantic_cache
+from src.utils.sql_privacy import sanitize_assistant_turn
 from src.utils.query_budget import get_or_create_budget_controller
 from src.utils.telemetry import get_or_create_query_id, log_telemetry, set_current_query_id, timed_stage
 from src.utils.feature_flags import is_feature_enabled
@@ -186,17 +187,17 @@ class QueryPipeline:
         vector_store: QdrantStore | None = None,
         preferred_provider: str | None = None,
     ) -> None:
-        # Shared process-wide limiter so embedding/rerank quota (Jina) and 429
+        # Shared process-wide limiter so provider quota and 429
         # backoff span requests, exactly like the LLM providers.
         self._rate_limiter = get_shared_rate_limiter()
         # A single router drives retrieval, reranking, and generation, so the
         # soft pin applies uniformly across the whole query.
         self._router = router or ProviderRouter(preferred_provider=preferred_provider)
-        self._embeddings = embedding_service or EmbeddingService(self._rate_limiter)
+        self._embeddings = embedding_service or EmbeddingService()
         self._store = vector_store or QdrantStore(embedding_service=self._embeddings)
         self._retriever = Retriever(self._store, self._embeddings)
         self._sql_retriever = SQLRetriever(self._router, self._store, self._embeddings)
-        self._reranker = Reranker(self._rate_limiter)
+        self._reranker = Reranker()
         self._generator = Generator(self._router)
 
     async def query(
@@ -226,7 +227,7 @@ class QueryPipeline:
         import os
         scope_key = (filters.get("scope_key") or filters.get("erp_instance_id")) if filters else None
         if not scope_key:
-            scope_key = os.environ.get("GLOBALMIND_ERP_INSTANCE_ID", "").strip() or None
+            scope_key = os.environ.get("Antarkosh_ERP_INSTANCE_ID", "").strip() or None
 
         query_type = classify_query(question)
 
@@ -860,6 +861,8 @@ def _format_history(history: list[dict] | None, *, max_turns: int = 6, max_chars
         content = (msg.get("content") or "").strip()
         if not content:
             continue
+        if msg.get("role") != "user":
+            content = sanitize_assistant_turn(content, msg.get("modelUsed"), max_chars=max_chars)
         role = "User" if msg.get("role") == "user" else "Assistant"
         lines.append(f"{role}: {content[:max_chars]}")
     return "\n".join(lines)

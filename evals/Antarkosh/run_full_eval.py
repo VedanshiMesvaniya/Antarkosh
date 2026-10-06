@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GlobalMind Live Evaluation & Validator Hardening Suite Bridge."""
+"""Antarkosh Live Evaluation & Validator Hardening Suite Bridge."""
 
 from pathlib import Path
 import sys

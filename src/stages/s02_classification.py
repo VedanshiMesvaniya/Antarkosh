@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pymupdf as fitz  # PyMuPDF
 
+from src.core.config import settings
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import (
     ClassificationResult,
@@ -155,7 +156,7 @@ async def classify_semantic(
     detection: FileDetectionResult,
     router: ProviderRouter,
 ) -> DocumentType:
-    """Stage 2b — Semantic classification via LLM.
+    """Stage 2b — Semantic classification via the local model.
 
     Takes the first ~2000 characters of extracted text and classifies
     the document type to drive downstream extraction behavior.
@@ -192,7 +193,7 @@ async def classify_semantic(
                 response_format={"type": "json_object"},
                 max_tokens=100,
             ),
-            timeout=10.0,
+            timeout=settings.local_classification_timeout_seconds,
         )
 
         data = json.loads(response)

@@ -5,7 +5,7 @@ Runs all 50 layman business questions through the Text-to-SQL pipeline:
 - Validates SQL generation.
 - Executes against the live MySQL database.
 - Checks for syntax errors, zero-result traps, and execution time.
-- Generates a full markdown report: evals/globalmind/eval_run_report.md.
+- Generates a full markdown report: evals/Antarkosh/eval_run_report.md.
 """
 
 import asyncio
@@ -21,8 +21,8 @@ from src.stages.s11_vector_store import QdrantStore
 from src.stages.s12b_sql_retrieval import SQLRetriever
 
 console = Console()
-QUESTIONS_FILE = Path("evals/globalmind/reports/layman_questions_50.md")
-REPORT_FILE = Path("evals/globalmind/reports/eval_run_report.md")
+QUESTIONS_FILE = Path("evals/Antarkosh/reports/layman_questions_50.md")
+REPORT_FILE = Path("evals/Antarkosh/reports/eval_run_report.md")
 
 
 def extract_questions_from_md(md_path: Path) -> list[tuple[int, str, str]]:

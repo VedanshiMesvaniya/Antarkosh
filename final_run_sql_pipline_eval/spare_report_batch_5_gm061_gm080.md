@@ -2,7 +2,7 @@
 
 **Timestamp:** 2026-08-31 11:24:41  
 **Range:** `gm-061` to `gm-080` (20 questions)  
-**Evaluator Run:** [`evals/globalmind/results/full_eval_report_20260831_112441.json`](file:///data/shared/project/Global_Mind/evals/globalmind/results/full_eval_report_20260831_112441.json)  
+**Evaluator Run:** [`evals/Antarkosh/results/full_eval_report_20260831_112441.json`](file:///data/shared/project/Antarkosh/evals/Antarkosh/results/full_eval_report_20260831_112441.json)  
 **Focus Area:** *Phase 2: Complexity Stress Tests (Schema Traps & Column Disambiguation)*
 
 ---

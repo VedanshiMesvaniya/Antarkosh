@@ -14,7 +14,7 @@ In modern enterprise resource planning (ERP) and manufacturing execution systems
 
 Standard naive Text-to-SQL approaches—such as prompting an LLM with a naive table dump or relying purely on vector embeddings—consistently fail in production. They hallucinate non-existent status columns, omit vital transactional header tables, fail to account for soft-deletes, and choke on API rate limits during analytical query bursts.
 
-The **Global Mind Text-to-SQL Pipeline** is an enterprise-grade, deterministic-heuristic-assisted cognitive architecture. It operates across 9 distinct execution stages to transform ambiguous, zero-jargon business inquiries into mathematically exact, highly optimized, and AST-validated SQL queries.
+The **Antarkosh Text-to-SQL Pipeline** is an enterprise-grade, deterministic-heuristic-assisted cognitive architecture. It operates across 9 distinct execution stages to transform ambiguous, zero-jargon business inquiries into mathematically exact, highly optimized, and AST-validated SQL queries.
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -75,7 +75,7 @@ The **Global Mind Text-to-SQL Pipeline** is an enterprise-grade, deterministic-h
 ```
 Business users do not speak in database column names. They ask: *"Who bought the most goods from us this year?"* or *"What items are running dangerously low?"*
 
-The intent extraction stage decouples natural language understanding from SQL syntax generation using a specialized business-question parser (`extract_analytical_intent()` in [`src/stages/s12b_sql_retrieval.py`](file:///data/shared/project/Global_Mind/src/stages/s12b_sql_retrieval.py)).
+The intent extraction stage decouples natural language understanding from SQL syntax generation using a specialized business-question parser (`extract_analytical_intent()` in [`src/stages/s12b_sql_retrieval.py`](file:///data/shared/project/Antarkosh/src/stages/s12b_sql_retrieval.py)).
 
 #### Formal Intent Taxonomy:
 1. **Metrics**: Identified target quantities (`sales value / revenue`, `quantity / units`, `stock on hand`, `production output`, `purchase expenditure`).
@@ -130,7 +130,7 @@ To eliminate table dropping, the pipeline combines **Hybrid Dense/Sparse Vector 
 #### Graph Neighbor Selection Algorithm:
 Let $T_{\text{active}}$ be the set of retrieved and anchored tables. The connection score for candidate neighbor table $n \notin T_{\text{active}}$ is defined as:
 $$\text{Score}(n) = \sum_{t \in T_{\text{active}}} \mathbb{I}((t, n) \in E \lor (n, t) \in E)$$
-Where $E$ represents the set of 162 foreign-key relationships discovered by [`scripts/auto_harvest_metadata.py`](file:///data/shared/project/Global_Mind/scripts/auto_harvest_metadata.py). High-scoring bridges are injected into the prompt.
+Where $E$ represents the set of 162 foreign-key relationships discovered by [`scripts/auto_harvest_metadata.py`](file:///data/shared/project/Antarkosh/scripts/auto_harvest_metadata.py). High-scoring bridges are injected into the prompt.
 
 ---
 
@@ -141,7 +141,7 @@ Where $E$ represents the set of 162 foreign-key relationships discovered by [`sc
 ```
 Enterprise databases rely on exact string literals and categorical codes. LLMs cannot guess whether "Active" is `'Y'`, `'1'`, `'Active'`, or `'true'`.
 
-The pipeline maintains [`config/sql_column_glossary.json`](file:///data/shared/project/Global_Mind/config/sql_column_glossary.json)—an auto-harvested repository of **835 column mappings** and exact live database enums:
+The pipeline maintains [`config/sql_column_glossary.json`](file:///data/shared/project/Antarkosh/config/sql_column_glossary.json)—an auto-harvested repository of **835 column mappings** and exact live database enums:
 
 ```json
 {
@@ -201,7 +201,7 @@ The prompt assembler merges schema DDLs, relationship paths, live date, and stri
 | STAGE 5: MULTI-STAGE AST VALIDATION & SAFETY GATE                                                  |
 +====================================================================================================+
 ```
-Before any query reaches the database engine, it passes through the `ColumnRegistry` AST verification layer ([`src/core/sql_column_registry.py`](file:///data/shared/project/Global_Mind/src/core/sql_column_registry.py)):
+Before any query reaches the database engine, it passes through the `ColumnRegistry` AST verification layer ([`src/core/sql_column_registry.py`](file:///data/shared/project/Antarkosh/src/core/sql_column_registry.py)):
 
 ```
 [ Candidate SQL String ]
@@ -565,7 +565,7 @@ The enterprise database comprises 64 tables organized into 10 operational subsys
 
 ## 5. Multi-Provider Orchestration & Rate-Limiting Resilience
 
-Analytical benchmarking requires running large test suites without crashing on free-tier rate limits. The routing layer implements a dynamic multi-provider priority cascade configured in [`config/providers.yaml`](file:///data/shared/project/Global_Mind/config/providers.yaml):
+Analytical benchmarking requires running large test suites without crashing on free-tier rate limits. The routing layer implements a dynamic multi-provider priority cascade configured in [`config/providers.yaml`](file:///data/shared/project/Antarkosh/config/providers.yaml):
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -615,13 +615,13 @@ Analytical benchmarking requires running large test suites without crashing on f
 ### Security Architecture:
 1. **Read-Only Database Credentials**:
    ```sql
-   CREATE USER 'globalmind_readonly'@'localhost' IDENTIFIED BY 'secure_password';
-   GRANT SELECT ON globalmind.* TO 'globalmind_readonly'@'localhost';
+   CREATE USER 'Antarkosh_readonly'@'localhost' IDENTIFIED BY 'secure_password';
+   GRANT SELECT ON Antarkosh.* TO 'Antarkosh_readonly'@'localhost';
    FLUSH PRIVILEGES;
    ```
 2. **AST-Level Token Sanitization**: Queries with multiple semicolons, stacked queries, or comment injection sequences (`--`, `/*`) are sanitized prior to execution.
 
 ### Continuous Automated Evaluation Suite:
-* **Benchmark Test Suite** ([`evals/globalmind/reports/layman_questions_50.md`](file:///data/shared/project/Global_Mind/evals/globalmind/reports/layman_questions_50.md)): 50 diverse questions covering all 10 enterprise domains.
-* **Batch Test Runner** ([`scripts/run_batch_eval.py`](file:///data/shared/project/Global_Mind/scripts/run_batch_eval.py)): Runs automated regression suites and outputs [`evals/globalmind/reports/eval_run_report.md`](file:///data/shared/project/Global_Mind/evals/globalmind/reports/eval_run_report.md).
-* **CLI Single-Question Inspector** ([`scripts/test_question.py`](file:///data/shared/project/Global_Mind/scripts/test_question.py)): For instant developer debugging.
+* **Benchmark Test Suite** ([`evals/Antarkosh/reports/layman_questions_50.md`](file:///data/shared/project/Antarkosh/evals/Antarkosh/reports/layman_questions_50.md)): 50 diverse questions covering all 10 enterprise domains.
+* **Batch Test Runner** ([`scripts/run_batch_eval.py`](file:///data/shared/project/Antarkosh/scripts/run_batch_eval.py)): Runs automated regression suites and outputs [`evals/Antarkosh/reports/eval_run_report.md`](file:///data/shared/project/Antarkosh/evals/Antarkosh/reports/eval_run_report.md).
+* **CLI Single-Question Inspector** ([`scripts/test_question.py`](file:///data/shared/project/Antarkosh/scripts/test_question.py)): For instant developer debugging.

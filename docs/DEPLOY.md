@@ -1,6 +1,6 @@
-# Deploying GlobleMind
+# Deploying Antarkosh
 
-GlobleMind is a **Python FastAPI** app that serves both the API and the bundled
+Antarkosh is a **Python FastAPI** app that serves both the API and the bundled
 React UI from one process, and streams responses over **SSE**. It needs a host
 that can run a long-lived ASGI server (`uvicorn`) without buffering.
 
@@ -61,7 +61,7 @@ Every push to `main` redeploys automatically (`autoDeploy: true`).
 ## Run locally with Docker
 
 ```bash
-docker build -t globlemind .
-docker run --rm -p 8000:8000 --env-file .env globlemind
+docker build -t Antarkosh .
+docker run --rm -p 8000:8000 --env-file .env Antarkosh
 # open http://localhost:8000
 ```

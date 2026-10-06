@@ -1,4 +1,4 @@
-# GlobleMind (LocalMind)
+# Antarkosh (Antarkosh)
 
 <div align="center">
 
@@ -13,12 +13,12 @@
 [![Qdrant](https://img.shields.io/badge/Qdrant-Cloud-DC382D?style=for-the-badge&logo=qdrant&logoColor=white)](https://qdrant.tech/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-[![Architecture](https://img.shields.io/badge/Architecture-14--Stage_Ingest_+_9--Stage_SQL-blue?style=flat-square)](https://github.com/Mihirmaru22/Global_Mind)
-[![SQL Accuracy](https://img.shields.io/badge/SQL_Accuracy-96.3%25_(157%2F163)-brightgreen?style=flat-square)](https://github.com/Mihirmaru22/Global_Mind)
-[![Cache SLA](https://img.shields.io/badge/Cache_Hit_Latency-<0.8s_(0.64s)-blueviolet?style=flat-square)](https://github.com/Mihirmaru22/Global_Mind)
-[![Cold-Start Latency](https://img.shields.io/badge/Cold_Start-3.5s--5.5s-success?style=flat-square)](https://github.com/Mihirmaru22/Global_Mind)
-[![Adversarial Defense](https://img.shields.io/badge/Adversarial_Defense-100%25_(5%2F5_Passed)-success?style=flat-square)](https://github.com/Mihirmaru22/Global_Mind)
-[![Token Budget](https://img.shields.io/badge/Token_Budget-7%2C577_avg_%2F_query-informational?style=flat-square)](https://github.com/Mihirmaru22/Global_Mind)
+[![Architecture](https://img.shields.io/badge/Architecture-14--Stage_Ingest_+_9--Stage_SQL-blue?style=flat-square)](https://github.com/Mihirmaru22/Antarkosh)
+[![SQL Accuracy](https://img.shields.io/badge/SQL_Accuracy-96.3%25_(157%2F163)-brightgreen?style=flat-square)](https://github.com/Mihirmaru22/Antarkosh)
+[![Cache SLA](https://img.shields.io/badge/Cache_Hit_Latency-<0.8s_(0.64s)-blueviolet?style=flat-square)](https://github.com/Mihirmaru22/Antarkosh)
+[![Cold-Start Latency](https://img.shields.io/badge/Cold_Start-3.5s--5.5s-success?style=flat-square)](https://github.com/Mihirmaru22/Antarkosh)
+[![Adversarial Defense](https://img.shields.io/badge/Adversarial_Defense-100%25_(5%2F5_Passed)-success?style=flat-square)](https://github.com/Mihirmaru22/Antarkosh)
+[![Token Budget](https://img.shields.io/badge/Token_Budget-7%2C577_avg_%2F_query-informational?style=flat-square)](https://github.com/Mihirmaru22/Antarkosh)
 
 </div>
 
@@ -34,7 +34,7 @@
 6. [Quality Guardrails & Security Defenses](#-quality-guardrails--security-defenses)
 7. [Intelligent Multi-Provider LLM Routing & Key Pools](#-intelligent-multi-provider-llm-routing--key-pools)
 8. [Benchmark & Evaluation Suite](#-benchmark--evaluation-suite)
-9. [Modern React Frontend (LocalMind UI)](#-modern-react-frontend-localmind-ui)
+9. [Modern React Frontend (Antarkosh UI)](#-modern-react-frontend-Antarkosh-ui)
 10. [Observability, Tracing & Telemetry](#-observability-tracing--telemetry)
 11. [Complete REST API Reference](#-complete-rest-api-reference)
 12. [CLI Reference](#-cli-reference)
@@ -56,19 +56,19 @@ Enterprise knowledge bases and analytical databases pose severe challenges to tr
 - **Enterprise Relational Databases (ERP/MES)** feature 50–100+ normalized tables, polymorphic entities (e.g., `party` holding both customers and suppliers), denormalization gaps (no precomputed order totals), soft-deletes, implicit joins, and cryptic enum codes (`'P'`, `'V'`, `'B'`).
 - **Commercial API Costs & Vendor Lock-In** cause spiraling token bills, strict provider rate limits, and service disruptions when relying on a single closed-source API.
 
-**GlobleMind** (branded as **LocalMind** in the UI) solves these challenges under a strict constraint:
+**Antarkosh** (branded as **Antarkosh** in the UI) solves these challenges under a strict constraint:
 > **It must operate entirely on forever-free-tier APIs while rivaling paid, state-of-the-art enterprise systems in accuracy, resiliency, latency, and safety.**
 
-By combining **dynamic multi-provider routing**, a **14-stage ingestion pipeline**, a **9-stage cognitive Text-to-SQL engine**, a **3-layer latency acceleration architecture**, and **AST-level mathematical query validation**, GlobleMind delivers sub-second response times, 96.3% Text-to-SQL accuracy, and 100% defense against adversarial injections without spending a single dollar on LLM inference.
+By combining **dynamic multi-provider routing**, a **14-stage ingestion pipeline**, a **9-stage cognitive Text-to-SQL engine**, a **3-layer latency acceleration architecture**, and **AST-level mathematical query validation**, Antarkosh delivers sub-second response times, 96.3% Text-to-SQL accuracy, and 100% defense against adversarial injections without spending a single dollar on LLM inference.
 
 ---
 
 ## 🏛️ High-Level System Architecture
 
-GlobleMind's unified orchestrator bridges unstructured document RAG and structured transactional databases into a single coherent cognitive interface:
+Antarkosh's unified orchestrator bridges unstructured document RAG and structured transactional databases into a single coherent cognitive interface:
 
 <div align="center">
-  <img src="docs/architecture_diagram.jpg" alt="GlobleMind System Architecture" width="720" />
+  <img src="docs/architecture_diagram.jpg" alt="Antarkosh System Architecture" width="720" />
   <br>
   <em>End-to-end data flow: from user interaction through ingestion, retrieval, and LLM synthesis.</em>
 </div>
@@ -82,7 +82,7 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
 ```text
 [Input File] ──> s01: MIME Detection ──> s02: Classification ──> s03: Parsing
                      │                                                │
-                     ├── Scanned? ──> s04: OCR.space Fallback ────────┤
+                     ├── Scanned? ──> s04: Gemini Vision OCR ─────────┤
                      │                                                │
                      ├── Multi-Column? ──> s05: Layout Analysis ──────┤
                      │                                                │
@@ -94,7 +94,7 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
                                    s09: Semantic Token Chunking
                                                 │
                                                 ▼
-                              s10: Jina V3 Dense + Sparse Vectors
+                              s10: BGE-M3 Dense + Sparse (local)
                                                 │
                                                 ▼
                            s11: Qdrant Cloud Hybrid Index Commit (RRF)
@@ -110,7 +110,7 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
 3. **Deep Text Extraction (`s03_parsing.py`)**:
    - Employs PyMuPDF (`fitz`) and `pdfplumber` for PDFs, `python-docx` for Word documents, `python-pptx` for PowerPoint decks, and `openpyxl` for Excel spreadsheets.
 4. **OCR Fallback (`s04_ocr.py`)**:
-   - Evaluates text yield; if the document is a scanned image or text extraction confidence falls below `OCR_CONFIDENCE_THRESHOLD` (0.75), seamlessly routes pages to the `OCR.space` API (25,000 free requests/month).
+   - Evaluates text yield; if the document is a scanned image or text extraction confidence falls below `OCR_CONFIDENCE_THRESHOLD` (0.75), routes pages to Google Gemini Vision for OCR.
 5. **Layout & Multi-Column Analysis (`s05_layout.py`)**:
    - Sends dense multi-column pages to Gemini 2.5 Flash Vision to determine natural reading flow and strip recurring headers and footers.
 6. **High-Fidelity Table Extraction (`s06_tables.py`)**:
@@ -121,13 +121,13 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
 8. **Semantic Chunking (`s09_chunking.py`)**:
    - Splits content into target token blocks (~500 tokens) with fractional overlap (~12%) while respecting sentence and paragraph boundaries.
 9. **Dual-Representation Embeddings (`s10_embeddings.py`)**:
-   - Sends chunks to Jina AI's V3 model to generate **1024-dimensional dense semantic vectors** alongside **lexical sparse vectors** for precise keyword matching.
+   - Embeds chunks locally with **BGE-M3**, producing **1024-dimensional dense semantic vectors** alongside **lexical sparse vectors** for precise keyword matching.
 10. **Vector Store Commit & RRF (`s11_vector_store.py`)**:
     - Upserts dense and sparse vectors with complete payload metadata into Qdrant Cloud. Enables **Reciprocal Rank Fusion (RRF)** for hybrid search.
 11. **Hybrid Retrieval (`s12`)**:
     - Pulls top 50 candidates using dense cosine similarity and sparse BM25 scores, enforcing document diversity and exhaustive query detection.
 12. **Cross-Encoder Reranking (`s13`)**:
-    - Re-scores candidates using Jina's Cross-Encoder Reranker, selecting the top 25 contextually most relevant chunks.
+    - Re-scores candidates using the local `bge-reranker-v2-m3` cross-encoder, selecting the top 25 contextually most relevant chunks.
 13. **Generative Synthesis & Citations (`s14`)**:
     - Feeds the top reranked chunks into the `ProviderRouter`. Automatically generates inline footnote citations (`[1]`, `[2]`) and formats outputs with Markdown tables and inline Mermaid diagrams.
 
@@ -142,7 +142,7 @@ Unstructured documents undergo a rigorous, stage-decoupled ingestion pipeline (`
 
 ## 🗄️ Core Engine 2: 9-Stage Cognitive Text-to-SQL Engine
 
-Standard Text-to-SQL approaches fail on enterprise databases because real schemas are heavily normalized, historically patched, and full of business nuances. GlobleMind deploys a deterministic, 9-stage cognitive architecture (`src/stages/s12b_sql_retrieval.py`):
+Standard Text-to-SQL approaches fail on enterprise databases because real schemas are heavily normalized, historically patched, and full of business nuances. Antarkosh deploys a deterministic, 9-stage cognitive architecture (`src/stages/s12b_sql_retrieval.py`):
 
 ```text
 [User Natural Query] 
@@ -202,13 +202,13 @@ Standard Text-to-SQL approaches fail on enterprise databases because real schema
    - Result sets are clamped to a hard ceiling of **500 rows** to protect LLM context windows.
    - Formats tabular results into clean Markdown tables with localized number formatting (commas, currency symbols, and decimals).
 9. **Multi-Dialect Storage Engine Support**:
-   - Production-ready support for both SQLite (`data/live_data.db`, `global_mind.db`) and MySQL instances, switchable via `.env`.
+   - Production-ready support for both SQLite (`data/live_data.db`, `Antarkosh.db`) and MySQL instances, switchable via `.env`.
 
 ---
 
 ## ⚡ 3-Layer Latency Acceleration Architecture
 
-To deliver sub-second interactions without exhausting free-tier quotas, GlobleMind employs a 3-layer latency acceleration engine:
+To deliver sub-second interactions without exhausting free-tier quotas, Antarkosh employs a 3-layer latency acceleration engine:
 
 ```text
 User Request
@@ -231,7 +231,7 @@ User Request
 
 ### Layer 1: Semantic Cache (`src/utils/semantic_cache.py`) — The "Instant" Path
 - **Sub-Second Response:** Delivers answers to cached or semantically identical questions in **$<0.8\text{s}$ (measured $0.0008\text{s} - 0.64\text{s}$)** with **0 LLM tokens consumed**.
-- **Dense Cosine Distance:** Uses Jina embeddings with a strict cosine threshold ($\ge 0.95$).
+- **Dense Cosine Distance:** Uses BGE-M3 embeddings with a strict cosine threshold ($\ge 0.95$).
 - **Dynamic TTL Policy:**
   - `COUNT`: 60 seconds
   - `SUM`: 60 seconds
@@ -255,7 +255,7 @@ User Request
 
 ## 🛡️ Quality Guardrails & Security Defenses
 
-GlobleMind incorporates proactive runtime validation gates to prevent hallucinations and SQL vulnerabilities:
+Antarkosh incorporates proactive runtime validation gates to prevent hallucinations and SQL vulnerabilities:
 
 | Guard / Defense | Location | Mechanism & Purpose |
 |---|---|---|
@@ -270,7 +270,7 @@ GlobleMind incorporates proactive runtime validation gates to prevent hallucinat
 
 ## 🧠 Intelligent Multi-Provider LLM Routing & Key Pools
 
-Single-provider systems fail when hit with free-tier rate limits (`429 Too Many Requests`) or service outages (`503 Service Unavailable`). GlobleMind’s `ProviderRouter` (`src/core/provider_client.py`) and dynamic configuration (`config/providers.yaml`) eliminate single points of failure.
+Single-provider systems fail when hit with free-tier rate limits (`429 Too Many Requests`) or service outages (`503 Service Unavailable`). Antarkosh’s `ProviderRouter` (`src/core/provider_client.py`) and dynamic configuration (`config/providers.yaml`) eliminate single points of failure.
 
 ### Rotating Multi-Key Groq Pool
 Configure multiple comma-separated keys in `.env`:
@@ -291,8 +291,8 @@ The pool automatically rotates round-robin across keys upon encountering rate li
 | **Vision & Layout** | Google Gemini Flash Vision | NVIDIA NIM (Llama 3.2 11B Vision) | — | — |
 | **Chart Analysis** | Google Gemini Flash Vision | NVIDIA NIM (Llama 3.2 11B Vision) | — | — |
 | **Micro-Synthesis** | Groq (GPT-OSS 20B) | Google Gemini Flash | NVIDIA NIM (Nemotron 3.5) | — |
-| **Embeddings** | Jina AI V3 (1024-dim Dense + Sparse) | — | — | — |
-| **Reranking** | Jina AI Cross-Encoder | — | — | — |
+| **Embeddings** | BGE-M3 local (1024-dim Dense + Sparse) | — | — | — |
+| **Reranking** | bge-reranker-v2-m3 local cross-encoder | — | — | — |
 | **Vector DB** | Qdrant Cloud (Free Tier) / In-Memory | — | — | — |
 
 - **In-App Soft Pinning:** Users can select a preferred model/provider in the UI (`Settings` or header dropdown). The chosen provider is soft-pinned at priority 0 while preserving the rest of the chain as a safety net.
@@ -302,14 +302,14 @@ The pool automatically rotates round-robin across keys upon encountering rate li
 
 ## 📊 Benchmark & Evaluation Suite
 
-GlobleMind includes an enterprise-grade evaluation suite grounded in a real **70-table ERP schema** with **163 complex real-world questions** (`evals/globalmind/questions.jsonl`):
+Antarkosh includes an enterprise-grade evaluation suite grounded in a real **70-table ERP schema** with **163 complex real-world questions** (`evals/Antarkosh/questions.jsonl`):
 
 ```text
-evals/globalmind/
+evals/Antarkosh/
 ├── questions.jsonl         # 163 canonical questions across 46 schema tables
 ├── build_questions.py      # Question generator and rubric synthesizer
 ├── run_eval.py             # Offline validator and live LLM-as-judge runner
-├── globalmind_schema.json  # Complete 70-table physical schema definition
+├── Antarkosh_schema.json  # Complete 70-table physical schema definition
 └── reports/                # Coverage matrices, ROI benchmarks, and accuracy reports
 ```
 
@@ -327,7 +327,7 @@ evals/globalmind/
 
 ### Benchmark Results
 
-| Metric | Benchmark SLA | GlobleMind Measured Score | Evaluation Status |
+| Metric | Benchmark SLA | Antarkosh Measured Score | Evaluation Status |
 |---|:---:|:---:|:---:|
 | **Overall SQL Accuracy** | $\ge 95.0\%$ | **96.3%** (157 / 163 scored 1.0) | 🟢 **Achieved** |
 | **Adversarial Defenses** | 100% | **100% (5 / 5 Passed)** | 🟢 **Secured** |
@@ -339,14 +339,14 @@ evals/globalmind/
 
 To run the evaluation offline (no database or API keys required):
 ```bash
-python evals/globalmind/run_eval.py --offline
+python evals/Antarkosh/run_eval.py --offline
 ```
 
 ---
 
-## 💻 Modern React Frontend (LocalMind UI)
+## 💻 Modern React Frontend (Antarkosh UI)
 
-The frontend (`LocalMind_UI/`) is a responsive single-page application built with React 18, Vite, Zustand, and custom Vanilla CSS. It compiles into static assets (`frontend/`) and is served directly by the FastAPI backend:
+The frontend (`Antarkosh_UI/`) is a responsive single-page application built with React 18, Vite, Zustand, and custom Vanilla CSS. It compiles into static assets (`frontend/`) and is served directly by the FastAPI backend:
 
 - **Server-Sent Events (SSE) Streaming:** Real-time token streaming with animated typing effects.
 - **Thinking Traces (`ThinkingTrace.jsx`):** Collapsible live reasoning traces displaying pipeline progress (*Understanding Intent* $\rightarrow$ *Retrieving Context* $\rightarrow$ *Executing SQL* $\rightarrow$ *Synthesizing Answer*). Auto-expands during generation and collapses on completion.
@@ -362,7 +362,7 @@ The frontend (`LocalMind_UI/`) is a responsive single-page application built wit
 
 ## 📈 Observability, Tracing & Telemetry
 
-GlobleMind includes built-in observability without requiring heavy external tracing agents:
+Antarkosh includes built-in observability without requiring heavy external tracing agents:
 - **Dual Token Tracking:** Tracks both prompt and completion tokens separately for every provider and task.
 - **Structured Telemetry Events:** Emits telemetry records into `data/telemetry_events.jsonl` recording execution times, cache hit rates, model IDs, token counts, and error classifications.
 - **Telemetry Endpoints:**
@@ -429,23 +429,23 @@ The FastAPI service exposes a comprehensive REST and streaming API:
 
 ## ⌨️ CLI Reference
 
-GlobleMind provides a built-in CLI (`globle-mind`, entrypoint in `src/cli.py`):
+Antarkosh provides a built-in CLI (`Antarkosh`, entrypoint in `src/cli.py`):
 
 ```bash
 # Display CLI usage
-globle-mind
+Antarkosh
 
 # Ingest a single file or an entire directory of documents
-globle-mind ingest ./sample_documents/
+Antarkosh ingest ./sample_documents/
 
 # Query the pipeline directly from your terminal
-globle-mind query "What were our total sales in Q3 2025?"
+Antarkosh query "What were our total sales in Q3 2025?"
 
 # Check provider connectivity and model availability
-globle-mind health
+Antarkosh health
 
 # Start the web service
-globle-mind serve
+Antarkosh serve
 ```
 
 ---
@@ -474,7 +474,7 @@ The `scripts/` directory contains operational and diagnostic utilities:
 ## 📂 Repository Directory Structure
 
 ```text
-Global_Mind/
+Antarkosh/
 ├── .env.example                 # Template for environment variables
 ├── Dockerfile                   # Multi-stage production container image
 ├── render.yaml                  # Cloud deployment blueprint (Render)
@@ -505,13 +505,13 @@ Global_Mind/
 │   └── text_to_sql_pipeline_architecture.md # Master 9-stage SQL architecture
 │
 ├── evals/                       # Evaluation datasets & benchmark runners
-│   └── globalmind/
+│   └── Antarkosh/
 │       ├── questions.jsonl      # 163 enterprise evaluation questions
-│       ├── globalmind_schema.json # Physical schema blueprint
+│       ├── Antarkosh_schema.json # Physical schema blueprint
 │       ├── run_eval.py          # Benchmark runner (offline & live judge)
 │       └── reports/             # Coverage and performance reports
 │
-├── LocalMind_UI/                # React single-page application source (Vite)
+├── Antarkosh_UI/                # React single-page application source (Vite)
 │   ├── src/
 │   │   ├── components/          # Chat, ThinkingTrace, Mermaid, IngestionCard
 │   │   ├── pages/               # Home, Documents, Settings, About
@@ -556,12 +556,12 @@ Global_Mind/
 │   │   ├── s01_file_detection.py# MIME & magic file inspection
 │   │   ├── s02_classification.py# Zero-shot document classification
 │   │   ├── s03_parsing.py       # PDF, DOCX, PPTX, XLSX parsers
-│   │   ├── s04_ocr.py           # OCR.space fallback
+│   │   ├── s04_ocr.py           # Gemini vision OCR
 │   │   ├── s05_layout.py        # Gemini layout analysis
 │   │   ├── s06_tables.py        # Camelot table extraction
 │   │   ├── s07_s08_visuals.py   # Vision chart extraction & captioning
 │   │   ├── s09_chunking.py      # Semantic token chunking
-│   │   ├── s10_embeddings.py    # Jina V3 dense + sparse vectors
+│   │   ├── s10_embeddings.py    # BGE-M3 dense + sparse vectors (local)
 │   │   ├── s11_vector_store.py  # Qdrant upsert & RRF
 │   │   ├── s12_s13_s14_retrieval.py # Hybrid search, reranking & synthesis
 │   │   ├── s12b_sql_retrieval.py# 9-stage Text-to-SQL engine
@@ -586,13 +586,15 @@ Global_Mind/
 ### Prerequisites
 - **Python 3.11 or newer**
 - **Node.js 18+ and npm** (for compiling the frontend)
-- Free-tier API keys for **Google AI Studio**, **Groq**, **NVIDIA NIM**, and **Jina AI**
+- At least one free-tier API key for **Google AI Studio**, **Groq** or **NVIDIA NIM** (vision, answer generation and text-to-SQL)
+- Document embeddings and reranking run **locally** with BGE-M3 and `bge-reranker-v2-m3`.
+- Qdrant can run locally without Docker.
 
 ### 1. Clone & Set Up Python Virtual Environment
 ```bash
 # Clone the repository
-git clone https://github.com/Mihirmaru22/Global_Mind.git
-cd Global_Mind
+git clone https://github.com/Mihirmaru22/Antarkosh.git
+cd Antarkosh
 
 # Create and activate virtual environment
 python -m venv .venv
@@ -610,29 +612,74 @@ Copy `.env.example` to `.env` and insert your API keys:
 ```bash
 cp .env.example .env
 ```
-*(See the [Configuration Reference](#-configuration-reference-env) section below for details).*
 
-### 3. Build the Frontend
+For local Qdrant, use `QDRANT_URL=http://localhost:6333` and leave
+`QDRANT_API_KEY` empty. Keep at least one of `GEMINI_API_KEY`, `GROQ_API_KEY` or
+`NVIDIA_NIM_API_KEY` configured. Vision ingestion uses Google Gemini, while
+embeddings and reranking remain local. The first ingest and first question download
+the BGE-M3 and reranker models from Hugging Face into the user cache.
+
+*(See the [Configuration Reference](#-configuration-reference-env) section below for details.)*
+
+### 3. Start Qdrant locally (optional)
+
+Download the latest Qdrant release from
+<https://github.com/qdrant/qdrant/releases>, extract it into its own folder outside
+the project, and start it there:
+
+```powershell
+.\qdrant.exe
+```
+
+On macOS or Linux, run `./qdrant`. Keep the process running while using Antarkosh
+and check <http://localhost:6333/dashboard>. No API key is needed for a local server.
+If `QDRANT_URL` is empty, the application uses a temporary in-memory store and all
+ingested data is lost when the process stops.
+
+### 4. Build the Frontend
 ```bash
-cd LocalMind_UI
+cd Antarkosh_UI
 npm install
 npm run build
 cd ..
 ```
 The compiled files are automatically written to `frontend/`, which FastAPI serves.
 
-### 4. Initialize Demo Database (Optional)
+### 5. Initialize Demo Database (Optional)
 If querying the local demonstration database:
 ```bash
 python scripts/setup_db.py
 ```
 
-### 5. Launch the Web Application
+### 6. Launch the Web Application
 ```bash
 # Start the FastAPI server on port 8000
 uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 Open **[http://localhost:8000](http://localhost:8000)** in your browser.
+
+The first time you ingest a document, BGE-M3 is downloaded for dense and sparse
+embeddings. The first question downloads `bge-reranker-v2-m3`. On CPU, keep
+`RETRIEVAL_TOP_K=60` and `RERANK_TOP_K=25` (or lower) for shorter query times.
+
+Old documents are automatically re-indexed when their recorded embedding model is
+missing or differs from the current model. Documents already using the current model
+continue to be skipped.
+
+### Local troubleshooting
+
+- **`FlagEmbedding is not installed`**: run `pip install -e .` in the same environment used to start the app.
+- **Embedding or reranking is slow**: this is expected on CPU; reduce retrieval and reranking limits.
+- **Connection refused on port 6333**: start Qdrant or leave `QDRANT_URL` empty to use the temporary in-memory store.
+- **Linux CPU-only setup**: install the CPU Torch build before the project dependencies with `pip install torch --index-url https://download.pytorch.org/whl/cpu`.
+- **Windows + VS Code**: close VS Code before `uv sync` if Ruff reports that `.venv\Scripts\ruff.exe` is locked.
+
+### Local verification
+
+```bash
+pytest
+QDRANT_TEST_URL=http://localhost:6333 pytest tests/test_local_qdrant_integration.py
+```
 
 ---
 
@@ -643,16 +690,14 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 | `GEMINI_API_KEY` | Google AI Studio API key (Gemini 2.5/3.5 Flash). | `AIzaSy...` | **Yes** |
 | `GROQ_API_KEY` | Groq API key(s). Comma-separate multiple keys for auto-rotation. | `gsk_key1,gsk_key2` | **Yes** |
 | `NVIDIA_NIM_API_KEY` | NVIDIA NIM API key (Nemotron, Llama Vision). | `nvapi-...` | **Yes** |
-| `JINA_API_KEY` | Jina AI key for V3 dense+sparse embeddings & reranker. | `jina_...` | **Yes** |
-| `QDRANT_URL` | Qdrant Cloud cluster endpoint or local server. | `https://xyz.qdrant.tech:6333` | **Yes** |
-| `QDRANT_API_KEY` | Qdrant Cloud API key. | `your_qdrant_key` | **Yes** |
-| `OCR_SPACE_API_KEY` | OCR.space API key for scanned document fallback. | `K8...` | Optional |
+| `QDRANT_URL` | Qdrant Cloud cluster endpoint or local server. | `http://localhost:6333` | **Yes** |
+| `QDRANT_API_KEY` | Qdrant Cloud API key; leave empty for local Qdrant. | `your_qdrant_key` | **Yes for cloud** |
 | `OPENROUTER_API_KEY` | OpenRouter API key for aggregator models. | `sk-or-...` | Optional |
 | `DEFAULT_PROVIDER` | Soft-pin provider (`openrouter`, `gemini`, `groq`, `nvidia_nim`, or `auto`). | `openrouter` | No |
 | `DB_ENGINE` | Database engine for Text-to-SQL (`sqlite` or `mysql`). | `sqlite` | No |
 | `DB_HOST` | MySQL database hostname. | `localhost` | If MySQL |
 | `DB_PORT` | MySQL database port. | `3306` | If MySQL |
-| `DB_NAME` | MySQL database name. | `globalmind` | If MySQL |
+| `DB_NAME` | MySQL database name. | `Antarkosh` | If MySQL |
 | `DB_READONLY_USER` | MySQL user with read-only `SELECT` privileges. | `readonly_user` | If MySQL |
 | `DB_READONLY_PASSWORD` | Password for the read-only user. | `secret` | If MySQL |
 | `AUTO_INGEST_ON_STARTUP` | Scan `data/inbox/` once upon server boot. | `false` | No |
@@ -663,26 +708,26 @@ Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 
 ## 🚢 Production Deployment Guide
 
-GlobleMind runs as a unified process (FastAPI serving the API and bundled React UI) with support for long-lived Server-Sent Events (SSE).
+Antarkosh runs as a unified process (FastAPI serving the API and bundled React UI) with support for long-lived Server-Sent Events (SSE).
 
 ### 1. Run with Docker Locally
 ```bash
 # Build the production container
-docker build -t globlemind .
+docker build -t Antarkosh .
 
 # Run the container with environment variables
-docker run -d --name globlemind -p 8000:8000 --env-file .env globlemind
+docker run -d --name Antarkosh -p 8000:8000 --env-file .env Antarkosh
 
 # Access the interface
 open http://localhost:8000
 ```
 
 ### 2. Deploy to Render (Free-Tier Cloud)
-GlobleMind includes a `render.yaml` blueprint:
+Antarkosh includes a `render.yaml` blueprint:
 1. Push your repository to GitHub.
 2. In Render, select **New $\rightarrow$ Blueprint** and connect this repository.
 3. Render reads `render.yaml`, configures the Python web service, and sets health endpoints.
-4. Input your secret environment variables (`GEMINI_API_KEY`, `GROQ_API_KEY`, `NVIDIA_NIM_API_KEY`, `JINA_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`) in the Render dashboard.
+4. Input your secret environment variables (`GEMINI_API_KEY`, `GROQ_API_KEY`, `NVIDIA_NIM_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`) — embeddings and reranking still require the BGE models to be available to the server.
 5. Deploy. Every subsequent push to `main` redeploys automatically.
 
 ---

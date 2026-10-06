@@ -1,1 +1,1 @@
-"""GlobleMind — Zero-Cost Enterprise RAG Pipeline."""
+"""Antarkosh — Zero-Cost Enterprise RAG Pipeline."""

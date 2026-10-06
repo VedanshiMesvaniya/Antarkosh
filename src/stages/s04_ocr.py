@@ -1,11 +1,9 @@
-"""Stage 4 — OCR.
+"""Stage 4 — OCR (local vision model).
 
-Multi-tier OCR chain for scanned pages and images:
-  1. OCR.space Engine 2 — fast first pass (~90-95% on clean scans)
-  2. Confidence gate — check quality, garbage ratio, word ratio
-  3. OCR.space Engine 3 — handwriting/table-aware re-pass (if Engine 2 was low-confidence)
-  4. Vision-LLM OCR (Qwen3-VL via NIM, or Gemini Flash) — final escalation
-  5. Reconciliation — if dual outputs disagree, flag for review
+Scanned pages and standalone images are transcribed by the local vision model
+(Qwen3-VL through Ollama, see ``local_vision_*`` in core/config.py) — no cloud OCR.
+The transcription is then confidence-checked (garbage ratio, word ratio) and the
+result is recorded on the page.
 
 Only called on pages where Stage 3 left text empty (structure == SCANNED
 or ocr_method == "pending_ocr"). Native-text pages are never re-OCR'd —
@@ -18,16 +16,12 @@ import logging
 from pathlib import Path
 
 import pymupdf as fitz  # PyMuPDF
-import httpx
 
-from src.core.confidence import ConfidenceReport, check_ocr_confidence, texts_agree
-from src.core.config import settings
+from src.core.confidence import check_ocr_confidence
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import PageContent, PageStructure, ParsedDocument
 
 logger = logging.getLogger(__name__)
-
-_OCR_SPACE_URL = "https://api.ocr.space/parse/image"
 
 
 async def run_ocr(
@@ -101,110 +95,14 @@ async def _ocr_chain(
     image_data: bytes,
     router: ProviderRouter,
 ) -> tuple[str, float, str]:
-    """Multi-tier OCR chain with confidence gating and escalation.
+    """Transcribe a page image with the local vision model.
 
-    Returns (text, confidence_score, method_used).
+    Returns (text, confidence_score, method_used). An empty transcription gets
+    confidence 0.0, so downstream stages see the page as unreadable.
     """
-    best_ocr_text: str = ""
-    best_ocr_report: ConfidenceReport | None = None
-
-    # Tier 1: OCR.space Engine 2 (fast, high-volume workhorse)
-    if settings.ocr_space_api_key:
-        text_e2, conf_e2 = await _ocr_space(image_data, engine=2)
-        report_e2 = check_ocr_confidence(text_e2, reported_confidence=conf_e2)
-
-        if report_e2.is_acceptable:
-            return text_e2, report_e2.confidence_score, "ocr_space_engine2"
-
-        logger.info("Engine 2 confidence low (%.2f) — escalating", report_e2.confidence_score)
-        best_ocr_text = text_e2
-        best_ocr_report = report_e2
-
-        # Tier 2: OCR.space Engine 3 (handwriting/table-aware)
-        text_e3, conf_e3 = await _ocr_space(image_data, engine=3)
-        report_e3 = check_ocr_confidence(text_e3, reported_confidence=conf_e3)
-
-        if report_e3.is_acceptable:
-            return text_e3, report_e3.confidence_score, "ocr_space_engine3"
-
-        logger.info("Engine 3 confidence low (%.2f) — escalating to vision-LLM", report_e3.confidence_score)
-
-        # Keep the better of Engine 2 and Engine 3
-        if text_e3 and (best_ocr_report is None or report_e3.confidence_score > best_ocr_report.confidence_score):
-            best_ocr_text = text_e3
-
-    # Tier 3: Vision-LLM OCR (Qwen3-VL / Gemini Flash)
-    text_vlm = await _vision_llm_ocr(image_data, router)
-    report_vlm = check_ocr_confidence(text_vlm)
-
-    # Tier 4: Reconciliation — if we have both OCR.space and VLM outputs, compare
-    if best_ocr_text and text_vlm:
-        if texts_agree(best_ocr_text, text_vlm):
-            # Both agree — use VLM (generally higher quality on ambiguous text)
-            return text_vlm, max(report_vlm.confidence_score, 0.85), "vision_llm_confirmed"
-        else:
-            # Disagreement — flag it, keep both, use VLM as primary
-            logger.warning(
-                "OCR disagreement detected — VLM and OCR.space outputs differ materially"
-            )
-            return text_vlm, report_vlm.confidence_score * 0.9, "vision_llm_disputed"
-
-    return text_vlm, report_vlm.confidence_score, "vision_llm"
-
-
-async def _ocr_space(
-    image_data: bytes,
-    *,
-    engine: int = 2,
-) -> tuple[str, float]:
-    """Call OCR.space API. Returns (text, average_confidence)."""
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            files = {"file": ("page.png", image_data, "image/png")}
-            data = {
-                "apikey": settings.ocr_space_api_key,
-                "language": "eng",
-                "isOverlayRequired": "true",  # Needed for per-line confidence
-                "OCREngine": str(engine),
-                "scale": "true",
-                "isTable": "true" if engine == 3 else "false",
-            }
-
-            response = await client.post(_OCR_SPACE_URL, files=files, data=data)
-            response.raise_for_status()
-            result = response.json()
-
-        if result.get("IsErroredOnProcessing", False):
-            error_msg = result.get("ErrorMessage", ["Unknown error"])
-            logger.warning("OCR.space error: %s", error_msg)
-            return "", 0.0
-
-        parsed_results = result.get("ParsedResults", [])
-        if not parsed_results:
-            return "", 0.0
-
-        text_parts: list[str] = []
-        confidences: list[float] = []
-
-        for pr in parsed_results:
-            text_parts.append(pr.get("ParsedText", ""))
-
-            # Extract per-line confidence from overlay data
-            overlay = pr.get("TextOverlay", {})
-            for line in overlay.get("Lines", []):
-                for word in line.get("Words", []):
-                    conf = word.get("Confidence", None)
-                    if conf is not None:
-                        confidences.append(conf / 100.0)  # OCR.space reports 0-100
-
-        text = "\n".join(text_parts)
-        avg_conf = sum(confidences) / len(confidences) if confidences else 0.75
-
-        return text, avg_conf
-
-    except Exception as e:
-        logger.warning("OCR.space Engine %d failed: %s", engine, e)
-        return "", 0.0
+    text = await _vision_llm_ocr(image_data, router)
+    report = check_ocr_confidence(text)
+    return text, report.confidence_score, "vision_llm"
 
 
 async def _vision_llm_ocr(

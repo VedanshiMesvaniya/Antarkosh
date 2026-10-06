@@ -1,4 +1,4 @@
-"""Run the GlobalMind Text-to-SQL evaluation.
+"""Run the Antarkosh Text-to-SQL evaluation.
 
 Two modes:
 
@@ -12,9 +12,9 @@ Two modes:
               or MySQL) and provider API keys, exactly like the app.
 
 Examples:
-  python evals/globalmind/run_eval.py --offline
-  python evals/globalmind/run_eval.py --limit 10 --difficulty hard_twisted
-  python evals/globalmind/run_eval.py --out evals/globalmind/results.json
+  python evals/Antarkosh/run_eval.py --offline
+  python evals/Antarkosh/run_eval.py --limit 10 --difficulty hard_twisted
+  python evals/Antarkosh/run_eval.py --out evals/Antarkosh/results.json
 
 The judge is a strict rubric grader. It returns, per question:
   score          0.0–1.0   how well the answer satisfies the rubric
@@ -43,7 +43,7 @@ REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 
 QUESTIONS = HERE / "questions.jsonl"
-SCHEMA = HERE / "globalmind_schema.json"
+SCHEMA = HERE / "Antarkosh_schema.json"
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +254,7 @@ def _summarize(results: list[dict]) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="GlobalMind Text-to-SQL eval")
+    ap = argparse.ArgumentParser(description="Antarkosh Text-to-SQL eval")
     ap.add_argument("--offline", action="store_true",
                     help="validate the dataset against the schema; no DB/keys needed")
     ap.add_argument("--limit", type=int, default=None, help="run only the first N questions")

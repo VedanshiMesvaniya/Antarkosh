@@ -2,7 +2,7 @@
 """Build a schema-aware column glossary for Text-to-SQL.
 
 Reads the existing config/sql_glossary.json (business terms) and
-evals/globalmind/globalmind_schema.json (schema), and produces a new
+evals/Antarkosh/Antarkosh_schema.json (schema), and produces a new
 config/sql_column_glossary.json mapping business terms to exact table.column paths.
 """
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent.resolve()
 REPO = HERE.parent
-SCHEMA_FILE = REPO / "evals" / "globalmind" / "globalmind_schema.json"
+SCHEMA_FILE = REPO / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 OLD_GLOSSARY_FILE = REPO / "config" / "sql_glossary.json"
 OUT_FILE = REPO / "config" / "sql_column_glossary.json"
 

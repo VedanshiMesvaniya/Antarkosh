@@ -31,8 +31,8 @@ DEFAULT_LIMITS: dict[str, ProviderLimits] = {
     "nvidia_nim": ProviderLimits(rpm=30, rpd=5000, tpm=300000, tpd=5000000),
     "groq": ProviderLimits(rpm=30, rpd=14400, tpm=6000, tpd=200000),
     "openrouter": ProviderLimits(rpm=15, rpd=200, tpm=20000, tpd=500000),
-    "ocr_space": ProviderLimits(rpm=10, rpd=800, tpm=50000, tpd=500000),  # ~25K/month ÷ 30 days
-    "jina": ProviderLimits(rpm=80, rpd=50000, tpm=500000, tpd=10000000),
+    # Local server: no quota. Effectively unlimited so it never trips the limiter.
+    "local": ProviderLimits(rpm=100_000, rpd=100_000_000, tpm=10**12, tpd=10**13),
 }
 
 

@@ -1,13 +1,13 @@
-# GlobleMind Deep Architecture & Context Map
+# Antarkosh Deep Architecture & Context Map
 
-This document is the **definitive, granular guide** to the GlobleMind project. Paired with `CLAUDE.md` (which dictates coding standards), this file explains *how everything works, from the smallest utility functions to the macro system architecture*. 
+This document is the **definitive, granular guide** to the Antarkosh project. Paired with `CLAUDE.md` (which dictates coding standards), this file explains *how everything works, from the smallest utility functions to the macro system architecture*. 
 
 If you are an AI reading this, you now hold the complete blueprint of the system in your mind.
 
 ---
 
 ## 1. Core Architecture Philosophy
-GlobleMind (also known as LocalMind in the UI) is an enterprise-grade Retrieval-Augmented Generation (RAG) system built with a single, aggressive constraint: **It must operate entirely on forever-free-tier APIs while rivaling paid systems in accuracy.**
+Antarkosh (also known as Antarkosh in the UI) is an enterprise-grade Retrieval-Augmented Generation (RAG) system built with a single, aggressive constraint: **It must operate entirely on forever-free-tier APIs while rivaling paid systems in accuracy.**
 
 To achieve this, the architecture rejects single-provider dependency. Instead, it uses a **dynamic LLM routing pattern**. The backend acts as a smart orchestrator that categorizes workloads and distributes them across Google (Gemini), Groq, Nvidia NIM, OpenRouter, and Jina AI based on rate limits, availability, and task complexity.
 
@@ -20,9 +20,9 @@ Data persistence completely avoids SQL databases for application state. UI state
 ### Top-level repository layout
 
 ```text
-Global_Mind/
+Antarkosh/
 ├── src/            # Python backend (FastAPI app + 14-stage RAG pipeline)
-├── LocalMind_UI/   # React frontend source (Vite)
+├── Antarkosh_UI/   # React frontend source (Vite)
 ├── frontend/       # Compiled UI, served directly by FastAPI (build output)
 ├── config/         # providers.yaml — LLM routing rules & fallback chains
 ├── tests/          # pytest suite (unit + integration)
@@ -152,7 +152,7 @@ When a user submits a prompt, it triggers stages 12–14. The `QueryPipeline` or
 
 ---
 
-## 5. Frontend Architecture (`LocalMind_UI/`)
+## 5. Frontend Architecture (`Antarkosh_UI/`)
 
 The frontend is a single-page React application built with Vite. It is completely decoupled from the AI logic and acts purely as a presentation layer.
 
@@ -205,7 +205,7 @@ Instead of running a separate Node server, we use `npm run build` to compile the
 ## 7. End-to-End Traces
 
 ### Trace A: Ingesting a PDF via CLI
-1. User runs `globle-mind ingest Model_Card.pdf`.
+1. User runs `Antarkosh ingest Model_Card.pdf`.
 2. `src/cli.py` triggers `IngestionPipeline.process()`.
 3. The PDF is classified, parsed, OCR'd.
 4. Gemini Flash analyzes 40 charts in the PDF. Google throws a `429 Too Many Requests`.

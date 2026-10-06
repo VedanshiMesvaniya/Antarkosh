@@ -1,9 +1,9 @@
 """Tests for ARCH-3 (EmbeddingAdapter Protocol) and ARCH-4 (dimension guard).
 
-ARCH-3: concrete adapters satisfy the EmbeddingAdapter Protocol; EmbeddingService
-        delegates to whichever primary adapter is injected.
-ARCH-4: EmbeddingService refuses to fall back when vector dims differ; QdrantStore
-        rejects upserts whose vector dimension doesn't match the collection's.
+ARCH-3: the local BGE-M3 adapter satisfies the EmbeddingAdapter Protocol;
+        EmbeddingService delegates to whichever adapter is injected.
+ARCH-4: QdrantStore rejects upserts whose vector dimension doesn't match the
+        collection's. There is no embedding fallback: a failed embed raises.
 """
 
 from __future__ import annotations
@@ -11,11 +11,7 @@ from __future__ import annotations
 import pytest
 
 from src.core.embeddings import DimensionMismatchError, EmbeddingAdapter, SparseVector
-from src.stages.s10_embeddings import (
-    EmbeddingService,
-    GeminiEmbeddingAdapter,
-    JinaEmbeddingAdapter,
-)
+from src.stages.s10_embeddings import BGEM3EmbeddingAdapter, EmbeddingService
 from src.stages.s11_vector_store import QdrantStore
 
 
@@ -55,19 +51,10 @@ class _FakeAdapter:
 # ARCH-3 — Protocol conformance
 # ---------------------------------------------------------------------------
 
-def test_jina_adapter_satisfies_protocol():
-    """JinaEmbeddingAdapter must be an instance of EmbeddingAdapter at runtime."""
-    from unittest.mock import MagicMock
-    rl = MagicMock()
-    adapter = JinaEmbeddingAdapter(api_key="key", rate_limiter=rl)
+def test_bge_m3_adapter_satisfies_protocol():
+    adapter = BGEM3EmbeddingAdapter()
     assert isinstance(adapter, EmbeddingAdapter)
-
-
-def test_gemini_adapter_satisfies_protocol():
-    from unittest.mock import MagicMock
-    rl = MagicMock()
-    adapter = GeminiEmbeddingAdapter(api_key="key", rate_limiter=rl)
-    assert isinstance(adapter, EmbeddingAdapter)
+    assert adapter.vector_dim == 1024 and adapter.supports_sparse is True
 
 
 def test_fake_adapter_satisfies_protocol():
@@ -78,7 +65,7 @@ def test_fake_adapter_satisfies_protocol():
 @pytest.mark.asyncio
 async def test_service_uses_primary_adapter():
     primary = _FakeAdapter(vector_dim=1024)
-    svc = EmbeddingService(primary=primary, fallback=None)
+    svc = EmbeddingService(primary=primary)
     dense, sparse = await svc.embed_texts(["hello", "world"])
     assert primary.calls == 1
     assert len(dense) == 2
@@ -88,14 +75,14 @@ async def test_service_uses_primary_adapter():
 @pytest.mark.asyncio
 async def test_service_exposes_primary_metadata():
     primary = _FakeAdapter(model_id="my-model", vector_dim=512)
-    svc = EmbeddingService(primary=primary, fallback=None)
+    svc = EmbeddingService(primary=primary)
     assert svc.vector_dim == 512
     assert svc.model_id == "my-model"
 
 
 @pytest.mark.asyncio
 async def test_service_empty_texts_returns_empty():
-    svc = EmbeddingService(primary=_FakeAdapter(), fallback=None)
+    svc = EmbeddingService(primary=_FakeAdapter())
     dense, sparse = await svc.embed_texts([])
     assert dense == []
     assert sparse == []
@@ -106,37 +93,19 @@ async def test_service_empty_texts_returns_empty():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_fallback_used_when_dims_match():
-    """Fallback is allowed when both adapters produce the same dimensionality."""
-    primary = _FakeAdapter(vector_dim=1024, fail=True)
-    fallback = _FakeAdapter(model_id="fallback-1024", vector_dim=1024)
-    svc = EmbeddingService(primary=primary, fallback=fallback)
-
-    dense, _ = await svc.embed_texts(["hi"])
-    assert fallback.calls == 1
-    assert len(dense[0]) == 1024
-
-
-@pytest.mark.asyncio
-async def test_fallback_blocked_when_dims_differ():
-    """Fallback is refused when its vector_dim differs from the primary's."""
-    primary = _FakeAdapter(model_id="jina-1024", vector_dim=1024, fail=True)
-    fallback = _FakeAdapter(model_id="gemini-768", vector_dim=768)
-    svc = EmbeddingService(primary=primary, fallback=fallback)
-
-    with pytest.raises(DimensionMismatchError, match="1024d.*768d|768d.*1024d"):
-        await svc.embed_texts(["hi"])
-
-    assert fallback.calls == 0  # never called
-
-
-@pytest.mark.asyncio
-async def test_no_fallback_raises_runtime_error():
+async def test_failed_embed_raises_and_never_switches_model():
+    """There is no fallback adapter: a failure surfaces instead of mixing models."""
     primary = _FakeAdapter(fail=True)
-    svc = EmbeddingService(primary=primary, fallback=None)
+    svc = EmbeddingService(primary=primary)
 
-    with pytest.raises(RuntimeError, match="no fallback configured"):
+    with pytest.raises(RuntimeError, match="adapter error"):
         await svc.embed_texts(["hi"])
+    assert not hasattr(svc, "_fallback")
+
+
+def test_default_service_uses_local_bge_m3():
+    svc = EmbeddingService()
+    assert svc.model_id == "bge-m3" and svc.vector_dim == 1024
 
 
 # ---------------------------------------------------------------------------
@@ -145,14 +114,14 @@ async def test_no_fallback_raises_runtime_error():
 
 @pytest.mark.asyncio
 async def test_qdrant_store_derives_size_from_service():
-    svc = EmbeddingService(primary=_FakeAdapter(vector_dim=512), fallback=None)
+    svc = EmbeddingService(primary=_FakeAdapter(vector_dim=512))
     store = QdrantStore(embedding_service=svc)
     assert store._vector_size == 512
 
 
 @pytest.mark.asyncio
 async def test_qdrant_store_derives_model_from_service():
-    svc = EmbeddingService(primary=_FakeAdapter(model_id="my-embed", vector_dim=256), fallback=None)
+    svc = EmbeddingService(primary=_FakeAdapter(model_id="my-embed", vector_dim=256))
     store = QdrantStore(embedding_service=svc)
     assert store._embedding_model == "my-embed"
 

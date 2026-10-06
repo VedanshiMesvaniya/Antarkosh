@@ -304,7 +304,7 @@ export async function exportChatTranscript(chat, messages = []) {
 
   const parts = [
     `<div class="transcript-header">`,
-    `<div class="transcript-brand">LOCALMIND</div>`,
+    `<div class="transcript-brand">Antarkosh</div>`,
     `<h1 class="transcript-title">${escapeHtml(chatTitle)}</h1>`,
     `<div class="transcript-date">${escapeHtml(exportDate)}</div>`,
     `</div>`,

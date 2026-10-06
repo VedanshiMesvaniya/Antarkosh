@@ -142,7 +142,7 @@ Fix Applied: [None / Prompt Tweak / Schema Update]
 Run Batch 1 (gm-001 to gm-020)
 bash
 123
-python3 evals/globalmind/baseline_v2/run_full_eval.py \  --questions evals/globalmind/questions.jsonl \  --db
+python3 evals/Antarkosh/baseline_v2/run_full_eval.py \  --questions evals/Antarkosh/questions.jsonl \  --db
 Generate Spare Report #1 → Analyze token/latency/accuracy.
 Decision: Go/No-Go for Batch 2.
 Repeat for all 8 batches.

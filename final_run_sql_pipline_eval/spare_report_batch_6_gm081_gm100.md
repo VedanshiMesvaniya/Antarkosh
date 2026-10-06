@@ -2,7 +2,7 @@
 
 **Timestamp:** 2026-08-31 11:54:29  
 **Range:** `gm-081` to `gm-100` (20 questions)  
-**Evaluator Run:** [`evals/globalmind/results/full_eval_report_20260831_115429.json`](file:///data/shared/project/Global_Mind/evals/globalmind/results/full_eval_report_20260831_115429.json)  
+**Evaluator Run:** [`evals/Antarkosh/results/full_eval_report_20260831_115429.json`](file:///data/shared/project/Antarkosh/evals/Antarkosh/results/full_eval_report_20260831_115429.json)  
 **Focus Area:** *Phase 2: Complexity Stress Tests (Logic Derivations & CTE Projections)*
 
 ---

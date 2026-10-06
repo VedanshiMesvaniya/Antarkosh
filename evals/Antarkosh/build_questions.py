@@ -1,7 +1,7 @@
-"""Build the GlobalMind Text-to-SQL evaluation question bank.
+"""Build the Antarkosh Text-to-SQL evaluation question bank.
 
 Emits `questions.jsonl` — one JSON object per line — grounded in the REAL
-`globalmind` ERP schema (70 tables, phpMyAdmin dump). The set deliberately
+`Antarkosh` ERP schema (70 tables, phpMyAdmin dump). The set deliberately
 mixes how a non-technical business owner actually phrases things ("layman")
 with hard, twisted questions that exploit the schema's traps:
 
@@ -23,7 +23,7 @@ decision the pipeline makes:
   DOC     -> answerable only from uploaded documents / policy text
   ABSTAIN -> out of scope for this system; should not fabricate
 
-Run:  python evals/globalmind/build_questions.py
+Run:  python evals/Antarkosh/build_questions.py
 """
 
 from __future__ import annotations

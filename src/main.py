@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
     Everything here is best-effort — a failure must never block the app from
     serving.
     """
-    if settings.qdrant_url and settings.qdrant_api_key:
+    if settings.qdrant_configured:
         try:
             from src.pipeline.ingestion import reconcile_active_flags
 
@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="GlobleMind",
+    title="Antarkosh",
     description="Zero-Cost Enterprise RAG Pipeline — accuracy-first document processing",
     version="0.1.0",
     lifespan=lifespan,
@@ -157,10 +157,10 @@ async def serve_spa(full_path: str):
     """Serve the React Single Page App."""
     if not frontend_dir.exists():
         return {
-            "app": "GlobleMind API",
+            "app": "Antarkosh API",
             "docs": "/docs",
             "health": "/api/health",
-            "status": "Frontend not built yet. Run 'npm run build' in LocalMind_UI."
+            "status": "Frontend not built yet. Run 'npm run build' in Antarkosh_UI."
         }
     
     # If a real file is requested (e.g. vite.svg), serve it — but only if it

@@ -74,9 +74,9 @@ def _split_schema_by_table(
 
 
 def _load_table_metadata() -> dict[str, dict[str, Any]]:
-    """Load table domain and metadata from evals/globalmind/globalmind_schema.json if present."""
+    """Load table domain and metadata from evals/Antarkosh/Antarkosh_schema.json if present."""
     from pathlib import Path
-    schema_file = Path(__file__).resolve().parents[2] / "evals" / "globalmind" / "globalmind_schema.json"
+    schema_file = Path(__file__).resolve().parents[2] / "evals" / "Antarkosh" / "Antarkosh_schema.json"
     if not schema_file.exists():
         return {}
     try:
@@ -131,7 +131,7 @@ async def sync_live_schema(
     from src.core.rate_limiter import get_shared_rate_limiter
 
     rate_limiter = get_shared_rate_limiter()
-    embeddings = embedding_service or EmbeddingService(rate_limiter)
+    embeddings = embedding_service or EmbeddingService()
     store = vector_store or QdrantStore(embedding_service=embeddings)
 
     dialect = get_dialect_profile(settings.db_engine)

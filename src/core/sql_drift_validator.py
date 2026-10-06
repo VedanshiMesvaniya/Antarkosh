@@ -16,7 +16,7 @@ from sqlglot import exp
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_FILE = REPO_ROOT / "evals" / "globalmind" / "globalmind_schema.json"
+SCHEMA_FILE = REPO_ROOT / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 GLOSSARY_FILE = REPO_ROOT / "config" / "sql_column_glossary.json"
 RELATIONSHIPS_FILE = REPO_ROOT / "config" / "sql_relationships.json"
 

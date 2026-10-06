@@ -3,7 +3,7 @@
 Qdrant Cloud free cluster as primary (1GB RAM, no query metering).
 Falls back to a local in-memory store for development/testing.
 
-Hybrid search: dense cosine similarity + Jina sparse vectors fused via
+Hybrid search: dense cosine similarity + BGE-M3 sparse vectors fused via
 Reciprocal Rank Fusion (RRF), replacing the previous BM25-lite heuristic.
 """
 
@@ -61,16 +61,16 @@ class VectorStore(Protocol):
 
 
 class QdrantStore:
-    """Qdrant Cloud vector store with true hybrid dense+sparse search.
+    """Qdrant vector store (local server) with true hybrid dense+sparse search.
 
     ARCH-4: Pass an EmbeddingService so the collection is created with exactly
     the right vector_size for the active embedding model. If no service is
-    provided the legacy default (1024) is used, which matches Jina v3.
+    provided the default (1024) is used, which matches BGE-M3.
     """
 
     def __init__(
         self,
-        collection_name: str = "globle_mind",
+        collection_name: str = "Antarkosh",
         vector_size: int = 1024,
         embedding_service: EmbeddingService | None = None,
     ) -> None:
@@ -90,21 +90,57 @@ class QdrantStore:
         if _global_client is None or _global_client_loop is not current_loop or current_loop.is_closed():
             from qdrant_client import AsyncQdrantClient
 
-            if settings.qdrant_url and settings.qdrant_api_key:
+            if settings.qdrant_configured:
+                # A Qdrant server on this machine needs no API key.
                 _global_client = AsyncQdrantClient(
                     url=settings.qdrant_url,
-                    api_key=settings.qdrant_api_key,
+                    api_key=settings.qdrant_api_key_or_none,
                 )
             else:
                 # Local in-memory for dev/testing
                 _global_client = AsyncQdrantClient(location=":memory:")
-                logger.info("Using in-memory Qdrant (no QDRANT_URL configured)")
+                logger.warning(
+                    "QDRANT_URL is not set — using a throw-away in-memory Qdrant. "
+                    "Everything ingested is lost when the app stops. Start Qdrant and "
+                    "set QDRANT_URL=http://localhost:6333 (see LOCAL_SETUP.md)."
+                )
 
             _global_client_loop = current_loop
             await self._ensure_collection(_global_client)
+            await self._warn_on_embedding_model_mismatch(_global_client)
 
         self._has_sparse = _global_has_sparse
         return _global_client
+
+    async def _warn_on_embedding_model_mismatch(self, client: Any) -> None:
+        """Warn loudly if stored vectors came from a different embedding model.
+
+        Different embedding models can share a dimension (e.g. the older Jina v3
+        and BGE-M3 are both 1024-d), so the dimension guard can't tell them apart — mixing them in one collection silently wrecks retrieval.
+        Best-effort and warn-only: it must never block startup.
+        """
+        try:
+            points, _ = await client.scroll(
+                collection_name=self._collection_name,
+                limit=1,
+                with_payload=["embedding_model"],
+                with_vectors=False,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.debug("Embedding-model check skipped: %s", e)
+            return
+        if not points or self._embedding_model == "unknown":
+            return
+        stored = (points[0].payload or {}).get("embedding_model")
+        # Points written before this tag existed were produced by Jina v3.
+        stored = stored or "jina-embeddings-v3"
+        if stored != self._embedding_model:
+            logger.warning(
+                "Collection '%s' holds vectors from '%s' but the active embedding "
+                "model is '%s'. Search quality will be wrong until you re-ingest "
+                "into a fresh collection (delete this one first).",
+                self._collection_name, stored, self._embedding_model,
+            )
 
     async def _ensure_collection(self, client: Any) -> None:
         """Create collection with both dense and sparse vector support.
@@ -258,7 +294,13 @@ class QdrantStore:
                 # flips the superseded version's chunks to active=False (see
                 # set_document_active), and retrieval excludes those.
                 "active": True,
+                # Which model produced this vector (see _warn_on_embedding_model_mismatch).
+                "embedding_model": self._embedding_model,
             }
+            # Figure chunks keep a pointer to the saved image file (if any).
+            image_path = chunk.metadata.get("image_path") if chunk.metadata else None
+            if image_path:
+                payload["image_path"] = image_path
 
             # Build the vectors dict — always include dense; add sparse if available
             vectors_dict: dict[str, Any] = {"": vector}  # unnamed = dense

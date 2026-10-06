@@ -1,6 +1,6 @@
-# Local Mind UI
+# Antarkosh UI
 
-Local Mind UI is a Vite + React chat dashboard with a dark/light theme, sidebar navigation, settings, documents, and markdown-based assistant responses.
+Antarkosh UI is a Vite + React chat dashboard with a dark/light theme, sidebar navigation, settings, documents, and markdown-based assistant responses.
 
 This project currently uses static demo data so the UI works end to end without a backend. The code is already structured so you can replace the demo layer with live API data later.
 
@@ -41,7 +41,7 @@ If you are cloning it from git:
 
 ```bash
 git clone <your-repo-url>
-cd LocalMind_UI
+cd Antarkosh_UI
 ```
 
 If the project is already on your machine, just open the project folder in your terminal.

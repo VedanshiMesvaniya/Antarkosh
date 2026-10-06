@@ -39,8 +39,16 @@ Entry schema (keyed by ``document_id``)::
       "supersedes":      "<id|null>",    # the version this one replaced
       "superseded_by":   "<id|null>",    # the version that replaced this one
       "active":          true,           # is this the current live version?
-      "lineage_root":    "<id>"          # first version in this lineage
+      "lineage_root":    "<id>",         # first version in this lineage
+      "embedding_model": "bge-m3"        # model that produced this version's vectors
     }
+
+**Embedding model.** Vectors from different embedding models are not comparable,
+so each entry records the model that built it. An active duplicate whose recorded
+model differs from the current one (or has none, as with entries created before
+this field existed or imported from the legacy ``ingested_files.json``) is
+reported as ``STALE_EMBEDDING`` instead of ``ALREADY_INGESTED``: the pipeline
+re-indexes it rather than skipping it.
 """
 
 from __future__ import annotations
@@ -66,6 +74,9 @@ class RegistryStatus(str, Enum):
     NEW_FILE = "new_file"
     ALREADY_INGESTED = "already_ingested"
     CONTENT_CHANGED = "content_changed"  # retained for API compatibility; unused
+    # Identical content is registered, but its vectors came from a different (or
+    # unknown) embedding model — it must be re-indexed, not skipped.
+    STALE_EMBEDDING = "stale_embedding"
 
 
 @dataclass
@@ -118,13 +129,22 @@ class IngestionRegistry:
     # Deduplication check
     # ------------------------------------------------------------------
 
-    def check(self, file_path: str | Path, user_id: str | None = None) -> RegistryCheckResult:
+    def check(
+        self,
+        file_path: str | Path,
+        user_id: str | None = None,
+        embedding_model: str | None = None,
+    ) -> RegistryCheckResult:
         """Compute the content SHA-256 and check for an active duplicate.
 
         An exact content match against an **active** version is a duplicate to
         skip. Anything else — new content, or content whose only match is a
         superseded version — is a new, distinct document. Filename never decides
         identity.
+
+        When ``embedding_model`` is given and the active duplicate was built with
+        a different (or unrecorded) model, the result is ``STALE_EMBEDDING``: the
+        content is known, but its vectors are unusable with the current model.
         """
         path = Path(file_path)
         file_hash = self._sha256(path)
@@ -133,6 +153,21 @@ class IngestionRegistry:
         active_dupe = self._find_active_by_hash(registry, file_hash, user_id=user_id)
         if active_dupe is not None:
             entry = registry[active_dupe]
+            if embedding_model is not None and not self.is_current_embedding(entry, embedding_model):
+                logger.info(
+                    "Registry: '%s' is registered (doc_id=%s) but was embedded with "
+                    "'%s', not '%s' — needs re-indexing",
+                    path.name,
+                    active_dupe,
+                    entry.get("embedding_model") or "unknown",
+                    embedding_model,
+                )
+                return RegistryCheckResult(
+                    status=RegistryStatus.STALE_EMBEDDING,
+                    sha256=file_hash,
+                    old_document_id=active_dupe,
+                    old_entry=entry,
+                )
             logger.info(
                 "Registry: '%s' already ingested (hash=%s..., doc_id=%s)",
                 path.name,
@@ -156,6 +191,11 @@ class IngestionRegistry:
             logger.info("Registry: '%s' is new (hash=%s...)", path.name, file_hash[:12])
         return RegistryCheckResult(status=RegistryStatus.NEW_FILE, sha256=file_hash)
 
+    @staticmethod
+    def is_current_embedding(entry: dict[str, Any], embedding_model: str) -> bool:
+        """True if ``entry``'s vectors were produced by ``embedding_model``."""
+        return entry.get("embedding_model") == embedding_model
+
     # ------------------------------------------------------------------
     # Version lifecycle
     # ------------------------------------------------------------------
@@ -168,6 +208,7 @@ class IngestionRegistry:
         document_id: str | None = None,
         supersedes: str | None = None,
         user_id: str = "system",
+        embedding_model: str = "",
     ) -> dict[str, Any]:
         """Record a freshly-indexed document as a new **active** version.
 
@@ -210,6 +251,7 @@ class IngestionRegistry:
             "active": True,
             "lineage_root": lineage_root,
             "user_id": user_id,
+            "embedding_model": embedding_model,
         }
         self._backend.write_batch([entry], [])
         logger.info(

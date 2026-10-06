@@ -39,11 +39,35 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     nvidia_nim_api_key: str = ""
     groq_api_key: str = ""
-    ocr_space_api_key: str = ""
-    jina_api_key: str = ""
     qdrant_url: str = ""
     qdrant_api_key: str = ""
     openrouter_api_key: str = ""
+
+    # --- Local models (ingestion and embeddings run entirely on this machine) ---
+    # Embeddings: BGE-M3 (dense + sparse in one model), run through FlagEmbedding.
+    bge_m3_model: str = "BAAI/bge-m3"
+    bge_m3_use_fp16: bool = False  # keep False on CPU
+    bge_m3_max_length: int = 1024  # chunks are ~500 tokens; 8192 would only slow CPU down
+    bge_m3_batch_size: int = 8
+    # Reranker: bge-reranker-v2-m3 cross-encoder.
+    bge_reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    bge_reranker_use_fp16: bool = False
+    bge_reranker_max_length: int = 512
+    bge_reranker_batch_size: int = 16
+    # Vision + document classification during ingestion: Qwen3-VL served over an
+    # OpenAI-compatible API (Ollama by default). OCR, layout, tables, charts,
+    # images and the document-type classifier all use it — no cloud fallback.
+    local_vision_base_url: str = "http://localhost:11434/v1"
+    local_vision_model: str = "qwen3-vl:4b"
+    local_vision_api_key: str = "local"  # Ollama ignores it but the client needs a value
+    # CPU inference is slow, so these limits are generous.
+    local_vision_timeout_seconds: float = 300.0        # per image / page
+    local_vision_stage_timeout_seconds: float = 1800.0  # whole visual-analysis stage
+    local_classification_timeout_seconds: float = 120.0
+    # A CPU model serves one image at a time; parallel calls only queue and time out.
+    local_vision_concurrency: int = 1
+    # Save extracted figures to data/processed/figures and record the path.
+    save_figure_images: bool = True
 
     # --- Provider selection ---
     # Default soft pin applied when the request doesn't specify one. The chosen
@@ -139,7 +163,13 @@ class Settings(BaseSettings):
     # NOT the default — see the CORS note in main.py.
     cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
-    model_config = {"env_file": str(PROJECT_ROOT / ".env"), "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": str(PROJECT_ROOT / ".env"),
+        "env_file_encoding": "utf-8",
+        # An existing .env may still hold keys for removed providers (JINA_API_KEY,
+        # OCR_SPACE_API_KEY...). Ignore them instead of refusing to start.
+        "extra": "ignore",
+    }
 
     @field_validator("db_engine", mode="before")
     @classmethod
@@ -156,6 +186,20 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return value.strip()
         return value
+
+    @property
+    def qdrant_configured(self) -> bool:
+        """True when a Qdrant server URL is set.
+
+        The API key is optional: a Qdrant server running on this machine needs
+        none. (Previously both were required, so a local server without a key
+        silently fell back to a throw-away in-memory store.)
+        """
+        return bool(self.qdrant_url.strip())
+
+    @property
+    def qdrant_api_key_or_none(self) -> str | None:
+        return self.qdrant_api_key.strip() or None
 
     @property
     def cors_allow_origins_list(self) -> list[str]:

@@ -79,7 +79,7 @@ function writeStoredBoolean(key, value) {
 // so it's tracked client-side and persisted to localStorage. This means it
 // won't sync across devices — a small backend addition (a `pinned` column +
 // PATCH support) would be needed for that.
-const PINNED_CHATS_KEY = 'localmind-pinned-chats'
+const PINNED_CHATS_KEY = 'Antarkosh-pinned-chats'
 
 function readStoredIdSet(key) {
   try {
@@ -359,7 +359,7 @@ export const useAppStore = create((set, get) => ({
   loading: false,
   chatsLoading: true,
   sidebarOpen: false,
-  sidebarCollapsed: readStoredBoolean('localmind-sidebar-collapsed', false),
+  sidebarCollapsed: readStoredBoolean('Antarkosh-sidebar-collapsed', false),
   pinnedChatIds: readStoredIdSet(PINNED_CHATS_KEY),
   selectedDocId: null,
   activeRequest: null,
@@ -455,7 +455,7 @@ export const useAppStore = create((set, get) => ({
       }
 
       try {
-        const savedSettings = localStorage.getItem('localmind-settings')
+        const savedSettings = localStorage.getItem('Antarkosh-settings')
         if (savedSettings) {
           Object.assign(mergedSettings, JSON.parse(savedSettings))
         }
@@ -584,7 +584,7 @@ export const useAppStore = create((set, get) => ({
   toggleSidebarCollapse: () =>
     set((state) => {
       const nextValue = !state.sidebarCollapsed
-      writeStoredBoolean('localmind-sidebar-collapsed', nextValue)
+      writeStoredBoolean('Antarkosh-sidebar-collapsed', nextValue)
       return { sidebarCollapsed: nextValue }
     }),
 
@@ -1138,7 +1138,7 @@ export const useAppStore = create((set, get) => ({
     const settings = { ...(get().settings || {}), ...patch }
     set({ settings })
     try {
-      localStorage.setItem('localmind-settings', JSON.stringify(settings))
+      localStorage.setItem('Antarkosh-settings', JSON.stringify(settings))
     } catch {
       // Ignore storage write errors; the local demo state still updates.
     }

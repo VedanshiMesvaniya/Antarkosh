@@ -1,4 +1,4 @@
-# 📊 30 Benchmark & Test Questions for GlobleMind / LocalMind
+# 📊 30 Benchmark & Test Questions for Antarkosh / Antarkosh
 
 A curated dataset of 30 questions designed to test the RAG and Text-to-SQL pipeline across three distinct difficulty and phrasing tiers:
 
