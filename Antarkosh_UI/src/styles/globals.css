@@ -1392,5 +1392,27 @@ button:disabled { cursor: not-allowed; }
 .db-form { display: flex; flex-direction: column; gap: 12px; }
 .db-form__row { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--color-text); }
 .db-form__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.db-form__password-wrap { position: relative; display: flex; align-items: center; width: 100%; }
+.db-form__password-wrap .db-form__password-input { width: 100%; padding-right: 38px; }
+.db-form__password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm, 4px);
+  transition: color 0.15s ease;
+}
+.db-form__password-toggle:hover {
+  color: var(--color-text);
+}
+
 
 

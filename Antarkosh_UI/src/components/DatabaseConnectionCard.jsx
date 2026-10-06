@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Database, Loader2 } from 'lucide-react'
+import { Database, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getDbConnection, testDbConnection, saveDbConnection } from '../services/api.js'
 
@@ -20,6 +20,7 @@ export default function DatabaseConnectionCard() {
   const [form, setForm] = useState({})
   const [busy, setBusy] = useState(null) // 'test' | 'save' | null
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     getDbConnection()
@@ -104,14 +105,36 @@ export default function DatabaseConnectionCard() {
           spec.fields.map((f) => (
             <label key={f} className="db-form__row">
               <span>{LABELS[f] || f}</span>
-              <input
-                className="dialog-card__input"
-                type={f === 'password' ? 'password' : f === 'port' ? 'number' : 'text'}
-                autoComplete={f === 'password' ? 'new-password' : 'off'}
-                placeholder={f === 'password' && cfg.password_set ? '•••••••• (unchanged)' : ''}
-                value={form[f] ?? ''}
-                onChange={(e) => set({ [f]: e.target.value })}
-              />
+              {f === 'password' ? (
+                <div className="db-form__password-wrap">
+                  <input
+                    className="dialog-card__input db-form__password-input"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder={cfg.password_set ? '•••••••• (unchanged)' : ''}
+                    value={form[f] ?? ''}
+                    onChange={(e) => set({ [f]: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="db-form__password-toggle"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              ) : (
+                <input
+                  className="dialog-card__input"
+                  type={f === 'port' ? 'number' : 'text'}
+                  autoComplete="off"
+                  value={form[f] ?? ''}
+                  onChange={(e) => set({ [f]: e.target.value })}
+                />
+              )}
             </label>
           ))
         )}
