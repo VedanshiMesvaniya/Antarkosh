@@ -41,10 +41,13 @@ data/qdrant_local/
 # IDEs & OS
 .vscode/
 .idea/
+.agent/
+.planning/
 *.swp
 *.swo
 .DS_Store
 Thumbs.db
+
 
 # Transfer / Bundle artifacts
 *.bundle
@@ -60,3 +63,5 @@ evals/**/results/
 *.db
 
 qdrant/
+
+

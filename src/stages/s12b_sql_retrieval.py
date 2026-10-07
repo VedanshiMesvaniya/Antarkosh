@@ -63,6 +63,36 @@ from src.stages.sql_repair import (
 
 logger = logging.getLogger(__name__)
 
+# Columns to hide from the user-facing display (markdown table + sqlPayload).
+# The LLM-generated SQL query and internal row data are never filtered —
+# the LLM may still use these columns in WHERE / JOIN / ORDER BY clauses.
+_DISPLAY_HIDDEN_COLS: frozenset[str] = frozenset({
+    "id",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+})
+
+
+def _filter_display_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return *rows* with hidden metadata columns removed (display only).
+
+    Columns are matched case-insensitively.  If ALL columns would be stripped
+    (extremely unlikely), the original rows are returned unchanged so the user
+    always sees something meaningful.
+    """
+    if not rows:
+        return rows
+    visible_keys = [
+        k for k in rows[0].keys()
+        if k.lower() not in _DISPLAY_HIDDEN_COLS
+    ]
+    # Safety-net: never return an empty table.
+    if not visible_keys:
+        return rows
+    return [{k: row[k] for k in visible_keys} for row in rows]
+
+
 
 def _sanitize_cell_value(val: Any) -> Any:
     """Ensure raw DB cell types (date, datetime, Decimal, bytes) are JSON serializable."""
@@ -1255,12 +1285,13 @@ class SQLRetriever:
                 self.last_query_status = "empty_result" if is_empty_result else "success"
 
                 label = f"live_database ({', '.join(tables)})" if tables else "live_database"
-                formatted_table = _format_rows_as_markdown(rows, sql, is_agg_zero=is_agg_zero)
-                headers = list(rows[0].keys()) if rows else []
+                display_rows = _filter_display_rows(rows)
+                formatted_table = _format_rows_as_markdown(display_rows, sql, is_agg_zero=is_agg_zero)
+                display_headers = list(display_rows[0].keys()) if display_rows else []
                 sql_payload = {
                     "query": sql,
-                    "columns": headers,
-                    "rows": _sanitize_rows(rows),
+                    "columns": display_headers,
+                    "rows": _sanitize_rows(display_rows),
                     "row_count": len(rows),
                 }
                 self.last_sql_payload = sql_payload
@@ -1618,12 +1649,13 @@ class SQLRetriever:
 
                 self.last_query_status = "empty_result" if is_empty_result else "success"
                 label = f"live_database ({', '.join(tables)})" if tables else "live_database"
-                formatted_table = _format_rows_as_markdown(rows, current_sql, is_agg_zero=is_agg_zero)
-                headers = list(rows[0].keys()) if rows else []
+                display_rows = _filter_display_rows(rows)
+                formatted_table = _format_rows_as_markdown(display_rows, current_sql, is_agg_zero=is_agg_zero)
+                display_headers = list(display_rows[0].keys()) if display_rows else []
                 sql_payload = {
                     "query": current_sql,
-                    "columns": headers,
-                    "rows": _sanitize_rows(rows),
+                    "columns": display_headers,
+                    "rows": _sanitize_rows(display_rows),
                     "row_count": len(rows),
                 }
                 self.last_sql_payload = sql_payload
