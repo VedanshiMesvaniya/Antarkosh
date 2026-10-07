@@ -163,6 +163,16 @@ DANGEROUS_FUNCTIONS = frozenset({
     "release_all_locks",
     "is_free_lock",
     "is_used_lock",
+    # PostgreSQL equivalents: DoS, file/large-object access, cross-server access,
+    # session/server control and advisory locks.
+    "pg_sleep", "pg_sleep_for", "pg_sleep_until",
+    "pg_read_file", "pg_read_binary_file", "pg_ls_dir", "pg_stat_file",
+    "lo_get", "lo_put", "lo_unlink",
+    "dblink", "dblink_exec", "dblink_connect", "dblink_connect_u",
+    "set_config", "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf",
+    "pg_advisory_lock", "pg_advisory_lock_shared", "pg_try_advisory_lock",
+    "pg_try_advisory_lock_shared", "pg_advisory_xact_lock", "pg_advisory_xact_lock_shared",
+    "pg_try_advisory_xact_lock", "pg_try_advisory_xact_lock_shared",
 })
 
 

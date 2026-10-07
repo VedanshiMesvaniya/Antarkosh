@@ -77,7 +77,7 @@ export default function DatabaseConnectionCard() {
         <h3 className="settings-card__title">Database Connection</h3>
       </div>
       <p className="settings-card__desc">
-        Admin only. Credentials are tested first, then saved to the server&apos;s .env.
+        Admin only. Credentials are tested first, then saved to the server&apos;s configuration file.
       </p>
 
       <div className="db-form">

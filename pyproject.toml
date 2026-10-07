@@ -47,6 +47,7 @@ dependencies = [
     "sqlglot>=23.0.0",   # SQL parsing / safety validation
     "aiosqlite>=0.20.0", # async SQLite for the live-data DB
     "aiomysql>=0.2",     # async MySQL support for the live-data DB
+    "asyncpg>=0.29",     # async PostgreSQL support for the live-data DB
 
     # API server
     "fastapi>=0.111",
@@ -70,6 +71,9 @@ dev = [
 [project.optional-dependencies]
 mysql = [
     "aiomysql>=0.2",
+]
+postgresql = [
+    "asyncpg>=0.29",
 ]
 
 [project.scripts]

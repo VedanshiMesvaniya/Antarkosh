@@ -141,4 +141,37 @@ async def _execute(engine: str, sql: str, params: dict | None) -> list[dict[str,
         finally:
             conn.close()
 
+    elif engine == "postgresql":
+        import asyncpg
+
+        # Unlike MySQL, PostgreSQL can enforce read-only at the transaction level,
+        # so this holds even if the connected role has write grants. A read-only
+        # role is still the recommended deployment, as with MySQL.
+        # asyncpg (not psycopg) on purpose: it runs on Windows' default asyncio loop.
+        if isinstance(params, dict):
+            raise ValueError("Named query parameters are not supported for PostgreSQL")
+        args = tuple(params) if params else ()
+        conn = await asyncpg.connect(
+            host=settings.db_host,
+            port=settings.db_port,
+            user=settings.db_readonly_user,
+            password=settings.db_readonly_password,
+            database=settings.db_name,
+            timeout=10,
+            server_settings={
+                "application_name": "antarkosh",
+                # Server-side backstop for the asyncio.timeout in the caller.
+                "statement_timeout": str(int(QUERY_TIMEOUT_SECONDS * 1000)),
+            },
+        )
+        try:
+            async with conn.transaction(readonly=True):
+                records = await conn.fetch(sql, *args)
+            return [dict(r) for r in records]
+        finally:
+            try:
+                await asyncio.wait_for(conn.close(), timeout=5)
+            except Exception:  # a cancelled/stuck connection: drop it rather than hang
+                conn.terminate()
+
     raise ValueError(f"Unsupported db_engine {engine!r}")

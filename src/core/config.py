@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
+from src.core.db_config_file import apply_to as _apply_db_config_file
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +77,10 @@ class Settings(BaseSettings):
     openrouter_text_model: str = "meta-llama/llama-3.3-70b-instruct:free"
     openrouter_vision_model: str = "meta-llama/llama-3.2-11b-vision-instruct:free"
 
-    # --- Live data / Text-to-SQL ---
-    # "sqlite" (default, uses the local live_data.db file) or "mysql".
+    # "sqlite" (default, uses the local live_data.db file), "mysql" or "postgresql".
+    # A connection saved from the admin UI is stored in config/db_connection.json
+    # (or $DB_CONFIG_FILE) and overrides these env/.env values — see db_config_file.py.
+    # If you set DB_ENGINE=postgresql via env only, also set DB_PORT (default below is MySQL's).
     db_engine: str = "sqlite"
     db_host: str = ""
     db_port: int = 3306
@@ -236,3 +239,6 @@ def load_provider_config() -> dict[str, Any]:
 
 # Module-level singleton — import this wherever config is needed.
 settings = Settings()
+
+# The admin-saved DB connection (if any) wins over env/.env, on every host.
+_apply_db_config_file(settings)

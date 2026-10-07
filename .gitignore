@@ -62,6 +62,7 @@ evals/**/results/
 # SQLite databases
 *.db
 
+config/db_connection.json
 qdrant/
 
 

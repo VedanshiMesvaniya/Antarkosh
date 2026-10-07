@@ -45,6 +45,7 @@ from src.utils.stream_token_counter import TokenBudgetExceededError
 from src.utils.schema_compactor import compact_ddl, extract_join_hints
 from src.utils.schema_token_estimator import estimate_schema_tokens
 from src.utils.sql_safety import (
+    DANGEROUS_FUNCTIONS as _SHARED_DANGEROUS_FUNCTIONS,
     check_dangerous_patterns,
     is_destructive_sql,
     validate_sql_safety,
@@ -136,7 +137,7 @@ def format_schema_rows(profile: SQLDialectProfile, rows: list[dict[str, Any]]) -
             row["sql"] for row in rows if row["name"] != "sqlite_sequence"
         )
 
-    if profile.key == "mysql":
+    if profile.key in ("mysql", "postgresql"):
         tables: dict[str, list[str]] = {}
         for row in rows:
             comment = row.get("column_comment") or ""
@@ -1743,7 +1744,7 @@ class SQLRetriever:
             rows = await run_readonly_query(self._dialect.schema_query, max_rows=20000)
             schema = format_schema_rows(self._dialect, rows)
 
-            if self._dialect.key == "mysql" and self._dialect.fk_query:
+            if self._dialect.fk_query:  # MySQL / PostgreSQL: one query covers all FKs
                 fk_rows = await run_readonly_query(self._dialect.fk_query, max_rows=20000)
             elif self._dialect.key == "sqlite":
                 fk_rows = await fetch_sqlite_foreign_keys()
@@ -1940,7 +1941,7 @@ class SQLRetriever:
             )
 
             if is_feature_enabled("schema_compaction_enabled"):
-                dialect_key = self._dialect.key if hasattr(self, "_dialect") and self._dialect else None
+                dialect_key = self._dialect.sqlglot_dialect if hasattr(self, "_dialect") and self._dialect else None
                 compact_ddls = [
                     compact_ddl(c["ddl"] if isinstance(c, dict) else str(c), dialect=dialect_key)
                     for c in selected
@@ -2220,7 +2221,7 @@ Schema:
         "get_lock", "release_lock",           # MySQL: advisory lock contention DoS
         "release_all_locks",
         "is_free_lock", "is_used_lock",
-    })
+    }) | _SHARED_DANGEROUS_FUNCTIONS          # + PostgreSQL names; one shared list, no drift
 
     @classmethod
     def _get_scoped_readability_rules(cls, query: str, schema_tables: list[str]) -> str:

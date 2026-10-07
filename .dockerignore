@@ -22,3 +22,4 @@ data/
 
 # Local secrets — provided as environment variables on the host instead.
 .env
+config/db_connection.json

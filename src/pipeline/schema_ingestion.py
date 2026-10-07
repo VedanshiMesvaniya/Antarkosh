@@ -66,7 +66,7 @@ def _split_schema_by_table(
     dialect: SQLDialectProfile, rows: list[dict[str, Any]]
 ) -> dict[str, str]:
     """Return {table_name: schema_text} for each table in the database."""
-    if dialect.key == "mysql":
+    if dialect.key in ("mysql", "postgresql"):
         return _split_mysql_tables(rows)
     if dialect.key == "sqlite":
         return _split_sqlite_tables(rows)
@@ -147,7 +147,7 @@ async def sync_live_schema(
     # 3. Fetch FK info and attach to relevant tables
     fk_map: dict[str, list[str]] = {}
     try:
-        if dialect.key == "mysql" and dialect.fk_query:
+        if dialect.fk_query:  # MySQL / PostgreSQL: one query covers all FKs
             fk_rows = await run_readonly_query(dialect.fk_query, max_rows=20000)
         elif dialect.key == "sqlite":
             from src.stages.s12b_sql_retrieval import fetch_sqlite_foreign_keys
