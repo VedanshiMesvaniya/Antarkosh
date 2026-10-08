@@ -49,7 +49,9 @@ def current_config() -> dict[str, Any]:
         "engine": settings.db_engine,
         "host": settings.db_host,
         "port": settings.db_port,
-        "database": settings.db_name,
+        "database": settings.db_name if settings.db_engine != "oracle" else "",
+        "service_name": settings.db_name if settings.db_engine == "oracle" else "",
+        "odbc_driver": settings.db_odbc_driver,
         "username": settings.db_readonly_user,
         "password_set": bool(settings.db_readonly_password),
         "engines": [{"key": k, **{f: v for f, v in s.items()}} for k, s in ENGINES.items()],
@@ -68,8 +70,18 @@ def _clean(payload: dict[str, Any]) -> dict[str, Any]:
     if engine == "sqlite":
         return out                       # SQLite: only the engine switches; stored server values stay put
 
-    for f in ("host", "database", "username"):
-        out[f] = str(payload.get(f) or "").strip()
+    out["host"] = str(payload.get("host") or "").strip()
+    out["username"] = str(payload.get("username") or "").strip()
+
+    if engine == "oracle":
+        svc = str(payload.get("service_name") or payload.get("database") or "").strip()
+        out["service_name"] = svc
+        out["database"] = svc
+    elif engine == "mssql":
+        out["database"] = str(payload.get("database") or "").strip()
+        out["odbc_driver"] = str(payload.get("odbc_driver") or settings.db_odbc_driver or "ODBC Driver 18 for SQL Server").strip()
+    else:
+        out["database"] = str(payload.get("database") or "").strip()
     try:
         out["port"] = int(payload.get("port") or spec["default_port"] or 0)
     except (TypeError, ValueError):
@@ -130,6 +142,57 @@ async def _test_postgresql(cfg: dict[str, Any]) -> None:
         await conn.close()
 
 
+async def _test_mssql(cfg: dict[str, Any]) -> None:
+    try:
+        import pyodbc
+    except ImportError:
+        raise DBSettingsError(
+            "The pyodbc driver is not installed on the server. Run: uv add pyodbc"
+        ) from None
+    driver = cfg.get("odbc_driver") or settings.db_odbc_driver or "ODBC Driver 18 for SQL Server"
+    conn_str = (
+        f"DRIVER={{{driver}}};"
+        f"SERVER={cfg['host']},{cfg['port']};"
+        f"DATABASE={cfg['database']};"
+        f"UID={cfg['username']};"
+        f"PWD={cfg['password']};"
+        "TrustServerCertificate=yes;"
+    )
+
+    def _connect() -> None:
+        with pyodbc.connect(conn_str, timeout=5) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+
+    await asyncio.wait_for(asyncio.to_thread(_connect), timeout=8)
+
+
+async def _test_oracle(cfg: dict[str, Any]) -> None:
+    try:
+        import oracledb
+    except ImportError:
+        raise DBSettingsError(
+            "The oracledb driver is not installed on the server. Run: uv add oracledb"
+        ) from None
+    svc = cfg.get("service_name") or cfg.get("database") or ""
+
+    def _connect() -> None:
+        with oracledb.connect(
+            user=cfg["username"],
+            password=cfg["password"],
+            host=cfg["host"],
+            port=cfg["port"],
+            service_name=svc,
+            tcp_connect_timeout=5,
+        ) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 FROM DUAL")
+                cur.fetchone()
+
+    await asyncio.wait_for(asyncio.to_thread(_connect), timeout=8)
+
+
 async def _test_connection(cfg: dict[str, Any]) -> None:
     if cfg["engine"] == "sqlite":
         from src.core.db_client import DB_PATH
@@ -139,6 +202,10 @@ async def _test_connection(cfg: dict[str, Any]) -> None:
     try:
         if cfg["engine"] == "postgresql":
             await _test_postgresql(cfg)
+        elif cfg["engine"] == "mssql":
+            await _test_mssql(cfg)
+        elif cfg["engine"] == "oracle":
+            await _test_oracle(cfg)
         else:
             await _test_mysql(cfg)
     except DBSettingsError:
@@ -157,6 +224,8 @@ def _apply_runtime(cfg: dict[str, Any]) -> None:
         settings.db_name = cfg["database"]
         settings.db_readonly_user = cfg["username"]
         settings.db_readonly_password = cfg["password"]
+        if cfg["engine"] == "mssql" and cfg.get("odbc_driver"):
+            settings.db_odbc_driver = cfg["odbc_driver"]
     # Everything cached from the previous database is now wrong.
     from src.stages.s12b_sql_retrieval import SQLRetriever
     from src.utils.semantic_cache import SemanticCache
@@ -179,6 +248,8 @@ async def save(payload: dict[str, Any]) -> dict[str, Any]:
                 db_host=cfg["host"], db_port=cfg["port"], db_name=cfg["database"],
                 db_readonly_user=cfg["username"], db_readonly_password=cfg["password"],
             )
+            if cfg["engine"] == "mssql" and cfg.get("odbc_driver"):
+                updates["db_odbc_driver"] = cfg["odbc_driver"]
         try:                                          # 2. persist (atomic; old file kept on failure)
             db_config_file.write(updates)
         except (OSError, ValueError) as e:

@@ -31,6 +31,8 @@ export default function DatabaseConnectionCard() {
           host: c.host,
           port: c.port,
           database: c.database,
+          service_name: c.service_name || '',
+          odbc_driver: c.odbc_driver || '',
           username: c.username,
         })
       })
@@ -45,7 +47,11 @@ export default function DatabaseConnectionCard() {
   const onEngine = (key) => {
     const next = cfg.engines.find((e) => e.key === key)
     setError('')
-    set({ engine: key, port: next.default_port ?? '' })
+    set({
+      engine: key,
+      port: next?.default_port ?? '',
+      ...(key === 'mssql' && !form.odbc_driver ? { odbc_driver: cfg.odbc_driver || 'ODBC Driver 18 for SQL Server' } : {}),
+    })
   }
 
   const run = async (kind) => {

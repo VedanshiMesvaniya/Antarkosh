@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -242,8 +243,28 @@ def load_provider_config() -> dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
+def _apply_ingestion_config_file(target: Settings) -> None:
+    """Load auto-ingestion settings from config/ingestion.json if present."""
+    path = CONFIG_DIR / "ingestion.json"
+    if not path.exists():
+        return
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+        if isinstance(data, dict):
+            if "auto_ingest_on_startup" in data:
+                target.auto_ingest_on_startup = bool(data["auto_ingest_on_startup"])
+            if "auto_ingest_interval_seconds" in data:
+                target.auto_ingest_interval_seconds = int(data["auto_ingest_interval_seconds"])
+            logger.info("Ingestion settings loaded from %s", path)
+    except Exception as e:
+        logger.warning("Could not load ingestion config from %s: %s", path, e)
+
+
 # Module-level singleton — import this wherever config is needed.
 settings = Settings()
 
 # The admin-saved DB connection (if any) wins over env/.env, on every host.
 _apply_db_config_file(settings)
+
+# Ingestion settings from config/ingestion.json (if any) win over env/.env.
+_apply_ingestion_config_file(settings)

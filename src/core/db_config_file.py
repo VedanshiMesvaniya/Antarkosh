@@ -31,6 +31,7 @@ CONFIG_KEYS: tuple[str, ...] = (
     "db_name",
     "db_readonly_user",
     "db_readonly_password",
+    "db_odbc_driver",
 )
 
 _DEFAULT_PATH = Path(__file__).resolve().parents[2] / "config" / "db_connection.json"

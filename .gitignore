@@ -63,6 +63,7 @@ evals/**/results/
 *.db
 
 config/db_connection.json
+config/ingestion.json
 qdrant/
 
 
