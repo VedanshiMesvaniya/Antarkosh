@@ -117,6 +117,26 @@ class Retriever:
         else:
             effective_top_k = min(top_k * 2, 100) if exhaustive else min(top_k, 50)
 
+        user_id = filters.get("user_id") if filters else None
+        allowed_docs: list[str] | None = None
+        effective_filters = filters
+        if user_id and user_id not in ("*", "all", "anonymous", "admin"):
+            from src.core.ingestion_registry import IngestionRegistry
+            registry = IngestionRegistry()
+            active_docs = registry.get_active()
+            allowed_docs = [
+                d["document_id"]
+                for d in active_docs
+                if user_id in d.get("allowed_users", []) or (not d.get("allowed_users") and d.get("user_id") == user_id)
+            ]
+            # If this user has no allowed documents, they cannot retrieve any document chunks
+            if len(allowed_docs) == 0:
+                logger.info("User '%s' has 0 accessible documents — returning empty retrieval results", user_id)
+                return []
+
+            effective_filters = dict(filters or {})
+            effective_filters["allowed_document_ids"] = allowed_docs
+
         # Get dense + sparse query embeddings in one API call
         dense_vector, sparse_vector = await self._embeddings.embed_query(retrieval_query)
 
@@ -126,8 +146,12 @@ class Retriever:
             sparse_vector=sparse_vector,
             query_text=retrieval_query,
             top_k=effective_top_k,
-            filters=filters,
+            filters=effective_filters,
         )
+
+        if allowed_docs is not None:
+            allowed_set = set(allowed_docs)
+            results = [r for r in results if r.chunk.document_id in allowed_set]
 
         # Collapse boilerplate shared across documents (same intro/disclaimer
         # stored once per file) so repeated passages don't crowd the reranker or

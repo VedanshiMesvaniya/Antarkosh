@@ -58,11 +58,13 @@ def clean_state(tmp_path):
 @pytest.mark.asyncio
 async def test_auth_login_success():
     """Verify login with valid alpha credentials returns 200 and sets session cookie."""
+    from src.api.auth import ALPHA_USERS
+    mihir_pass = ALPHA_USERS.get("mihir", "mihir123")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         res = await client.post(
             "/api/auth/login",
-            json={"username": "mihir", "password": "alpha_pass_1"},
+            json={"username": "mihir", "password": mihir_pass},
         )
         assert res.status_code == 200
         data = res.json()
@@ -304,6 +306,160 @@ async def test_ui_document_endpoints_isolation(tmp_path):
             assert "Access denied" in res_del.json()["detail"]
 
 
+@pytest.mark.asyncio
+async def test_only_admin_can_upload_update_delete_documents(tmp_path):
+    """Verify non-admin cannot upload, update, or delete documents, but can view admin documents."""
+    registry_file = tmp_path / "test_reg_admin_only.json"
+    dummy_doc = tmp_path / "company_handbook.pdf"
+    dummy_doc.write_text("Company Handbook 2026")
+
+    test_registry = IngestionRegistry(registry_path=registry_file)
+    v_admin = test_registry.create_version(dummy_doc, "hash_admin", 12, user_id="admin")
+
+    with patch("src.core.ingestion_registry.IngestionRegistry.get_all", side_effect=test_registry.get_all), \
+         patch("src.core.ingestion_registry.IngestionRegistry.get_by_document_id", side_effect=test_registry.get_by_document_id), \
+         patch("src.core.ingestion_registry.IngestionRegistry.update_document_access", side_effect=test_registry.update_document_access):
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. Non-admin (rahul) attempts to upload -> 403 Forbidden
+            res_upload = await client.post(
+                "/api/upload",
+                files={"file": ("test.pdf", b"dummy content", "application/pdf")},
+                headers={"X-User-Id": "rahul"},
+            )
+            assert res_upload.status_code == 403
+            assert "Admin access required" in res_upload.json()["detail"]
+
+            # 2. Non-admin (rahul) attempts to replace -> 403 Forbidden
+            res_replace = await client.post(
+                f"/api/documents/{v_admin['document_id']}/replace",
+                files={"file": ("test_v2.pdf", b"new dummy content", "application/pdf")},
+                headers={"X-User-Id": "rahul"},
+            )
+            assert res_replace.status_code == 403
+            assert "Admin access required" in res_replace.json()["detail"]
+
+            # 3. Non-admin (rahul) attempts to delete -> 403 Forbidden
+            res_delete = await client.delete(
+                f"/api/documents/{v_admin['document_id']}",
+                headers={"X-User-Id": "rahul"},
+            )
+            assert res_delete.status_code == 403
+            assert "Admin access required" in res_delete.json()["detail"]
+
+            # 4. Initially rahul has no access -> not in document list
+            res_list_initial = await client.get("/api/documents", headers={"X-User-Id": "rahul"})
+            assert res_list_initial.status_code == 200
+            names_initial = [d["name"] for d in res_list_initial.json()]
+            assert "company_handbook.pdf" not in names_initial
+
+            # 5. Non-admin cannot modify access -> 403 Forbidden
+            res_access_forbidden = await client.post(
+                f"/api/documents/{v_admin['document_id']}/access",
+                json={"allowed_users": ["rahul"]},
+                headers={"X-User-Id": "rahul"},
+            )
+            assert res_access_forbidden.status_code == 403
+
+            # 6. Admin grants rahul access
+            res_access = await client.post(
+                f"/api/documents/{v_admin['document_id']}/access",
+                json={"allowed_users": ["rahul"]},
+                headers={"X-User-Id": "admin"},
+            )
+            assert res_access.status_code == 200
+            assert "rahul" in res_access.json()["allowed_users"]
+
+            # 7. Now rahul has access and sees it
+            res_list_after = await client.get("/api/documents", headers={"X-User-Id": "rahul"})
+            assert res_list_after.status_code == 200
+            names_after = [d["name"] for d in res_list_after.json()]
+            assert "company_handbook.pdf" in names_after
+
+            # 8. Priya was not granted access -> still cannot see it
+            res_list_priya = await client.get("/api/documents", headers={"X-User-Id": "priya"})
+            assert res_list_priya.status_code == 200
+            names_priya = [d["name"] for d in res_list_priya.json()]
+            assert "company_handbook.pdf" not in names_priya
+
+
+@pytest.mark.asyncio
+async def test_user_cannot_get_answer_from_unauthorized_document(tmp_path):
+    """Verify retrieval excludes documents a user does not have permission to access."""
+    from src.stages.s12_s13_s14_retrieval import Retriever
+    from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
+
+    registry_file = tmp_path / "test_reg_retrieval.json"
+    dummy_secret = tmp_path / "secret_plans.pdf"
+    dummy_secret.write_text("Secret Company Plans 2026")
+    dummy_public = tmp_path / "public_info.pdf"
+    dummy_public.write_text("Public Company Info 2026")
+
+    test_reg = IngestionRegistry(registry_path=registry_file)
+    v_secret = test_reg.create_version(dummy_secret, "hash_sec", 5, user_id="admin", allowed_users=["mihir"])
+    v_public = test_reg.create_version(dummy_public, "hash_pub", 5, user_id="admin", allowed_users=["rahul"])
+
+    chunk_sec = RetrievedChunk(
+        chunk=Chunk(
+            chunk_id="c_sec",
+            document_id=v_secret["document_id"],
+            content="Top secret merger details 2026",
+            chunk_type=ChunkType.PROSE,
+            document_type=DocumentType.GENERAL,
+            source_file="secret_plans.pdf",
+            user_id="admin",
+        ),
+        score=0.95,
+        retrieval_method="dense",
+    )
+    chunk_pub = RetrievedChunk(
+        chunk=Chunk(
+            chunk_id="c_pub",
+            document_id=v_public["document_id"],
+            content="Public company holiday schedule",
+            chunk_type=ChunkType.PROSE,
+            document_type=DocumentType.GENERAL,
+            source_file="public_info.pdf",
+            user_id="admin",
+        ),
+        score=0.90,
+        retrieval_method="dense",
+    )
+
+    from unittest.mock import AsyncMock, MagicMock
+    mock_store = MagicMock()
+    mock_store.search_hybrid = AsyncMock(return_value=[chunk_sec, chunk_pub])
+    mock_embed = MagicMock()
+    mock_embed.embed_query = AsyncMock(return_value=([0.1]*10, None))
+
+    retriever = Retriever(store=mock_store, embedding_service=mock_embed)
+
+    with patch("src.core.ingestion_registry.IngestionRegistry.get_active", side_effect=test_reg.get_active):
+        # 1. Rahul asks query (only has access to v_public, NOT v_secret)
+        rahul_results = await retriever.retrieve("tell me secret plans", filters={"user_id": "rahul"})
+        rahul_doc_ids = [r.chunk.document_id for r in rahul_results]
+        assert v_secret["document_id"] not in rahul_doc_ids
+        assert v_public["document_id"] in rahul_doc_ids
+
+        # 2. User with no document access (priya) gets empty list immediately
+        priya_results = await retriever.retrieve("tell me secret plans", filters={"user_id": "priya"})
+        assert priya_results == []
+
+        # 3. Mihir has access to v_secret
+        mihir_results = await retriever.retrieve("tell me secret plans", filters={"user_id": "mihir"})
+        mihir_doc_ids = [r.chunk.document_id for r in mihir_results]
+        assert v_secret["document_id"] in mihir_doc_ids
+
+        # 4. Admin has unrestricted access to all documents
+        admin_results = await retriever.retrieve("tell me secret plans", filters={"user_id": "admin"})
+        admin_doc_ids = [r.chunk.document_id for r in admin_results]
+        assert v_secret["document_id"] in admin_doc_ids
+        assert v_public["document_id"] in admin_doc_ids
+
+
+
+
 # ---------------------------------------------------------------------------
 # 4. Qdrant Vector Store Filter Tests
 # ---------------------------------------------------------------------------
@@ -326,6 +482,7 @@ def test_qdrant_store_build_filter_user_isolation():
     assert "mihir" in match_any_cond.match.any
     assert "system" in match_any_cond.match.any
     assert "shared" in match_any_cond.match.any
+    assert "admin" in match_any_cond.match.any
     assert "rahul" not in match_any_cond.match.any
 
     # Verify IsEmptyCondition is included for legacy unassigned chunks
@@ -335,3 +492,63 @@ def test_qdrant_store_build_filter_user_isolation():
 
     # Always excludes inactive (superseded) chunks
     assert any(c.key == "active" for c in q_filter.must_not)
+
+
+@pytest.mark.asyncio
+async def test_admin_manage_document_user_access_api(tmp_path):
+    """Verify admin can list users, retrieve doc access, and assign access, while non-admins are blocked."""
+    registry_file = tmp_path / "test_reg_access.json"
+    dummy_file = tmp_path / "roadmap.pdf"
+    dummy_file.write_text("Company Roadmap")
+
+    test_registry = IngestionRegistry(registry_path=registry_file)
+    entry = test_registry.create_version(dummy_file, "hash_roadmap", 12, user_id="admin", allowed_users=["mihir"])
+    doc_id = entry["document_id"]
+
+    with patch("src.core.ingestion_registry.IngestionRegistry.get_all", return_value=test_registry.get_all()), \
+         patch("src.core.ingestion_registry.IngestionRegistry.get_by_document_id", side_effect=test_registry.get_by_document_id), \
+         patch("src.core.ingestion_registry.IngestionRegistry.update_document_access", side_effect=test_registry.update_document_access):
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # 1. Non-admin trying to get /api/users -> 403 Forbidden
+            res_users_user = await client.get("/api/users", headers={"X-User-Id": "mihir"})
+            assert res_users_user.status_code == 403
+
+            # 2. Admin gets /api/users -> 200 OK and list of users
+            res_users_admin = await client.get("/api/users", headers={"X-User-Id": "admin"})
+            assert res_users_admin.status_code == 200
+            users_data = res_users_admin.json()
+            assert "mihir" in users_data["users"]
+            assert "admin" not in users_data["users"]  # admin excluded from selectable users
+
+            # 3. Non-admin getting doc access -> 403
+            res_acc_user = await client.get(f"/api/documents/{doc_id}/access", headers={"X-User-Id": "mihir"})
+            assert res_acc_user.status_code == 403
+
+            # 4. Admin getting doc access -> 200
+            res_acc_admin = await client.get(f"/api/documents/{doc_id}/access", headers={"X-User-Id": "admin"})
+            assert res_acc_admin.status_code == 200
+            assert res_acc_admin.json()["allowed_users"] == ["mihir"]
+
+            # 5. Non-admin modifying access -> 403
+            res_update_user = await client.post(
+                f"/api/documents/{doc_id}/access",
+                headers={"X-User-Id": "rahul"},
+                json={"allowed_users": ["rahul"]},
+            )
+            assert res_update_user.status_code == 403
+
+            # 6. Admin modifies access to add vedanshi and remove mihir
+            res_update_admin = await client.post(
+                f"/api/documents/{doc_id}/access",
+                headers={"X-User-Id": "admin"},
+                json={"allowed_users": ["vedanshi"]},
+            )
+            assert res_update_admin.status_code == 200
+            assert res_update_admin.json()["allowed_users"] == ["vedanshi"]
+
+            # 7. Verify document entry reflects update
+            updated_entry = test_registry.get_by_document_id(doc_id)
+            assert updated_entry["allowed_users"] == ["vedanshi"]
+

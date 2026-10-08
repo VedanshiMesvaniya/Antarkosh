@@ -209,27 +209,21 @@ class IngestionRegistry:
         supersedes: str | None = None,
         user_id: str = "system",
         embedding_model: str = "",
+        allowed_users: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Record a freshly-indexed document as a new **active** version.
-
-        Step 1 of the atomic cutover; always called *after* the content is fully
-        embedded and stored. It does not touch the version being replaced — call
-        :meth:`supersede` immediately after to flip the old version inactive.
-
-        If ``supersedes`` names an existing version, the new version inherits its
-        ``lineage_root`` (joins the same lineage); otherwise it starts a new
-        lineage rooted at itself.
-        """
+        """Record a freshly-indexed document as a new **active** version."""
         path = Path(file_path)
 
         doc_id = document_id or _new_document_id()
         lineage_root = doc_id
+        inherited_allowed_users: list[str] = []
         if supersedes:
             # Only touch the backend when we actually need the prior version's
             # lineage — a brand-new document needs no read at all.
             prior = self._backend.load_all().get(supersedes)
             if prior is not None:
                 lineage_root = prior.get("lineage_root", supersedes)
+                inherited_allowed_users = list(prior.get("allowed_users", []))
             else:
                 logger.warning(
                     "Registry: create_version supersedes unknown doc_id=%s "
@@ -237,6 +231,8 @@ class IngestionRegistry:
                     supersedes,
                 )
                 supersedes = None
+
+        final_allowed_users = list(allowed_users) if allowed_users is not None else inherited_allowed_users
 
         entry = {
             "document_id": doc_id,
@@ -252,6 +248,7 @@ class IngestionRegistry:
             "lineage_root": lineage_root,
             "user_id": user_id,
             "embedding_model": embedding_model,
+            "allowed_users": final_allowed_users,
         }
         self._backend.write_batch([entry], [])
         logger.info(
@@ -355,13 +352,36 @@ class IngestionRegistry:
         """Look up a single version by its document_id."""
         return self._backend.load_all().get(document_id)
 
+    def update_document_access(self, document_id: str, allowed_users: list[str]) -> bool:
+        """Update allowed users for a document and its entire lineage."""
+        registry = self._backend.load_all()
+        entry = registry.get(document_id)
+        if entry is None:
+            return False
+
+        clean_users = sorted(list({str(u).strip() for u in allowed_users if str(u).strip()}))
+        root = entry.get("lineage_root", document_id)
+        changed = []
+        for doc_id, item in registry.items():
+            if doc_id == document_id or item.get("lineage_root") == root:
+                item["allowed_users"] = clean_users
+                changed.append(item)
+
+        if not changed:
+            entry["allowed_users"] = clean_users
+            changed = [entry]
+
+        self._backend.write_batch(changed, [])
+        logger.info("Registry: updated allowed_users for doc_id=%s (%d versions) to %s", document_id, len(changed), clean_users)
+        return True
+
     def get_active(self, user_id: str | None = None) -> list[dict[str, Any]]:
         """Return all currently-active document versions."""
         entries = [e for e in self._backend.load_all().values() if e.get("active", True)]
         if user_id and user_id not in ("*", "all", "anonymous", "admin"):
             return [
                 e for e in entries
-                if e.get("user_id") in (user_id, "system", "shared") or not e.get("user_id")
+                if user_id in e.get("allowed_users", []) or (not e.get("allowed_users") and e.get("user_id") == user_id)
             ]
         return entries
 

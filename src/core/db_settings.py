@@ -27,9 +27,9 @@ ENGINES: dict[str, dict[str, Any]] = {
                    "fields": ["host", "port", "database", "username", "password"]},
     "sqlite":     {"label": "SQLite",               "ready": True,  "default_port": None,
                    "fields": []},  # fixed file data/live_data.db for now
-    "mssql":      {"label": "Microsoft SQL Server", "ready": False, "default_port": 1433,
+    "mssql":      {"label": "Microsoft SQL Server", "ready": True, "default_port": 1433,
                    "fields": ["host", "port", "database", "username", "password", "odbc_driver"]},
-    "oracle":     {"label": "Oracle",               "ready": False, "default_port": 1521,
+    "oracle":     {"label": "Oracle",               "ready": True, "default_port": 1521,
                    "fields": ["host", "port", "service_name", "username", "password"]},
 }
 _REQUIRED = {

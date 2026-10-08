@@ -205,6 +205,8 @@ def _point_id(document_id: str) -> int:
 
 # Collections seeded from a legacy JSON file this process — import runs once.
 _seeded: set[str] = set()
+_shared_sync_client: Any = None
+_ensured_collections: set[str] = set()
 
 
 class QdrantMetadataBackend:
@@ -228,21 +230,27 @@ class QdrantMetadataBackend:
     # -- client / collection lifecycle -----------------------------------
 
     def _get_client(self) -> Any:
-        if self._client is None:
+        global _shared_sync_client
+        if _shared_sync_client is None:
             from qdrant_client import QdrantClient
 
-            self._client = QdrantClient(
+            _shared_sync_client = QdrantClient(
                 url=settings.qdrant_url, api_key=settings.qdrant_api_key_or_none
             )
-            self._ensure_collection()
-            self._seed_if_empty()
+        self._client = _shared_sync_client
+        self._ensure_collection()
+        self._seed_if_empty()
         return self._client
 
     def _ensure_collection(self) -> None:
+        global _ensured_collections
+        if self._collection in _ensured_collections:
+            return
         from qdrant_client.models import Distance, VectorParams
 
         existing = {c.name for c in self._client.get_collections().collections}
         if self._collection in existing:
+            _ensured_collections.add(self._collection)
             return
         # Placeholder 1-d vector — this collection is queried by payload scroll,
         # never by vector similarity.
@@ -250,6 +258,7 @@ class QdrantMetadataBackend:
             collection_name=self._collection,
             vectors_config=VectorParams(size=1, distance=Distance.COSINE),
         )
+        _ensured_collections.add(self._collection)
         logger.info("Created Qdrant metadata collection '%s'", self._collection)
 
     def _seed_if_empty(self) -> None:

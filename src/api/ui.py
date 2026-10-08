@@ -615,6 +615,7 @@ def _doc_view(entry: dict[str, Any], version_count: int = 1) -> dict[str, Any]:
         "lineageRoot": entry.get("lineage_root", entry.get("document_id", "")),
         "supersedes": entry.get("supersedes"),
         "versionCount": version_count,
+        "allowedUsers": entry.get("allowed_users", []),
     }
 
 
@@ -635,7 +636,7 @@ async def get_documents(current_user: str = Depends(get_current_user_optional)) 
     if current_user and current_user not in ("*", "all", "anonymous", "admin"):
         all_entries = [
             e for e in all_entries
-            if e.get("user_id") in (current_user, "system", "shared") or not e.get("user_id")
+            if current_user in e.get("allowed_users", []) or (not e.get("allowed_users") and e.get("user_id") == current_user)
         ]
 
     # Count versions per lineage so the UI can show "v3" affordances.
@@ -666,9 +667,10 @@ async def get_document_versions(
     if entry is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    owner = entry.get("user_id")
-    if owner and owner not in (current_user, "system", "shared") and current_user and current_user not in ("*", "all", "anonymous", "admin"):
-        raise HTTPException(status_code=403, detail="Access denied to this document")
+    if current_user and current_user not in ("*", "all", "anonymous", "admin"):
+        allowed = entry.get("allowed_users", [])
+        if current_user not in allowed and entry.get("user_id") != current_user:
+            raise HTTPException(status_code=403, detail="Access denied to this document")
 
     root = entry.get("lineage_root", document_id)
     versions = registry.get_versions(root)
@@ -681,9 +683,9 @@ async def get_document_versions(
 @router.delete("/documents/{document_id}")
 async def delete_document(
     document_id: str,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(require_admin),
 ) -> dict[str, Any]:
-    """Delete a document version from both the vector store and the registry."""
+    """Delete a document version from both the vector store and the registry (admin only)."""
     from src.core.ingestion_registry import IngestionRegistry
     from src.stages.s11_vector_store import QdrantStore
 
@@ -691,10 +693,6 @@ async def delete_document(
     entry = registry.get_by_document_id(document_id)
     if entry is None:
         raise HTTPException(status_code=404, detail="Document not found")
-
-    owner = entry.get("user_id")
-    if owner and owner not in (current_user, "system", "shared") and current_user and current_user not in ("*", "all", "anonymous", "admin"):
-        raise HTTPException(status_code=403, detail="Access denied to delete this document")
 
     try:
         await QdrantStore().delete_document(document_id)
@@ -704,6 +702,60 @@ async def delete_document(
 
     registry.unregister(document_id)
     return {"status": "deleted", "document_id": document_id}
+
+
+class DocumentAccessPayload(BaseModel):
+    allowed_users: list[str]
+
+
+@router.get("/users")
+async def get_users_list(_admin: str = Depends(require_admin)) -> dict[str, Any]:
+    """List all available users for document access assignment (admin only)."""
+    try:
+        from config.alpha_users import ALPHA_USERS
+    except ImportError:
+        from src.api.auth import ALPHA_USERS
+    users = [u for u in ALPHA_USERS.keys() if u != "admin"]
+    return {"users": users, "all_users": list(ALPHA_USERS.keys())}
+
+
+@router.get("/documents/{document_id}/access")
+async def get_document_access(
+    document_id: str,
+    _admin: str = Depends(require_admin),
+) -> dict[str, Any]:
+    """Get the list of allowed users for a document (admin only)."""
+    from src.core.ingestion_registry import IngestionRegistry
+
+    registry = IngestionRegistry()
+    entry = registry.get_by_document_id(document_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {
+        "document_id": document_id,
+        "allowed_users": entry.get("allowed_users", []),
+    }
+
+
+@router.post("/documents/{document_id}/access")
+async def update_document_access(
+    document_id: str,
+    body: DocumentAccessPayload,
+    _admin: str = Depends(require_admin),
+) -> dict[str, Any]:
+    """Update user access for a document (admin only)."""
+    from src.core.ingestion_registry import IngestionRegistry
+
+    registry = IngestionRegistry()
+    ok = registry.update_document_access(document_id, body.allowed_users)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Document not found")
+    entry = registry.get_by_document_id(document_id)
+    return {
+        "status": "ok",
+        "document_id": document_id,
+        "allowed_users": entry.get("allowed_users", []) if entry else body.allowed_users,
+    }
 
 
 @router.get("/providers")

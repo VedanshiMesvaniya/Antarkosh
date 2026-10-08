@@ -503,6 +503,22 @@ class QdrantStore:
             conditions.append(
                 FieldCondition(key="document_id", match=MatchValue(value=filters["document_id"]))
             )
+        if "allowed_document_ids" in filters:
+            from qdrant_client.models import MatchAny
+            allowed_ids = filters["allowed_document_ids"]
+            if allowed_ids is not None:
+                if len(allowed_ids) == 0:
+                    conditions.append(
+                        FieldCondition(key="document_id", match=MatchValue(value="__no_access_allowed__"))
+                    )
+                elif len(allowed_ids) == 1:
+                    conditions.append(
+                        FieldCondition(key="document_id", match=MatchValue(value=allowed_ids[0]))
+                    )
+                else:
+                    conditions.append(
+                        FieldCondition(key="document_id", match=MatchAny(any=allowed_ids))
+                    )
         if "chunk_type" in filters:
             conditions.append(
                 FieldCondition(key="chunk_type", match=MatchValue(value=filters["chunk_type"]))
@@ -521,7 +537,7 @@ class QdrantStore:
                 from qdrant_client.models import IsEmptyCondition, MatchAny, PayloadField
                 user_clause = Filter(
                     should=[
-                        FieldCondition(key="user_id", match=MatchAny(any=[target_user, "system", "shared"])),
+                        FieldCondition(key="user_id", match=MatchAny(any=[target_user, "system", "shared", "admin"])),
                         IsEmptyCondition(is_empty=PayloadField(key="user_id")),
                     ]
                 )

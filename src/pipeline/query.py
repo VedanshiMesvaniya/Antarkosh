@@ -783,6 +783,8 @@ def _build_document_list_answer(user_id: str | None = None) -> str:
     entries = registry.get_active(user_id=user_id)
 
     if not entries:
+        if user_id and user_id not in ("*", "all", "anonymous", "admin"):
+            return "You do not have access to any documents in the knowledge base. Please ask an administrator to grant you access."
         return "I don't have any documents ingested yet. Please upload some files first."
 
     lines = [f"I currently have **{len(entries)} document(s)** in my knowledge base:\n"]

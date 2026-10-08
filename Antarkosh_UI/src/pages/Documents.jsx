@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import dayjs from 'dayjs'
 import {
   Check,
@@ -7,11 +7,18 @@ import {
   Loader2,
   Minus,
   RotateCcw,
+  Save,
   Trash2,
   Upload,
+  Users,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  getDocumentAccessApi,
+  getUsersApi,
+  updateDocumentAccessApi,
+} from '../services/api.js'
 import { useAppStore } from '../store/store.js'
 import { useDialogA11y } from '../utils/useDialogA11y.js'
 
@@ -43,9 +50,13 @@ function StepIcon({ status }) {
 }
 
 export default function Documents() {
+  const currentUser = useAppStore((state) => state.currentUser)
+  const isAdmin = currentUser === 'admin'
+
   const documents = useAppStore((state) => state.documents)
   const selectedDocId = useAppStore((state) => state.selectedDocId)
   const selectDocument = useAppStore((state) => state.selectDocument)
+  const setDocumentAllowedUsers = useAppStore((state) => state.setDocumentAllowedUsers)
   const ingestDocument = useAppStore((state) => state.ingestDocument)
   const replaceDocument = useAppStore((state) => state.replaceDocument)
   const deleteDocument = useAppStore((state) => state.deleteDocument)
@@ -58,19 +69,30 @@ export default function Documents() {
   const [isUploading, setIsUploading] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [allUsers, setAllUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [allowedUsers, setAllowedUsers] = useState([])
+  const [savedAllowedUsers, setSavedAllowedUsers] = useState([])
+  const [isSavingAccess, setIsSavingAccess] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('idle')
+  const autoSaveTimerRef = useRef(null)
   const dialogRef = useRef(null)
   const dialogCancelRef = useRef(null)
 
   useDialogA11y({
-    isOpen: Boolean(deleteTarget),
+    isOpen: Boolean(isAdmin && deleteTarget),
     onClose: () => setDeleteTarget(null),
     containerRef: dialogRef,
     initialFocusRef: dialogCancelRef,
   })
 
-  const handleUploadClick = () => uploadInputRef.current?.click()
+  const handleUploadClick = () => {
+    if (!isAdmin) return
+    uploadInputRef.current?.click()
+  }
 
   const handleUploadFileChosen = async (event) => {
+    if (!isAdmin) return
     const file = event.target.files?.[0]
     if (!file) return
     try {
@@ -87,6 +109,7 @@ export default function Documents() {
   }
 
   const openReplacePicker = (docId) => {
+    if (!isAdmin) return
     replaceTargetRef.current = docId
     if (replaceInputRef.current) {
       replaceInputRef.current.value = ''
@@ -95,6 +118,7 @@ export default function Documents() {
   }
 
   const onReplaceFileChosen = async (event) => {
+    if (!isAdmin) return
     const file = event.target.files?.[0]
     const targetId = replaceTargetRef.current
     if (!file || !targetId) return
@@ -109,7 +133,7 @@ export default function Documents() {
   }
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return
+    if (!isAdmin || !deleteTarget) return
     setBusyId(deleteTarget.id)
     try {
       await deleteDocument(deleteTarget.id)
@@ -125,6 +149,133 @@ export default function Documents() {
   // that's what you came here to watch.
   const showingLive = Boolean(ingestionProgress)
 
+  useEffect(() => {
+    if (!isAdmin) return
+    let active = true
+    setLoadingUsers(true)
+    getUsersApi()
+      .then((data) => {
+        if (!active) return
+        const list = Array.isArray(data?.users) ? data.users : []
+        setAllUsers(list)
+      })
+      .catch((err) => {
+        console.error('Failed to load users for document access:', err)
+      })
+      .finally(() => {
+        if (active) setLoadingUsers(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [isAdmin])
+
+  useEffect(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
+    }
+    if (!isAdmin || !selectedDocId) {
+      setAllowedUsers([])
+      setSavedAllowedUsers([])
+      setSaveStatus('idle')
+      return
+    }
+    const currentDoc = documents.find((d) => d.id === selectedDocId)
+    const initialAllowed = currentDoc?.allowedUsers || []
+    setAllowedUsers(initialAllowed)
+    setSavedAllowedUsers(initialAllowed)
+    setSaveStatus('idle')
+
+    let active = true
+    getDocumentAccessApi(selectedDocId)
+      .then((data) => {
+        if (!active) return
+        const list = Array.isArray(data?.allowed_users) ? data.allowed_users : []
+        setAllowedUsers(list)
+        setSavedAllowedUsers(list)
+        setDocumentAllowedUsers(selectedDocId, list)
+        setSaveStatus('idle')
+      })
+      .catch((err) => {
+        console.error('Failed to load document access list:', err)
+      })
+    return () => {
+      active = false
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
+    }
+  }, [isAdmin, selectedDocId])
+
+  const commitSaveAccess = async (targetDocId, usersToSave, showToast = true) => {
+    if (!targetDocId) return
+    try {
+      setIsSavingAccess(true)
+      setSaveStatus('saving')
+      await updateDocumentAccessApi(targetDocId, usersToSave)
+      setSavedAllowedUsers(usersToSave)
+      setDocumentAllowedUsers(targetDocId, usersToSave)
+      setSaveStatus('saved')
+      if (showToast) {
+        const count = usersToSave.length
+        toast.success(`Access saved for "${selectedDoc?.name || 'document'}" (${count} user${count === 1 ? '' : 's'})`)
+      }
+    } catch (err) {
+      console.error('Failed to save document access:', err)
+      setSaveStatus('unsaved')
+      toast.error('Failed to update access permissions')
+    } finally {
+      setIsSavingAccess(false)
+    }
+  }
+
+  const scheduleAutoSave = (nextUsers) => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+    }
+    setSaveStatus('unsaved')
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (selectedDocId) {
+        commitSaveAccess(selectedDocId, nextUsers, false)
+      }
+    }, 1500)
+  }
+
+  const handleToggleUser = (username) => {
+    if (!selectedDoc) return
+    setAllowedUsers((prev) => {
+      const exists = prev.includes(username)
+      const next = exists ? prev.filter((u) => u !== username) : [...prev, username]
+      scheduleAutoSave(next)
+      return next
+    })
+  }
+
+  const handleSelectAllUsers = () => {
+    if (!selectedDoc || allUsers.length === 0) return
+    const next = [...allUsers]
+    setAllowedUsers(next)
+    scheduleAutoSave(next)
+  }
+
+  const handleDeselectAllUsers = () => {
+    if (!selectedDoc) return
+    const next = []
+    setAllowedUsers(next)
+    scheduleAutoSave(next)
+  }
+
+  const handleSaveAccessNow = () => {
+    if (!selectedDoc || isSavingAccess) return
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
+    }
+    commitSaveAccess(selectedDoc.id, allowedUsers, true)
+  }
+
   const handleSelectRow = (doc) => {
     if (ingestionProgress) clearIngestionProgress()
     selectDocument(selectedDocId === doc.id ? null : doc.id)
@@ -136,19 +287,27 @@ export default function Documents() {
         <div>
           <h2 className="section__title">Documents</h2>
           <p className="section__subtitle">
-            Add source material for Antarkosh to search and analyze.
+            {isAdmin
+              ? 'Add source material for Antarkosh to search and analyze.'
+              : 'Browse available source materials in the knowledge base.'}
           </p>
         </div>
-        <div className="section__header-actions">
-          <button type="button" className="primary-button" disabled={isUploading} onClick={handleUploadClick}>
-            {isUploading ? <Loader2 size={16} className="spin" /> : <Upload size={16} />}
-            <span>{isUploading ? 'Processing...' : 'Upload document'}</span>
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="section__header-actions">
+            <button type="button" className="primary-button" disabled={isUploading} onClick={handleUploadClick}>
+              {isUploading ? <Loader2 size={16} className="spin" /> : <Upload size={16} />}
+              <span>{isUploading ? 'Processing...' : 'Upload document'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      <input ref={uploadInputRef} type="file" style={{ display: 'none' }} onChange={handleUploadFileChosen} />
-      <input ref={replaceInputRef} type="file" style={{ display: 'none' }} onChange={onReplaceFileChosen} />
+      {isAdmin && (
+        <>
+          <input ref={uploadInputRef} type="file" style={{ display: 'none' }} onChange={handleUploadFileChosen} />
+          <input ref={replaceInputRef} type="file" style={{ display: 'none' }} onChange={onReplaceFileChosen} />
+        </>
+      )}
 
       <div className="documents-layout">
         <div className="documents-layout__list">
@@ -156,7 +315,11 @@ export default function Documents() {
             <div className="documents-empty">
               <Library size={22} className="documents-empty__icon" />
               <p>No documents yet.</p>
-              <p className="documents-empty__hint">Upload a file to add it to the knowledge base.</p>
+              <p className="documents-empty__hint">
+                {isAdmin
+                  ? 'Upload a file to add it to the knowledge base.'
+                  : 'No documents have been uploaded by an administrator yet.'}
+              </p>
             </div>
           ) : (
             <div className="doc-list">
@@ -183,28 +346,30 @@ export default function Documents() {
                       </p>
                     </div>
                   </button>
-                  <div className="doc-row__actions">
-                    <button
-                      type="button"
-                      className="icon-button"
-                      title="Reupload / replace"
-                      aria-label={`Replace ${doc.name}`}
-                      disabled={busyId === doc.id}
-                      onClick={() => openReplacePicker(doc.id)}
-                    >
-                      <RotateCcw size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button icon-button--danger"
-                      title="Delete"
-                      aria-label={`Delete ${doc.name}`}
-                      disabled={busyId === doc.id}
-                      onClick={() => setDeleteTarget(doc)}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="doc-row__actions">
+                      <button
+                        type="button"
+                        className="icon-button"
+                        title="Reupload / replace"
+                        aria-label={`Replace ${doc.name}`}
+                        disabled={busyId === doc.id}
+                        onClick={() => openReplacePicker(doc.id)}
+                      >
+                        <RotateCcw size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button icon-button--danger"
+                        title="Delete"
+                        aria-label={`Delete ${doc.name}`}
+                        disabled={busyId === doc.id}
+                        onClick={() => setDeleteTarget(doc)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  )}
                 </article>
               ))}
             </div>
@@ -266,20 +431,135 @@ export default function Documents() {
                   </div>
                 </div>
                 <p className="ingestion-panel__note">
-                  Already ingested. Live per-stage detail is only available while a document is actively processing.
-                  Reupload to watch it run again.
+                  {isAdmin
+                    ? 'Already ingested. Live per-stage detail is only available while a document is actively processing. Reupload to watch it run again.'
+                    : 'Already ingested. Live per-stage detail is only available while a document is actively processing.'}
                 </p>
               </>
             ) : (
               <div className="ingestion-panel__empty">
-                <p>Select a document to inspect its metadata, or upload one to watch processing live.</p>
+                <p>
+                  {isAdmin
+                    ? 'Select a document to inspect its metadata, or upload one to watch processing live.'
+                    : 'Select a document to inspect its metadata.'}
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {deleteTarget ? (
+      {isAdmin && selectedDoc && !showingLive && (
+        <section className="settings-card user-access-card" aria-labelledby="user-access-title">
+          <div className="user-access-card__header">
+            <div className="user-access-card__heading-main">
+              <div className="user-access-card__title-row">
+                <Users size={18} className="user-access-card__icon" aria-hidden="true" />
+                <h3 id="user-access-title" className="settings-card__title" style={{ margin: 0 }}>
+                  User Access
+                </h3>
+                <span className="user-access-card__doc-badge" title={selectedDoc.name}>
+                  {selectedDoc.name}
+                </span>
+                {saveStatus === 'unsaved' && (
+                  <span className="user-access-card__status-tag user-access-card__status-tag--dirty">
+                    Unsaved changes
+                  </span>
+                )}
+                {saveStatus === 'saved' && (
+                  <span className="user-access-card__status-tag user-access-card__status-tag--saved">
+                    <Check size={12} /> Saved
+                  </span>
+                )}
+              </div>
+              <p className="user-access-card__desc">
+                Select which users can view this document and retrieve answers from it. Select multiple users below.
+              </p>
+            </div>
+            <div className="user-access-card__meta">
+              <span className="user-access-card__counter">
+                {allowedUsers.length} of {allUsers.length} user{allUsers.length === 1 ? '' : 's'} granted access
+              </span>
+              <div className="user-access-card__quick-actions">
+                <button
+                  type="button"
+                  className="secondary-button user-access-card__btn-sm"
+                  onClick={handleSelectAllUsers}
+                  disabled={allUsers.length === 0 || allowedUsers.length === allUsers.length}
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button user-access-card__btn-sm"
+                  onClick={handleDeselectAllUsers}
+                  disabled={allowedUsers.length === 0}
+                >
+                  Clear All
+                </button>
+                <button
+                  type="button"
+                  className={`primary-button user-access-card__save-btn ${saveStatus === 'unsaved' ? 'user-access-card__save-btn--dirty' : ''}`}
+                  onClick={handleSaveAccessNow}
+                  disabled={isSavingAccess || (saveStatus !== 'unsaved' && allowedUsers.length === savedAllowedUsers.length)}
+                  title="Save access permissions"
+                >
+                  {isSavingAccess ? (
+                    <>
+                      <Loader2 size={13} className="spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={13} />
+                      <span>{saveStatus === 'unsaved' ? 'Save Access' : 'Saved'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {loadingUsers ? (
+            <div className="user-access-card__loading">
+              <Loader2 size={16} className="spin" />
+              <span>Loading users...</span>
+            </div>
+          ) : allUsers.length === 0 ? (
+            <div className="user-access-card__empty">No users available to assign access.</div>
+          ) : (
+            <div className="user-access-grid">
+              {allUsers.map((user) => {
+                const isChecked = allowedUsers.includes(user)
+                return (
+                  <label
+                    key={user}
+                    className={`user-access-pill ${isChecked ? 'user-access-pill--checked' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="user-access-pill__checkbox"
+                      checked={isChecked}
+                      onChange={() => handleToggleUser(user)}
+                    />
+                    <span className="user-access-pill__avatar">
+                      {user.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="user-access-pill__info">
+                      <span className="user-access-pill__name">{user}</span>
+                      <span className="user-access-pill__status">
+                        {isChecked ? 'Access granted' : 'No access'}
+                      </span>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {isAdmin && deleteTarget ? (
         <div className="dialog-backdrop" role="presentation" onClick={() => setDeleteTarget(null)}>
           <div
             ref={dialogRef}

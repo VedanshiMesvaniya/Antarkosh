@@ -298,3 +298,20 @@ export async function getMeApi() {
   return response.data
 }
 
+export async function getUsersApi() {
+  const response = await http.get('/users')
+  return response.data
+}
+
+export async function getDocumentAccessApi(documentId) {
+  const response = await http.get(`/documents/${documentId}/access`)
+  return response.data
+}
+
+export async function updateDocumentAccessApi(documentId, allowedUsers) {
+  const response = await http.post(`/documents/${documentId}/access`, {
+    allowed_users: allowedUsers,
+  })
+  return response.data
+}
+

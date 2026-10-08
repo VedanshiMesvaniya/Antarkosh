@@ -1134,6 +1134,14 @@ export const useAppStore = create((set, get) => ({
     set({ documents: normalizeList(documents, []) })
   },
 
+  setDocumentAllowedUsers: (documentId, allowedUsers) => {
+    set((state) => ({
+      documents: state.documents.map((doc) =>
+        doc.id === documentId ? { ...doc, allowedUsers } : doc,
+      ),
+    }))
+  },
+
   updateSettings: async (patch) => {
     const settings = { ...(get().settings || {}), ...patch }
     set({ settings })

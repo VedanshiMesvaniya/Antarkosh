@@ -12,7 +12,7 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
-from src.api.auth import get_current_user_optional
+from src.api.auth import require_admin
 from src.core.config import settings
 from src.core.paths import safe_basename, unique_upload_dest
 from src.pipeline.ingestion import IngestionPipeline
@@ -38,7 +38,7 @@ def _resolve_upload_path(filename: str | None) -> Path:
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(require_admin),
 ) -> dict:
     """Upload and ingest a single document into the RAG pipeline."""
     upload_path = _resolve_upload_path(file.filename)
@@ -65,7 +65,7 @@ async def upload_document(
 @router.post("/upload/batch")
 async def upload_documents_batch(
     files: list[UploadFile] = File(...),
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(require_admin),
 ) -> dict:
     """Upload and ingest multiple documents concurrently (max 3 at a time)."""
     if not files:
@@ -116,7 +116,7 @@ async def upload_documents_batch(
 @router.post("/upload/stream")
 async def upload_document_stream(
     file: UploadFile = File(...),
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(require_admin),
 ):
     """Upload a document and receive real-time ingestion progress via SSE."""
     upload_path = _resolve_upload_path(file.filename)
@@ -148,7 +148,9 @@ async def upload_document_stream(
 
 
 @router.post("/ingest/folder")
-async def scan_ingest_folder() -> dict:
+async def scan_ingest_folder(
+    current_user: str = Depends(require_admin),
+) -> dict:
     """Scan the watched drop-folder and ingest any new files.
 
     Content-addressed dedup makes this idempotent: files already ingested are
@@ -170,7 +172,7 @@ async def scan_ingest_folder() -> dict:
 async def replace_document(
     old_document_id: str,
     file: UploadFile = File(...),
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(require_admin),
 ) -> dict:
     """Replace an existing document with a new file (safe atomic cutover).
 
@@ -205,7 +207,7 @@ async def replace_document(
 async def replace_document_stream(
     old_document_id: str,
     file: UploadFile = File(...),
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(require_admin),
 ):
     """Replace a document and receive real-time ingestion progress via SSE.
 
