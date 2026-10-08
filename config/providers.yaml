@@ -138,6 +138,19 @@ tasks:
         model: nvidia/nemotron-3.5-lightning-30b-a3b
         priority: 3
 
+  # Chat title generation — isolated from other short LLM tasks.
+  chat_title:
+    providers:
+      - provider: groq
+        model: openai/gpt-oss-20b
+        priority: 1
+      - provider: gemini
+        model: gemini-3.5-flash
+        priority: 2
+      - provider: nvidia_nim
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
+        priority: 3
+
   classification:
     providers:
       - provider: groq

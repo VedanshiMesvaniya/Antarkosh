@@ -81,12 +81,13 @@ async def test_aggregate_stream_no_llm_when_flag_off():
     assert items[-1].model_used == "sql/direct"
 
 
-async def _run_title(messages, llm_reply="Revenue By Region", fail=False):
+async def _run_title(messages, llm_reply="Revenue By Region Overview", fail=False):
     from src.api import ui
 
     seen = {}
     async def fake_chat(self, task, messages, **kwargs):
         seen["prompt"] = messages[0]["content"]
+        seen["task"] = task
         if fail:
             raise RuntimeError("llm down")
         return llm_reply
@@ -107,8 +108,9 @@ async def test_title_uses_only_user_question_never_the_answer():
         {"role": "assistant", "content": TABLE, "modelUsed": "sql/direct"},
     ]
     result, seen, saved = await _run_title(messages)
-    assert result["title"] == "Revenue By Region" and saved["title"] == "Revenue By Region"
+    assert result["title"] == "Revenue By Region Overview" and saved["title"] == "Revenue By Region Overview"
     assert "total revenue by region" in seen["prompt"]
+    assert seen["task"] == "chat_title"
     for leaked in ("900000", "| North |", "SELECT region", "SQL Query Executed", "Assistant:"):
         assert leaked not in seen["prompt"]
 

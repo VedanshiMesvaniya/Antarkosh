@@ -102,16 +102,22 @@ Conversation:
 ---"""
 
 
-_TITLE_PROMPT = """You write very short chat titles from a user's question.
+_TITLE_PROMPT = """You generate a short semantic title for a user's request.
 
-Read the user's question below and reply with strictly a 5 to 6-word title that captures the core
-meaning of what they are asking (the topic and intent), not the words they typed.
-Examples: "Which warehouses are low on stock right now?" -> "Low Stock Warehouses";
-"show me sales by state" -> "Sales By State"; "what is the apple tax rate" -> "Apple Tax Rate".
-Use Title Case.
-Do NOT copy the whole question, formulate a question, or include words like "What", "How", "Why",
-"Can", "Give", "Chat", quotes, or trailing punctuation.
-If there is no clear topic (e.g. only a greeting), reply with exactly: New Chat
+Identify the main subject and the user's intent. Return exactly one natural title containing
+4 to 6 meaningful words. Do not simply copy the first few words of the question.
+
+Examples:
+- Which warehouses are low on stock right now? -> Low Stock Across Warehouses
+- show me sales by state -> Sales Performance By State
+- what is the apple tax rate -> Apple Tax Rate Information
+- how many stock adjustments happened today -> Today's Stock Adjustment Count
+- what is the unit name of product CAP03 -> Unit Name For Product CAP03
+
+Use Title Case. Do not write a question, add punctuation, or include words like "What", "How",
+"Why", "Can", "Give", "Show", "Tell", or "Chat". Preserve important product names, IDs,
+years, database entities, and technical terms. If there is no meaningful topic, reply exactly:
+New Chat.
 
 Question:
 {question}
@@ -120,7 +126,7 @@ Title:"""
 
 
 def _clean_title(raw: str) -> str:
-    """Normalize an LLM title response into a clean, bounded 5-6 word title string."""
+    """Normalize an LLM title response into a clean, bounded 4-6 word title string."""
     text = (raw or "").strip()
     if not text:
         return ""
@@ -137,6 +143,8 @@ def _clean_title(raw: str) -> str:
     stop_words = {"of", "for", "in", "on", "at", "to", "from", "by", "and", "the", "a", "an", "with"}
     while len(words) > 1 and words[-1].lower() in stop_words:
         words.pop()
+    if len(words) < 4:
+        return ""
     text = " ".join(words)
     if len(text) > 45:
         text = text[:42].rstrip() + "..."
@@ -563,7 +571,8 @@ async def generate_chat_title(
 ) -> dict[str, Any]:
     """Generate a concise, topic-aware title from a chat's first exchange.
 
-    Uses a fast, cheap model (fast_support route) so it never adds meaningful
+    Uses a dedicated, fast chat_title route so title behavior stays isolated from
+    other short LLM tasks and never adds meaningful
     latency. Persists the result and returns it. Falls back to a trimmed first
     message if the model is unavailable or returns nothing usable.
     """
@@ -579,7 +588,7 @@ async def generate_chat_title(
     try:
         provider_router = ProviderRouter()
         raw = await provider_router.chat(
-            "fast_support",
+            "chat_title",
             messages=[{"role": "user", "content": _TITLE_PROMPT.format(question=question)}],
             temperature=0.3,
             max_tokens=120,

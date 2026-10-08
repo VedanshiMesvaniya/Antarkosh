@@ -710,6 +710,11 @@ DEFAULT_ROUTES: dict[str, TaskRoute] = {
         ProviderOption("groq", "openai/gpt-oss-20b", 1),
         ProviderOption("gemini", "gemini-2.5-flash-lite", 2),
     ]),
+    "chat_title": TaskRoute([
+        ProviderOption("groq", "openai/gpt-oss-20b", 1),
+        ProviderOption("gemini", "gemini-2.5-flash", 2),
+        ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 3),
+    ]),
 }
 
 DEFAULT_TASK_ROUTING: dict[str, dict[str, list[str]]] = {
