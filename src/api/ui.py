@@ -840,6 +840,8 @@ class DBConnectionPayload(BaseModel):
     host: str = ""
     port: int | None = None
     database: str = ""
+    service_name: str = ""     # Oracle: used instead of "database"
+    odbc_driver: str = ""      # SQL Server: ODBC driver name installed on the server
     username: str = ""
     password: str | None = None
 

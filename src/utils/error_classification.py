@@ -128,7 +128,8 @@ def classify_failure_category(
         return FailureCategory.PERMISSION_ERROR
     if any(k in error_text for k in ["empty result", "no rows", "zero rows"]):
         return FailureCategory.EMPTY_RESULT
-    if any(k in error_text for k in ["database error", "operationalerror", "programmingerror", "integrityerror", "mysql", "sqlite", "postgres", "asyncpg"]):
+    if any(k in error_text for k in ["database error", "operationalerror", "programmingerror", "integrityerror", "mysql", "sqlite", "postgres", "asyncpg",
+            "pyodbc", "odbc", "oracledb", "ora-", "dpy-"]):
         return FailureCategory.DB_EXECUTION_ERROR
     if any(k in error_text for k in ["llm", "provider", "model", "connection error", "api connection", "bad request"]):
         return FailureCategory.LLM_ERROR
@@ -200,6 +201,11 @@ def classify_error(error: Exception | str | None) -> str:
         "sqlite",
         "postgres",
         "asyncpg",
+        "pyodbc",
+        "odbc",
+        "oracledb",
+        "ora-",
+        "dpy-",
         "table doesn't exist",
         "no such table",
     ]):

@@ -89,9 +89,9 @@ export default function DatabaseConnectionCard() {
             onChange={(e) => onEngine(e.target.value)}
           >
             {cfg.engines.map((e) => (
-              <option key={e.key} value={e.key} disabled={!e.ready}>
+              <option key={e.key} value={e.key} disabled={!e.ready && !e.testable}>
                 {e.label}
-                {e.ready ? '' : ' (coming soon)'}
+                {e.ready || e.testable ? '' : ' (coming soon)'}
               </option>
             ))}
           </select>

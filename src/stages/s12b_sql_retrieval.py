@@ -47,6 +47,7 @@ from src.utils.schema_token_estimator import estimate_schema_tokens
 from src.utils.sql_safety import (
     DANGEROUS_FUNCTIONS as _SHARED_DANGEROUS_FUNCTIONS,
     check_dangerous_patterns,
+    has_dangerous_qualified_call,
     is_destructive_sql,
     validate_sql_safety,
     validate_tables_and_columns,
@@ -2221,7 +2222,7 @@ Schema:
         "get_lock", "release_lock",           # MySQL: advisory lock contention DoS
         "release_all_locks",
         "is_free_lock", "is_used_lock",
-    }) | _SHARED_DANGEROUS_FUNCTIONS          # + PostgreSQL names; one shared list, no drift
+    }) | _SHARED_DANGEROUS_FUNCTIONS          # + Postgres/MSSQL/Oracle names; one shared list, no drift
 
     @classmethod
     def _get_scoped_readability_rules(cls, query: str, schema_tables: list[str]) -> str:
@@ -2487,6 +2488,10 @@ SELECT so.sales_order_no AS sales_order_number, so.sales_order_date AS order_dat
 
         ast = statements[0]
         if not isinstance(ast, (exp.Select, exp.Union)):
+            return False
+
+        if has_dangerous_qualified_call(sql, self._dialect.sqlglot_dialect):
+            logger.warning("Blocked dangerous package-qualified call: %s", sql)
             return False
 
         # SELECT ... INTO OUTFILE/DUMPFILE (or INTO @var) anywhere in the AST — disk/variable write.

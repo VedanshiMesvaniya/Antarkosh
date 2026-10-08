@@ -2,4 +2,6 @@ sqlglot>=23.0.0
 aiosqlite>=0.20.0
 aiomysql>=0.2
 asyncpg>=0.29
+pyodbc>=5.0
+oracledb>=2.0
 portalocker>=2.8

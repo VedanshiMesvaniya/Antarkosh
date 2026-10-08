@@ -173,7 +173,34 @@ DANGEROUS_FUNCTIONS = frozenset({
     "pg_advisory_lock", "pg_advisory_lock_shared", "pg_try_advisory_lock",
     "pg_try_advisory_lock_shared", "pg_advisory_xact_lock", "pg_advisory_xact_lock_shared",
     "pg_try_advisory_xact_lock", "pg_try_advisory_xact_lock_shared",
+    # SQL Server: command execution, linked-server/remote-data access.
+    # (xp_cmdshell itself runs via EXEC, which is blocked separately — not a
+    # SELECT/UNION statement — but these are callable as table sources inside one.)
+    "openrowset", "opendatasource", "openquery", "openxml",
 })
+
+# Oracle built-ins are invoked as PACKAGE.PROCEDURE (e.g. UTL_HTTP.REQUEST), and
+# sqlglot's parsed function node only exposes the final name ("request"), not the
+# package — so these can't go in DANGEROUS_FUNCTIONS above. Matched separately,
+# by package-qualified prefix, in is_destructive_sql()/the retriever's safety check.
+ORACLE_DANGEROUS_PACKAGE_PREFIXES = frozenset({
+    "utl_http", "utl_tcp", "utl_smtp", "utl_inaddr", "utl_file",      # network / file access
+    "dbms_lock", "dbms_pipe", "dbms_java", "dbms_scheduler", "dbms_ldap",  # exec / DoS / scheduling
+})
+
+_ORACLE_DANGEROUS_PREFIX_RE = re.compile(
+    r"\b(?:" + "|".join(ORACLE_DANGEROUS_PACKAGE_PREFIXES) + r")\s*\.", re.IGNORECASE
+)
+
+
+def has_dangerous_qualified_call(sql: str, dialect: str | None = None) -> bool:
+    """True if ``sql`` calls a known-dangerous Oracle package (e.g. ``UTL_HTTP.request``).
+
+    Text-based on purpose: unlike DANGEROUS_FUNCTIONS, this doesn't need the AST
+    at all, so it still catches the call even inside SQL that otherwise fails to
+    parse. A no-op for every other dialect.
+    """
+    return dialect == "oracle" and bool(_ORACLE_DANGEROUS_PREFIX_RE.search(sql or ""))
 
 
 def _clean_ident(name: Any) -> str:
@@ -223,6 +250,10 @@ def is_destructive_sql(sql: str, dialect: str | None = None) -> bool:
 
     if len(statements) != 1:
         logger.warning("Blocked multi-statement or stacked SQL (%d statements).", len(statements))
+        return True
+
+    if has_dangerous_qualified_call(sql, dialect):
+        logger.warning("Blocked dangerous package-qualified call: %s", sql)
         return True
 
     ast = statements[0]

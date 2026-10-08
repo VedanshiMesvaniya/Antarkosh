@@ -48,6 +48,8 @@ dependencies = [
     "aiosqlite>=0.20.0", # async SQLite for the live-data DB
     "aiomysql>=0.2",     # async MySQL support for the live-data DB
     "asyncpg>=0.29",     # async PostgreSQL support for the live-data DB
+    "pyodbc>=5.0",       # SQL Server support for the live-data DB (requires an OS ODBC driver)
+    "oracledb>=2.0",     # Oracle support for the live-data DB (pure Python, "thin" mode)
 
     # API server
     "fastapi>=0.111",
@@ -74,6 +76,12 @@ mysql = [
 ]
 postgresql = [
     "asyncpg>=0.29",
+]
+mssql = [
+    "pyodbc>=5.0",
+]
+oracle = [
+    "oracledb>=2.0",
 ]
 
 [project.scripts]

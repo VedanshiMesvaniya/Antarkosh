@@ -89,7 +89,7 @@ class ColumnRegistry:
         """Extract table → column mappings from the schema text."""
         if self._dialect == "sqlite":
             self._parse_sqlite(text)
-        elif self._dialect in ("mysql", "postgres"):
+        elif self._dialect in ("mysql", "postgres", "tsql", "oracle"):
             self._parse_mysql(text)  # same "TABLE name (col type, ...)" format
         else:
             logger.warning("ColumnRegistry: unsupported dialect %r", self._dialect)

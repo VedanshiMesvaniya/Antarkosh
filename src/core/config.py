@@ -77,16 +77,21 @@ class Settings(BaseSettings):
     openrouter_text_model: str = "meta-llama/llama-3.3-70b-instruct:free"
     openrouter_vision_model: str = "meta-llama/llama-3.2-11b-vision-instruct:free"
 
-    # "sqlite" (default, uses the local live_data.db file), "mysql" or "postgresql".
-    # A connection saved from the admin UI is stored in config/db_connection.json
-    # (or $DB_CONFIG_FILE) and overrides these env/.env values — see db_config_file.py.
-    # If you set DB_ENGINE=postgresql via env only, also set DB_PORT (default below is MySQL's).
+    # "sqlite" (default, uses the local live_data.db file), "mysql", "postgresql",
+    # "mssql" or "oracle". A connection saved from the admin UI is stored in
+    # config/db_connection.json (or $DB_CONFIG_FILE) and overrides these env/.env
+    # values — see db_config_file.py. If you set a non-default engine via env only,
+    # also set DB_PORT (the default below is MySQL's).
     db_engine: str = "sqlite"
     db_host: str = ""
     db_port: int = 3306
     db_name: str = ""
     db_readonly_user: str = ""
     db_readonly_password: str = ""
+    # ODBC driver name installed on the server (SQL Server only). Must match a
+    # driver registered with the OS's ODBC driver manager, e.g. "ODBC Driver 18
+    # for SQL Server" (Microsoft's official driver) — see src/core/db_settings.py.
+    db_odbc_driver: str = "ODBC Driver 18 for SQL Server"
 
     # --- Runtime paths ---
     upload_dir: Path = Field(default_factory=lambda: DATA_DIR / "uploads")
