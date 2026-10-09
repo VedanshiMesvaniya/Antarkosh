@@ -8,7 +8,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | A | Safety net, baseline, inventory | 64ff583 | 537 passed |
 | [x] | B | Path constants centralized | cf71068, 8e0db22 | 537 passed |
 | [x] | C | Knowledge packs, loaders, parity test | 04a64d8, 879363f | 546 passed |
-| [x] | C2-1 | Housekeeping: UTF-8 inventory, record fixes, routing_hints, template skeletons | pending | 546 passed |
+| [x] | C2-1 | Housekeeping: UTF-8 inventory, record fixes, routing_hints, template skeletons | 51b8037 | 546 passed |
 | [ ] | C2-2 | Remaining `src/` readers to loaders | | |
 | [ ] | C2-3 | Scripts, evals, silent-skip test | | |
 | [ ] | C2-4 | Guard test: no legacy knowledge paths in `src/` | | |

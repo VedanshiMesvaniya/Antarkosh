@@ -83,7 +83,7 @@ Chronological reports produced after completing each refactoring phase.
 
 ## Step C2-1 Report: Docs, Inventory UTF-8, and Template Skeletons
 - **Step ID**: C2-1
-- **Commits**: pending
+- **Commits**: 51b8037
 - **Files Changed**: `docs/refactor/REFERENCE_INVENTORY.md`, `docs/refactor/FOUND_ISSUES.md`, `docs/refactor/PHASE_REPORTS.md`, `docs/refactor/PATH_CHANGES.md`, `docs/refactor/PROGRESS.md`, `.gitattributes`, `databases/erp_main/semantics/routing_hints.json`, and 6 files in `databases/_template/{schema,semantics}/`.
 - **What Changed**: Converted `REFERENCE_INVENTORY.md` to clean UTF-8 text (null bytes removed; diff treats it as text); clarified paths in `config.py` and dialect stubs planned for Phase E in `FOUND_ISSUES.md`; corrected drift validator scope in Phase C report; added `routing_hints.json` to `erp_main` and skeleton json files to `_template/`; added knowledge freeze decision to `FOUND_ISSUES.md`.
 - **Checks a-g**: a-g all passed; pytest: 546 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; exactly matches 546 passed from Phase C); zero drift; offline eval 163/163 passed; health/overview 200 OK.
