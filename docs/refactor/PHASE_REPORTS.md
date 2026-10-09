@@ -172,3 +172,16 @@ Chronological reports produced after completing each refactoring phase.
 - **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
 - **Issues Found**: None.
 - **Next Step ID**: D5
+
+---
+
+## Step D5 Report: SQLRetriever and SemanticCache Keyed by db_id
+- **Step ID**: D5
+- **Commits**: 69def1f
+- **Files Changed**: `src/stages/s12b_sql_retrieval.py`, `src/utils/semantic_cache.py`, `src/pipeline/query.py`, `tests/test_sql_retrieval.py`, `tests/test_sql_retriever_multi_db_cache.py`.
+- **What Changed**: Keyed `SQLRetriever._result_cache` by `(db_id, normalized question)` and `_full_schema_cache` / `_column_registry` by `db_id`. Added `db_id` constructor parameter defaulting to `DEFAULT_DB_ID` ("erp_main"). Added `column_registry` property per retriever and updated `clear_result_cache` / `clear_schema_cache` to support both selective `db_id` and global clearing. Scoped `SemanticCache` entries by `db_id` via `build_scope_key`, and prefixed query pipeline cache scopes with `target_db_id`. Retained global cache wiping in `db_settings._apply_runtime`. Added comprehensive unit tests in `tests/test_sql_retriever_multi_db_cache.py` verifying multi-db result and schema cache isolation, cache clearing, and semantic cache scoping.
+- **Checks a-g**: a-g all passed; pytest: 571 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +4 passed vs 567 last recorded count due to new multi-db cache tests); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: D6
+

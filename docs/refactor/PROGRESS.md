@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 567 passed, 17 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 571 passed, 17 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -16,7 +16,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | D2 | Engine enum | 5aa0a06 | 559 passed |
 | [x] | D3 | DatabaseContext | a877abd | 564 passed |
 | [x] | D4 | Knowledge caches keyed by db_id | 5954519 | 567 passed |
-| [ ] | D5 | SQLRetriever and semantic caches keyed by db_id | | |
+| [x] | D5 | SQLRetriever and semantic caches keyed by db_id | 69def1f | 571 passed |
 | [ ] | D6 | Qdrant schema chunks tagged and filtered by db_id | | |
 | [ ] | D7 | db_id through API and pipeline, metrics field | | |
 | [ ] | E1 | Connectors split out of db_client | | |

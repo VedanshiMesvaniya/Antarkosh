@@ -149,3 +149,16 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | D4-1 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | behavior | keyed _get_raw_relationships, _load_relationships, _load_glossary, _get_raw_column_glossary, _get_raw_behavioral_atlas, _get_tables_with_soft_delete by db_id | a-g pass | 5954519 |
 | D4-2 | (new) | tests/test_sql_knowledge_caches.py | test | golden snapshot parity, shared cache for default/erp_main, isolation between db folders, cache_clear | a-g pass | 5954519 |
 
+---
+
+## Step D5 — SQLRetriever and SemanticCache Keyed by db_id
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| D5-1 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | behavior | SQLRetriever._result_cache keyed on (db_id, query), _full_schema_cache and _column_registry keyed by db_id, db_id init arg defaulting to DEFAULT_DB_ID, selective/global cache clear | a-g pass | 69def1f |
+| D5-2 | src/utils/semantic_cache.py | src/utils/semantic_cache.py | behavior | SemanticCache lookup & store scoped by db_id via build_scope_key | a-g pass | 69def1f |
+| D5-3 | src/pipeline/query.py | src/pipeline/query.py | wire | scope_key prefixed with target_db_id in query pipeline | a-g pass | 69def1f |
+| D5-4 | tests/test_sql_retrieval.py | tests/test_sql_retrieval.py | test | updated test_empty_schema_not_cached_permanently to check keyed _full_schema_cache | a-g pass | 69def1f |
+| D5-5 | (new) | tests/test_sql_retriever_multi_db_cache.py | test | unit tests for SQLRetriever multi-db result & schema isolation, wipe all vs selective, SemanticCache db_id isolation | a-g pass | 69def1f |
+
+
