@@ -232,4 +232,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: Finding #11: `test_telemetry_latency_under_5ms_guardrail_4` jitter under heavy test suite load (logged in FOUND_ISSUES.md).
 - **Next Step ID**: E2
 
+---
+
+## Step E2 Report: SQL Dialects (Base profile, per-engine modules, stubs, and shim)
+- **Step ID**: E2
+- **Commits**: 5b9ba01
+- **Files Changed**: `src/sql/dialects/base.py`, `src/sql/dialects/sqlite.py`, `src/sql/dialects/mysql.py`, `src/sql/dialects/postgresql.py`, `src/sql/dialects/mssql.py`, `src/sql/dialects/oracle.py`, `src/sql/dialects/__init__.py`, `src/core/sql_dialects.py`, `tests/test_sql_dialects.py`.
+- **What Changed**: Extracted `src/sql/dialects/` package containing `SQLDialectProfile` in `base.py`, engine-specific profiles for `sqlite`, `mysql`, and `postgresql`, and `mssql.py` and `oracle.py` stubs whose `get_profile()` raises `NotImplementedError("needs validation against a real instance")`. Stubs are NOT registered in `DIALECTS`, maintaining strict backward compatibility where `get_dialect_profile("mssql")` and `get_dialect_profile("oracle")` raise `ValueError`. Replaced `src/core/sql_dialects.py` with a thin backward-compatible shim re-exporting `DIALECTS`, `SQLDialectProfile`, and `get_dialect_profile` for its 5 existing importers. Added pinned tests in `tests/test_sql_dialects.py`.
+- **Checks a-g**: a-g all passed; pytest: 603 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +4 passed vs 599 last recorded count); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I); transition rule in `s12b` and `s11` accepting legacy `live_db_schema` chunks for `erp_main` until re-synced; `src/core/sql_dialects.py` shim re-exporting `DIALECTS`, `SQLDialectProfile`, and `get_dialect_profile` (to be removed in Phase I).
+- **Issues Found**: Finding #12: `test_shadow_guards_latency_budget` jitter under heavy test suite load (logged in FOUND_ISSUES.md).
+- **Next Step ID**: E3
+
 

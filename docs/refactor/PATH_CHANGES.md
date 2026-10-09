@@ -203,5 +203,21 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | E1-8 | (new) | src/sql/connectors/__init__.py | wire | package re-exports Connector, all 5 engine connectors, and get_connector dispatcher | a-g pass | 481aac9 |
 | E1-9 | (new) | tests/test_sql_connectors.py | test | protocol conformance, SQLite file execution, get_connector factory for all 5 engines | a-g pass | 481aac9 |
 
+---
+
+## Step E2 — SQL Dialects (Base profile, per-engine modules, stubs, and shim)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| E2-1 | src/core/sql_dialects.py (SQLDialectProfile) | src/sql/dialects/base.py | code | SQLDialectProfile dataclass | a-g pass | 5b9ba01 |
+| E2-2 | src/core/sql_dialects.py (sqlite) | src/sql/dialects/sqlite.py | code | SQLITE_PROFILE and get_profile() | a-g pass | 5b9ba01 |
+| E2-3 | src/core/sql_dialects.py (mysql) | src/sql/dialects/mysql.py | code | MYSQL_PROFILE and get_profile() | a-g pass | 5b9ba01 |
+| E2-4 | src/core/sql_dialects.py (postgresql) | src/sql/dialects/postgresql.py | code | POSTGRESQL_PROFILE and get_profile() | a-g pass | 5b9ba01 |
+| E2-5 | (new) | src/sql/dialects/mssql.py | stub | stub get_profile() raising NotImplementedError | a-g pass | 5b9ba01 |
+| E2-6 | (new) | src/sql/dialects/oracle.py | stub | stub get_profile() raising NotImplementedError | a-g pass | 5b9ba01 |
+| E2-7 | src/core/sql_dialects.py (registry) | src/sql/dialects/__init__.py | code | DIALECTS registry (sqlite, mysql, postgresql) & get_dialect_profile() | a-g pass | 5b9ba01 |
+| E2-8 | src/core/sql_dialects.py | src/core/sql_dialects.py | shim | re-exports DIALECTS, SQLDialectProfile, get_dialect_profile for 5 importers | a-g pass | 5b9ba01 |
+| E2-9 | tests/test_sql_dialects.py | tests/test_sql_dialects.py | test | tests pinning mssql/oracle ValueError on get_dialect_profile and NotImplementedError on stubs | a-g pass | 5b9ba01 |
+
 
 

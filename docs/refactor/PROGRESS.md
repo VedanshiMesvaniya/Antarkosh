@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 599 passed, 17 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 603 passed, 17 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -20,7 +20,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | D6 | Qdrant schema chunks tagged and filtered by db_id | 5b58d8a | 574 passed |
 | [x] | D7 | db_id through API and pipeline, metrics field | d4046a4 | 586 passed |
 | [x] | E1 | Connectors split out of db_client | 00e709f, d4f3b35, 5aee3dc, 23f6af7, 481aac9 | 599 passed |
-| [ ] | E2 | Dialects package, mssql/oracle stubs (not registered) | | |
+| [x] | E2 | Dialects package, mssql/oracle stubs (not registered) | 5b9ba01 | 603 passed |
 | [ ] | E3 | registry.py (connections.json, db.yaml) | | |
 | [ ] | E4 | db_settings into connectors/registry | | |
 | [ ] | E5 | Per-database connection, remove global cache wipe | | |
@@ -48,6 +48,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 ## Shims currently in place
 - `src/sql/knowledge/loaders.py` legacy fallback to `config/` and `evals/Antarkosh/` (removed in Phase I)
+- `src/core/sql_dialects.py` re-exporting `DIALECTS`, `SQLDialectProfile`, `get_dialect_profile` from `src.sql.dialects` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.
