@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from src.api.auth import get_current_user_optional
+from src.api.auth import get_current_user
 from src.pipeline.query import QueryPipeline
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class QueryRequest(BaseModel):
 @router.post("/query")
 async def query_documents(
     request: QueryRequest,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> dict:
     """Query ingested documents using the RAG pipeline.
 
@@ -38,8 +38,10 @@ async def query_documents(
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
     query_filters = dict(request.filters or {})
-    if current_user and current_user not in ("*", "all", "anonymous"):
-        query_filters.setdefault("user_id", current_user)
+    # Identity and access scope are decided by the server, never by the client.
+    for reserved in ("user_id", "allowed_document_ids", "scope_key", "erp_instance_id"):
+        query_filters.pop(reserved, None)
+    query_filters["user_id"] = current_user
 
     try:
         pipeline = QueryPipeline()

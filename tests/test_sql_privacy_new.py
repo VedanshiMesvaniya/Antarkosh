@@ -137,6 +137,6 @@ async def test_title_falls_back_when_llm_fails():
 @pytest.mark.asyncio
 async def test_title_works_before_any_answer_exists():
     result, seen, _ = await _run_title(
-        [{"role": "user", "content": "list all warehouses"}], llm_reply="Warehouse List"
+        [{"role": "user", "content": "list all warehouses"}], llm_reply="Warehouse Stock List Overview"
     )
-    assert result["title"] == "Warehouse List" and "list all warehouses" in seen["prompt"]
+    assert result["title"] == "Warehouse Stock List Overview" and "list all warehouses" in seen["prompt"]

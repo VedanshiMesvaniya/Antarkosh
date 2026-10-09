@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
-from src.api.auth import get_current_user_optional, require_admin
+from src.api.auth import get_current_user, require_admin
 from src.core import db_settings
 from src.core.config import settings
 from src.core.provider_client import ProviderRouter
@@ -28,14 +28,17 @@ router = APIRouter()
 
 
 def _check_chat_access(chat_id: str, user_id: str | None) -> None:
-    """Ensure current user has permission to access this chat."""
-    if not user_id or user_id in ("*", "all", "anonymous", "admin"):
+    """Ensure current user owns this chat (admin may open any chat)."""
+    if user_id in ("admin", "*", "all"):
         return
+    if not user_id or user_id == "anonymous":
+        raise HTTPException(status_code=401, detail="Please login.")
     chats = state_manager.get_chats()
     target = next((c for c in chats if c.get("id") == chat_id), None)
     if target:
         owner = target.get("userId") or target.get("user_id")
-        if owner and owner not in (user_id, "system", "shared"):
+        # A chat with no recorded owner is not anyone's to open except admin.
+        if owner not in (user_id, "system", "shared"):
             raise HTTPException(status_code=403, detail="Access denied to this chat")
 
 
@@ -258,7 +261,7 @@ async def get_overview() -> dict[str, Any]:
 
 
 @router.get("/chats")
-async def get_chats(current_user: str = Depends(get_current_user_optional)) -> list[dict[str, Any]]:
+async def get_chats(current_user: str = Depends(get_current_user)) -> list[dict[str, Any]]:
     """List all chats."""
     return state_manager.get_chats(user_id=current_user)
 
@@ -266,7 +269,7 @@ async def get_chats(current_user: str = Depends(get_current_user_optional)) -> l
 @router.post("/chats")
 async def create_chat(
     chat_data: ChatCreate,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Create a new chat."""
     chat = {
@@ -284,7 +287,7 @@ async def create_chat(
 async def update_chat(
     chat_id: str,
     chat_data: ChatUpdate,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Rename a chat."""
     _check_chat_access(chat_id, current_user)
@@ -297,7 +300,7 @@ async def update_chat(
 @router.delete("/chats/{chat_id}")
 async def delete_chat(
     chat_id: str,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> dict[str, str]:
     """Delete a chat."""
     _check_chat_access(chat_id, current_user)
@@ -308,7 +311,7 @@ async def delete_chat(
 @router.get("/chats/{chat_id}/messages")
 async def get_messages(
     chat_id: str,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """Get all messages for a chat."""
     _check_chat_access(chat_id, current_user)
@@ -319,7 +322,7 @@ async def get_messages(
 async def send_message(
     chat_id: str,
     msg: SendMessage,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Send a message to a chat, process it via RAG, and return the response."""
     _check_chat_access(chat_id, current_user)
@@ -342,7 +345,7 @@ async def send_message(
         # Fresh pipeline per request — avoids accumulated RateLimiter backoff
         # bleeding across unrelated queries and biasing provider selection.
         pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider))
-        filters = {"user_id": current_user} if current_user and current_user not in ("*", "all", "anonymous") else None
+        filters = {"user_id": current_user}
         result = await pipeline.query(msg.message, filters=filters, history=history, mode=msg.mode)
 
 
@@ -383,7 +386,7 @@ async def send_message(
 async def send_message_stream(
     chat_id: str,
     msg: SendMessage,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ):
     """Send a message to a chat and stream the RAG response via SSE."""
     _check_chat_access(chat_id, current_user)
@@ -403,7 +406,7 @@ async def send_message_stream(
     state_manager.add_message(chat_id, user_message)
 
     pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider))
-    filters = {"user_id": current_user} if current_user and current_user not in ("*", "all", "anonymous") else None
+    filters = {"user_id": current_user}
 
     async def event_generator():
         try:
@@ -514,7 +517,7 @@ async def set_message_feedback(
 @router.post("/chats/{chat_id}/document")
 async def generate_chat_document(
     chat_id: str,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Restructure a chat into a professional Markdown document (with charts).
 
@@ -567,7 +570,7 @@ async def generate_chat_document(
 @router.post("/chats/{chat_id}/title")
 async def generate_chat_title(
     chat_id: str,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Generate a concise, topic-aware title from a chat's first exchange.
 
@@ -620,7 +623,7 @@ def _doc_view(entry: dict[str, Any], version_count: int = 1) -> dict[str, Any]:
 
 
 @router.get("/documents")
-async def get_documents(current_user: str = Depends(get_current_user_optional)) -> list[dict[str, Any]]:
+async def get_documents(current_user: str = Depends(get_current_user)) -> list[dict[str, Any]]:
     """List the ingested documents (active versions only).
 
     Reads from the ingestion registry (ingested_files.json) — the single source
@@ -657,7 +660,7 @@ async def get_documents(current_user: str = Depends(get_current_user_optional)) 
 @router.get("/documents/{document_id}/versions")
 async def get_document_versions(
     document_id: str,
-    current_user: str = Depends(get_current_user_optional),
+    current_user: str = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """Return the full version history of a document's lineage, oldest first."""
     from src.core.ingestion_registry import IngestionRegistry
@@ -868,7 +871,7 @@ async def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/settings/sync-schema")
-async def sync_schema() -> dict[str, Any]:
+async def sync_schema(_admin: str = Depends(require_admin)) -> dict[str, Any]:
     """Sync the live database schema into the vector store for Schema RAG.
 
     Fetches all tables from the configured database, embeds each table's

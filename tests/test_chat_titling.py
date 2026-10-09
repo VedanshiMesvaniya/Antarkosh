@@ -30,8 +30,8 @@ def test_fallback_title_bounds_and_empty():
 
 
 def test_clean_title_normalizes_llm_output():
-    assert _clean_title("Title: Warehouse Inventory Report") == "Warehouse Inventory Report"
-    assert _clean_title("Chat Title - Fiscal Year 2025") == "Fiscal Year 2025"
+    assert _clean_title("Title: Warehouse Inventory Status Report") == "Warehouse Inventory Status Report"
+    assert _clean_title("Chat Title - Fiscal Year 2025 Summary") == "Fiscal Year 2025 Summary"
     assert _clean_title('"Apple Tax Rate"') == ""
     # titles are 4-6 words: up to six are kept; longer ones are cut, and dangling stop words dropped
     assert _clean_title("Overview of Global Operations for 2025") == "Overview of Global Operations for 2025"

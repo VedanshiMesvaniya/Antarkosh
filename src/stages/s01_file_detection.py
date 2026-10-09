@@ -149,7 +149,7 @@ def detect_file(file_path: str | Path) -> FileDetectionResult:
     
     # Specific text formats (markdown, csv, tsv, json, etc.) are reported as generic text/plain
     # by libmagic because they lack binary magic headers. Refine category using extension.
-    if category == FileCategory.PLAINTEXT and ext_category in (
+    if category in (FileCategory.PLAINTEXT, FileCategory.XLS) and ext_category in (
         FileCategory.MARKDOWN, FileCategory.CSV, FileCategory.TSV, 
         FileCategory.JSON, FileCategory.HTML, FileCategory.XML
     ):

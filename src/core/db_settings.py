@@ -36,6 +36,8 @@ _REQUIRED = {
     "mysql": ["host", "database", "username"],
     "postgresql": ["host", "database", "username"],
     "sqlite": [],
+    "mssql": ["host", "database", "username"],
+    "oracle": ["host", "service_name", "username"],
 }
 
 

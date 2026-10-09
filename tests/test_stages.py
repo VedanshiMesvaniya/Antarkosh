@@ -46,7 +46,7 @@ class TestFileDetection:
 
     def test_detect_csv_file(self, tmp_path: Path) -> None:
         f = tmp_path / "data.csv"
-        f.write_text("name,age\nAlice,30\nBob,25")
+        f.write_text("name,age,city\nAlice,30,New York\nBob,25,San Francisco\nCharlie,35,Chicago\n")
         result = detect_file(f)
         assert result.file_category == FileCategory.CSV
 

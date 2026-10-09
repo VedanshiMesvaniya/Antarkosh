@@ -531,7 +531,7 @@ class QdrantStore:
             conditions.append(
                 FieldCondition(key="page_number", range=Range(gte=filters["page_number"]))
             )
-        if "user_id" in filters and filters["user_id"]:
+        if "user_id" in filters and filters["user_id"] and filters.get("allowed_document_ids") is None:
             target_user = str(filters["user_id"]).strip()
             if target_user and target_user not in ("*", "all"):
                 from qdrant_client.models import IsEmptyCondition, MatchAny, PayloadField

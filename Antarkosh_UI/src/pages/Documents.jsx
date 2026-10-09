@@ -76,6 +76,10 @@ export default function Documents() {
   const [isSavingAccess, setIsSavingAccess] = useState(false)
   const [saveStatus, setSaveStatus] = useState('idle')
   const autoSaveTimerRef = useRef(null)
+  const allowedUsersRef = useRef([])
+  const userEditedRef = useRef(false)   // true once the admin ticks anything for this document
+  const pendingSaveRef = useRef(null)   // { docId, users } waiting for the autosave timer
+  const saveSeqRef = useRef(0)          // only the newest save may update the "saved" status
   const dialogRef = useRef(null)
   const dialogCancelRef = useRef(null)
 
@@ -176,6 +180,8 @@ export default function Documents() {
       autoSaveTimerRef.current = null
     }
     if (!isAdmin || !selectedDocId) {
+      allowedUsersRef.current = []
+      userEditedRef.current = false
       setAllowedUsers([])
       setSavedAllowedUsers([])
       setSaveStatus('idle')
@@ -183,6 +189,9 @@ export default function Documents() {
     }
     const currentDoc = documents.find((d) => d.id === selectedDocId)
     const initialAllowed = currentDoc?.allowedUsers || []
+    userEditedRef.current = false
+    pendingSaveRef.current = null
+    allowedUsersRef.current = initialAllowed
     setAllowedUsers(initialAllowed)
     setSavedAllowedUsers(initialAllowed)
     setSaveStatus('idle')
@@ -190,8 +199,9 @@ export default function Documents() {
     let active = true
     getDocumentAccessApi(selectedDocId)
       .then((data) => {
-        if (!active) return
+        if (!active || userEditedRef.current) return
         const list = Array.isArray(data?.allowed_users) ? data.allowed_users : []
+        allowedUsersRef.current = list
         setAllowedUsers(list)
         setSavedAllowedUsers(list)
         setDocumentAllowedUsers(selectedDocId, list)
@@ -206,15 +216,24 @@ export default function Documents() {
         clearTimeout(autoSaveTimerRef.current)
         autoSaveTimerRef.current = null
       }
+      const pending = pendingSaveRef.current
+      if (pending) {
+        pendingSaveRef.current = null
+        updateDocumentAccessApi(pending.docId, pending.users)
+          .then(() => setDocumentAllowedUsers(pending.docId, pending.users))
+          .catch(() => toast.error('Failed to update access permissions'))
+      }
     }
   }, [isAdmin, selectedDocId])
 
   const commitSaveAccess = async (targetDocId, usersToSave, showToast = true) => {
     if (!targetDocId) return
+    const seq = ++saveSeqRef.current
     try {
       setIsSavingAccess(true)
       setSaveStatus('saving')
       await updateDocumentAccessApi(targetDocId, usersToSave)
+      if (seq !== saveSeqRef.current) return
       setSavedAllowedUsers(usersToSave)
       setDocumentAllowedUsers(targetDocId, usersToSave)
       setSaveStatus('saved')
@@ -224,47 +243,47 @@ export default function Documents() {
       }
     } catch (err) {
       console.error('Failed to save document access:', err)
-      setSaveStatus('unsaved')
+      if (seq === saveSeqRef.current) setSaveStatus('unsaved')
       toast.error('Failed to update access permissions')
     } finally {
-      setIsSavingAccess(false)
+      if (seq === saveSeqRef.current) setIsSavingAccess(false)
     }
   }
 
   const scheduleAutoSave = (nextUsers) => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-    }
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    saveSeqRef.current += 1
     setSaveStatus('unsaved')
+    const docId = selectedDocId
+    pendingSaveRef.current = { docId, users: nextUsers }
     autoSaveTimerRef.current = setTimeout(() => {
-      if (selectedDocId) {
-        commitSaveAccess(selectedDocId, nextUsers, false)
-      }
+      autoSaveTimerRef.current = null
+      pendingSaveRef.current = null
+      if (docId) commitSaveAccess(docId, nextUsers, false)
     }, 1500)
+  }
+
+  const applyAllowedUsers = (next) => {
+    userEditedRef.current = true
+    allowedUsersRef.current = next
+    setAllowedUsers(next)
+    scheduleAutoSave(next)
   }
 
   const handleToggleUser = (username) => {
     if (!selectedDoc) return
-    setAllowedUsers((prev) => {
-      const exists = prev.includes(username)
-      const next = exists ? prev.filter((u) => u !== username) : [...prev, username]
-      scheduleAutoSave(next)
-      return next
-    })
+    const prev = allowedUsersRef.current
+    applyAllowedUsers(prev.includes(username) ? prev.filter((u) => u !== username) : [...prev, username])
   }
 
   const handleSelectAllUsers = () => {
     if (!selectedDoc || allUsers.length === 0) return
-    const next = [...allUsers]
-    setAllowedUsers(next)
-    scheduleAutoSave(next)
+    applyAllowedUsers([...allUsers])
   }
 
   const handleDeselectAllUsers = () => {
     if (!selectedDoc) return
-    const next = []
-    setAllowedUsers(next)
-    scheduleAutoSave(next)
+    applyAllowedUsers([])
   }
 
   const handleSaveAccessNow = () => {
@@ -273,7 +292,8 @@ export default function Documents() {
       clearTimeout(autoSaveTimerRef.current)
       autoSaveTimerRef.current = null
     }
-    commitSaveAccess(selectedDoc.id, allowedUsers, true)
+    pendingSaveRef.current = null
+    commitSaveAccess(selectedDoc.id, allowedUsersRef.current, true)
   }
 
   const handleSelectRow = (doc) => {

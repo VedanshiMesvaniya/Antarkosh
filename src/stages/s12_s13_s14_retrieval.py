@@ -118,9 +118,15 @@ class Retriever:
             effective_top_k = min(top_k * 2, 100) if exhaustive else min(top_k, 50)
 
         user_id = filters.get("user_id") if filters else None
+        if user_id == "anonymous":
+            return []
         allowed_docs: list[str] | None = None
         effective_filters = filters
-        if user_id and user_id not in ("*", "all", "anonymous", "admin"):
+        if user_id == "admin":
+            # Admin is unrestricted: drop the per-chunk owner clause so older
+            # chunks uploaded by other users stay visible to admin.
+            effective_filters = {k: v for k, v in (filters or {}).items() if k != "user_id"}
+        elif user_id and user_id not in ("*", "all"):
             from src.core.ingestion_registry import IngestionRegistry
             registry = IngestionRegistry()
             active_docs = registry.get_active()
@@ -198,10 +204,12 @@ class Reranker:
     ) -> list[RetrievedChunk]:
         """Score every chunk against the query with the local cross-encoder."""
         import asyncio
+        import time
 
         from src.core import local_models
 
         documents = [c.chunk.content for c in chunks]
+        _t0 = time.perf_counter()
         scores = await asyncio.to_thread(
             local_models.rerank_scores_sync,
             query,
@@ -211,6 +219,7 @@ class Reranker:
             max_length=settings.bge_reranker_max_length,
             batch_size=settings.bge_reranker_batch_size,
         )
+        logger.info("Local rerank scored %d chunks in %.1fs", len(chunks), time.perf_counter() - _t0)
         order = sorted(range(len(chunks)), key=lambda i: scores[i], reverse=True)[:top_k]
         reranked: list[RetrievedChunk] = []
         for idx in order:

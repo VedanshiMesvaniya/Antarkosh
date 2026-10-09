@@ -228,6 +228,8 @@ class QueryPipeline:
         scope_key = (filters.get("scope_key") or filters.get("erp_instance_id")) if filters else None
         if not scope_key:
             scope_key = os.environ.get("Antarkosh_ERP_INSTANCE_ID", "").strip() or None
+        if scope_key:
+            scope_key = f"{scope_key}|{_cache_acl_signature(filters.get('user_id') if filters else None)}"
 
         query_type = classify_query(question)
 
@@ -834,6 +836,20 @@ _FOLLOWUP_CUES = re.compile(
     r"|how about|what about|expand|elaborate|continue|instead|difference|again|rephrase|the rest)\b",
     re.IGNORECASE,
 )
+
+
+def _cache_acl_signature(user_id: str | None) -> str:
+    """Cache partition for a user: their id plus a hash of the documents they may read."""
+    import hashlib
+
+    if not user_id:
+        return "noauth"
+    if user_id in ("*", "all", "admin"):
+        return "admin"
+    from src.core.ingestion_registry import IngestionRegistry
+
+    ids = sorted(e["document_id"] for e in IngestionRegistry().get_active(user_id=user_id))
+    return f"{user_id}:{hashlib.sha1(','.join(ids).encode()).hexdigest()[:12]}"
 
 
 def _looks_like_followup(question: str) -> bool:

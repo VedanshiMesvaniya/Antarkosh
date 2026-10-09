@@ -54,7 +54,7 @@ def _stored(env) -> dict:
 
 
 @pytest.mark.parametrize("bad", [
-    {"engine": "oracle"}, {"engine": "mssql"}, {"engine": "nope"},
+    {"engine": "nope"},
     {**MYSQL, "host": ""}, {**MYSQL, "port": "abc"}, {**MYSQL, "port": 70000},
     {**MYSQL, "host": "a\nb"}, {**PG, "database": ""},
 ])
@@ -131,4 +131,4 @@ def test_catalogue_never_exposes_password():
     cfg = dbs.current_config()
     assert "password" not in cfg and "password_set" in cfg
     assert {e["key"] for e in cfg["engines"]} == {"mysql", "postgresql", "sqlite", "mssql", "oracle"}
-    assert [e["key"] for e in cfg["engines"] if e["ready"]] == ["mysql", "postgresql", "sqlite"]
+    assert [e["key"] for e in cfg["engines"] if e["ready"]] == ["mysql", "postgresql", "sqlite", "mssql", "oracle"]
