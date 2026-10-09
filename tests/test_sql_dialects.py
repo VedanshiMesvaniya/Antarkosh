@@ -118,10 +118,33 @@ class TestDialectProfiles:
         with pytest.raises(ValueError, match="Unsupported db_engine"):
             get_dialect_profile("oracle")
 
+    def test_mssql_not_registered_in_dialects_raises_value_error(self) -> None:
+        # Step E2 pin: MSSQL must not be registered in DIALECTS yet.
+        assert "mssql" not in DIALECTS
+        with pytest.raises(ValueError, match="Unsupported db_engine 'mssql'"):
+            get_dialect_profile("mssql")
+
+    def test_oracle_not_registered_in_dialects_raises_value_error(self) -> None:
+        # Step E2 pin: Oracle must not be registered in DIALECTS yet.
+        assert "oracle" not in DIALECTS
+        with pytest.raises(ValueError, match="Unsupported db_engine 'oracle'"):
+            get_dialect_profile("oracle")
+
+    def test_mssql_stub_raises_not_implemented_error(self) -> None:
+        from src.sql.dialects.mssql import get_profile
+        with pytest.raises(NotImplementedError, match="needs validation against a real instance"):
+            get_profile()
+
+    def test_oracle_stub_raises_not_implemented_error(self) -> None:
+        from src.sql.dialects.oracle import get_profile
+        with pytest.raises(NotImplementedError, match="needs validation against a real instance"):
+            get_profile()
+
     def test_every_profile_key_matches_its_registry_key(self) -> None:
         # Guards against copy-paste drift if a new dialect is added later.
         for registry_key, profile in DIALECTS.items():
             assert profile.key == registry_key
+        assert set(DIALECTS.keys()) == {"sqlite", "mysql", "postgresql"}
 
 
 class TestFormatSchemaRows:
