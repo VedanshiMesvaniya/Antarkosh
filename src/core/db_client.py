@@ -108,13 +108,8 @@ async def _execute(engine: str, sql: str, params: dict | None) -> list[dict[str,
     This is the one place engine-specific connection/driver differences live.
     """
     if engine == "sqlite":
-        # Layer 1 defense: SQLite engine-level Read-Only mode via the URI trick.
-        db_uri = f"file:{DB_PATH.resolve()}?mode=ro"
-        async with aiosqlite.connect(db_uri, uri=True) as db:
-            db.row_factory = aiosqlite.Row
-            async with db.execute(sql, params) as cursor:
-                rows = await cursor.fetchall()
-                return [dict(row) for row in rows]
+        from src.sql.connectors.sqlite import SQLiteConnector
+        return await SQLiteConnector().run_readonly(sql, params)
 
     elif engine == "mysql":
         import aiomysql
