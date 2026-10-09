@@ -103,3 +103,16 @@ Chronological reports produced after completing each refactoring phase.
 - **Issues Found**: None.
 - **Next Step ID**: C2-3
 
+---
+
+## Step C2-3 Report: Switch Non-src Readers to Loaders
+- **Step ID**: C2-3
+- **Commits**: 375a3df
+- **Files Changed**: `scripts/verify_atlas.py`, `scripts/build_sql_relationships.py`, `scripts/auto_harvest_metadata.py`, `scripts/build_behavioral_atlas.py`, `scripts/build_sql_glossary.py`, `scripts/generate_behavioral_atlas.py`, `evals/Antarkosh/run_eval.py`, `evals/Antarkosh/baseline_v2/run_full_eval.py`, `tests/test_sql_retrieval.py`.
+- **What Changed**: Switched all scripts and evals readers to `get_knowledge_path` (supporting optional `--db`), removed stale legacy references from script docstrings/defaults, verified `evals/Antarkosh/run_eval.py --offline` passes (163/163 valid), and added a non-skipping relationship knowledge file assertion in `tests/test_sql_retrieval.py`. Legacy names in `scripts/` and `evals/` now appear only in documentation/report text.
+- **Checks a-g**: a-g all passed; pytest: 547 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +1 passed vs 546 last recorded count due to new non-skip test); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations (to be removed in Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: C2-4
+
+

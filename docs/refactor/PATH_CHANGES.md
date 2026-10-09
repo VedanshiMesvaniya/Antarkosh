@@ -84,3 +84,20 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | C2-2-5 | src/pipeline/schema_ingestion.py | src/pipeline/schema_ingestion.py | doc | cleaned legacy filenames from docstring & comment (L78, L170) | a-g pass | 305bad1 |
 | C2-2-6 | src/core/join_graph.py | src/core/join_graph.py | doc | cleaned legacy filename from comment (L56) | a-g pass | 305bad1 |
 | C2-2-7 | src/core/result_validator.py | src/core/result_validator.py | doc | cleaned legacy filename from comment (L86) | a-g pass | 305bad1 |
+
+---
+
+## Step C2-3 — Switch Non-src Readers to Loaders
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| C2-3-1 | scripts/verify_atlas.py | scripts/verify_atlas.py | wire | ATLAS_PATH, SCHEMA_PATH -> get_knowledge_path | a-g pass | 375a3df |
+| C2-3-2 | scripts/build_sql_relationships.py | scripts/build_sql_relationships.py | wire | DEFAULT_OUT, docstrings, schema_path, out_path -> get_knowledge_path | a-g pass | 375a3df |
+| C2-3-3 | scripts/auto_harvest_metadata.py | scripts/auto_harvest_metadata.py | wire | GLOSSARY_PATH, RELATIONSHIPS_PATH, main -> get_knowledge_path | a-g pass | 375a3df |
+| C2-3-4 | scripts/build_behavioral_atlas.py | scripts/build_behavioral_atlas.py | wire | SCHEMA_PATH, GLOSSARY_PATH, RELS_PATH, OUTPUT_PATH, main -> get_knowledge_path | a-g pass | 375a3df |
+| C2-3-5 | scripts/build_sql_glossary.py | scripts/build_sql_glossary.py | wire | SCHEMA_FILE, OLD_GLOSSARY_FILE, OUT_FILE, main -> get_knowledge_path | a-g pass | 375a3df |
+| C2-3-6 | scripts/generate_behavioral_atlas.py | scripts/generate_behavioral_atlas.py | wire | INPUT_SCHEMA_PATH, INPUT_GLOSSARY_PATH, OUTPUT_ATLAS_PATH, main -> get_knowledge_path | a-g pass | 375a3df |
+| C2-3-7 | evals/Antarkosh/run_eval.py | evals/Antarkosh/run_eval.py | wire | SCHEMA -> get_knowledge_path("schema") | a-g pass | 375a3df |
+| C2-3-8 | evals/Antarkosh/baseline_v2/run_full_eval.py | evals/Antarkosh/baseline_v2/run_full_eval.py | wire | _load_schema_context -> get_knowledge_path("schema") | a-g pass | 375a3df |
+| C2-3-9 | tests/test_sql_retrieval.py | tests/test_sql_retrieval.py | test | added test_relationships_knowledge_file_exists_and_loads | a-g pass | 375a3df |
+
