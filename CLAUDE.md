@@ -60,3 +60,12 @@ The objective is not to perfectly reproduce the architecture document.
 The objective is to build the strongest implementation possible while preserving the overall design intent.
 Favor correctness, maintainability, and extensibility over blindly following the document.
 Treat the architecture as a living document, and the codebase as the source of truth once implementation begins.
+
+## Refactor rules (Multi-DB Restructure)
+- Stay on `restructure` branch; one commit per logical step (`refactor(move): ...` or `refactor(wire): ...`).
+- Never mix moves with logic/behavior changes.
+- Use `git mv` for code moves; copy-only for data/knowledge files in Phase C.
+- Never print, open, commit, or log secrets (`.env`, `config/connections.json`, `config/db_connection.json`, passwords, API keys).
+- Never delete files or shims before Phase I (explicit approval required).
+- Record every moved/changed path in `docs/refactor/PATH_CHANGES.md` in the same commit.
+- Verification loop must pass before every commit (compileall, ruff, import src.main, pytest, CI scripts, health endpoint).
