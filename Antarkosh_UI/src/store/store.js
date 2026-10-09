@@ -490,7 +490,10 @@ export const useAppStore = create((set, get) => ({
 
     // Fire-and-forget: on first app load, scan the server's inbox folder and
     // show a side popup with the outcome. Never block the UI on it.
-    get().runInboxScan()
+    // The folder scan is an admin-only endpoint, so other users must not call it.
+    if (get().currentUser === 'admin') {
+      get().runInboxScan()
+    }
 
     // Load the provider quota meters in the background — never block startup.
     get().refreshProviderUsage()
@@ -553,6 +556,11 @@ export const useAppStore = create((set, get) => ({
         })
       }
     } catch (error) {
+      // 403 = not an admin: the inbox notification is admin-only, so show nothing.
+      if (error?.response?.status === 403) {
+        toast.dismiss(toastId)
+        return
+      }
       toast.error('Inbox scan failed', {
         id: toastId,
         description: error.message || 'The server could not scan the inbox folder.',
