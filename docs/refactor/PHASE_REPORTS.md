@@ -220,4 +220,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: E1
 
+---
+
+## Step E1 Report: Database Connectors (Protocol & per-engine extraction)
+- **Step ID**: E1
+- **Commits**: 00e709f, d4f3b35, 5aee3dc, 23f6af7, 481aac9
+- **Files Changed**: `src/sql/connectors/base.py`, `src/sql/connectors/sqlite.py`, `src/sql/connectors/mysql.py`, `src/sql/connectors/postgresql.py`, `src/sql/connectors/mssql.py`, `src/sql/connectors/oracle.py`, `src/sql/connectors/__init__.py`, `src/core/db_client.py`, `tests/test_sql_connectors.py`.
+- **What Changed**: Created `src/sql/connectors/` with `Connector` Protocol (`test()`, `run_readonly()`) in `base.py` and dedicated connectors for SQLite (URI ro mode), MySQL (read-only credentials), PostgreSQL (read-only transactions and statements timeout), MSSQL (pyodbc and odbc_driver configuration), and Oracle (oracledb with lower-cased columns). Preserved exact query timeouts, cartesian explosion clamping, and AST LIMIT enforcement in `src/core/db_client.py:run_readonly_query`. Refactored `db_client._execute` into a thin dispatcher delegating to `get_connector(engine).run_readonly`. One commit per engine was made. Added unit tests in `tests/test_sql_connectors.py` validating protocol compliance and query execution.
+- **Checks a-g**: a-g all passed; pytest: 599 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +13 passed vs 586 last recorded count); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I). Transition rule in `s12b` and `s11` accepting legacy `live_db_schema` chunks for `erp_main` until re-synced.
+- **Issues Found**: Finding #11: `test_telemetry_latency_under_5ms_guardrail_4` jitter under heavy test suite load (logged in FOUND_ISSUES.md).
+- **Next Step ID**: E2
+
 

@@ -187,5 +187,21 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | D7-5 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | behavior | SQLRetriever.retrieve sets CURRENT_DB_ID context var | a-g pass | d4046a4 |
 | D7-6 | (new) | tests/test_api_query_db_id.py | test | tests verifying optional db_id defaults to erp_main, rejects invalid db_id with 400, UI routes validate db_id, and metrics records contain db_id | a-g pass | d4046a4 |
 
+---
+
+## Step E1 — Database Connectors (Protocol & per-engine extraction)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| E1-1 | (new) | src/sql/connectors/base.py | code | Connector Protocol with test(), run_readonly() | a-g pass | 00e709f |
+| E1-2 | src/core/db_client.py (sqlite) | src/sql/connectors/sqlite.py | code | SQLiteConnector with URI ro mode, test(), run_readonly() | a-g pass | 00e709f |
+| E1-3 | src/core/db_client.py (mysql) | src/sql/connectors/mysql.py | code | MySQLConnector with dedicated readonly connection, test(), run_readonly() | a-g pass | d4f3b35 |
+| E1-4 | src/core/db_client.py (postgresql) | src/sql/connectors/postgresql.py | code | PostgreSQLConnector with readonly transaction, timeout, test(), run_readonly() | a-g pass | 5aee3dc |
+| E1-5 | src/core/db_client.py (mssql) | src/sql/connectors/mssql.py | code | MSSQLConnector with odbc_driver handling, test(), run_readonly() | a-g pass | 23f6af7 |
+| E1-6 | src/core/db_client.py (oracle) | src/sql/connectors/oracle.py | code | OracleConnector with lower-cased columns, test(), run_readonly() | a-g pass | 481aac9 |
+| E1-7 | src/core/db_client.py | src/core/db_client.py | wire | run_readonly_query preserves signature and limit logic; _execute delegates to get_connector | a-g pass | 481aac9 |
+| E1-8 | (new) | src/sql/connectors/__init__.py | wire | package re-exports Connector, all 5 engine connectors, and get_connector dispatcher | a-g pass | 481aac9 |
+| E1-9 | (new) | tests/test_sql_connectors.py | test | protocol conformance, SQLite file execution, get_connector factory for all 5 engines | a-g pass | 481aac9 |
+
 
 
