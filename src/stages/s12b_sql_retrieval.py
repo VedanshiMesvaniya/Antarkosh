@@ -21,6 +21,7 @@ import sqlglot
 from sqlglot import exp
 
 from src.core.config import CONFIG_DIR, settings
+from src.sql.knowledge.loaders import get_knowledge_path
 from src.core.db_client import run_readonly_query
 from src.core.pipeline_metrics import log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
@@ -289,7 +290,7 @@ def _extract_table_names(sql: str, dialect: str) -> list[str]:
 @functools.lru_cache(maxsize=1)
 def _get_raw_relationships() -> list[dict[str, Any]]:
     """Load raw relationship list from config/sql_relationships.json."""
-    path = CONFIG_DIR / "sql_relationships.json"
+    path = get_knowledge_path("relationships")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         rels = data.get("relationships") if isinstance(data, dict) else data
@@ -408,7 +409,7 @@ def _load_relationships() -> str:
 @functools.lru_cache(maxsize=1)
 def _load_glossary() -> str:
     """Load SQL glossary from disk, cached for process lifetime. ARCH-9."""
-    path = CONFIG_DIR / "sql_glossary.json"
+    path = get_knowledge_path("glossary")
     try:
         groups = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(groups, dict) or not groups:
@@ -434,7 +435,7 @@ def _load_glossary() -> str:
 @functools.lru_cache(maxsize=1)
 def _get_raw_column_glossary() -> dict:
     """Load column-mapped glossary dict from disk."""
-    path = CONFIG_DIR / "sql_column_glossary.json"
+    path = get_knowledge_path("column_glossary")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
@@ -519,7 +520,7 @@ def _get_raw_behavioral_atlas() -> dict[str, Any]:
     global _BEHAVIORAL_ATLAS_CACHE
     if _BEHAVIORAL_ATLAS_CACHE is not None:
         return _BEHAVIORAL_ATLAS_CACHE
-    atlas_path = CONFIG_DIR / "behavioral_schema_atlas.json"
+    atlas_path = get_knowledge_path("behavioral_atlas")
     if atlas_path.exists():
         try:
             with open(atlas_path, "r", encoding="utf-8") as f:

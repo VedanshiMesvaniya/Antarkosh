@@ -16,6 +16,7 @@ import logging
 from typing import Any
 
 from src.core.config import CONFIG_DIR, PROJECT_ROOT, settings
+from src.sql.knowledge.loaders import get_knowledge_path
 from src.core.db_client import run_readonly_query
 from src.core.sql_dialects import get_dialect_profile, SQLDialectProfile
 from src.models.schemas import Chunk, ChunkType, DocumentType
@@ -75,7 +76,7 @@ def _split_schema_by_table(
 
 def _load_table_metadata() -> dict[str, dict[str, Any]]:
     """Load table domain and metadata from evals/Antarkosh/Antarkosh_schema.json if present."""
-    schema_file = PROJECT_ROOT / "evals" / "Antarkosh" / "Antarkosh_schema.json"
+    schema_file = get_knowledge_path("schema")
     if not schema_file.exists():
         return {}
     try:
@@ -169,7 +170,7 @@ async def sync_live_schema(
     # fall back to inferred relationships from config/sql_relationships.json
     if not fk_map:
         try:
-            rel_path = CONFIG_DIR / "sql_relationships.json"
+            rel_path = get_knowledge_path("relationships")
             if rel_path.exists():
                 rel_data = json.loads(rel_path.read_text(encoding="utf-8"))
                 rels = rel_data.get("relationships") if isinstance(rel_data, dict) else rel_data

@@ -14,16 +14,24 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from scripts._paths import REPO_ROOT
+try:
+    from scripts._paths import REPO_ROOT
+except ModuleNotFoundError:
+    from _paths import REPO_ROOT
 
 console = Console()
+
+import argparse
 
 ROOT_DIR = REPO_ROOT
 ATLAS_PATH = ROOT_DIR / "config" / "behavioral_schema_atlas.json"
 SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 
 
-def run_verification():
+def run_verification(atlas_path: Path | None = None, schema_path: Path | None = None):
+    atlas_file = atlas_path or ATLAS_PATH
+    schema_file = schema_path or SCHEMA_PATH
+
     console.print("\n[bold cyan]🔍 Starting Automated Behavioral Schema Atlas Verification...[/bold cyan]\n")
 
     # ------------------------------------------------------------------
@@ -31,10 +39,10 @@ def run_verification():
     # ------------------------------------------------------------------
     console.print("[bold yellow]Phase 1: Output Integrity & Structural Validation[/bold yellow]")
 
-    assert ATLAS_PATH.exists(), f"Atlas file does not exist at {ATLAS_PATH}"
-    with open(ATLAS_PATH, "r", encoding="utf-8") as f:
+    assert atlas_file.exists(), f"Atlas file does not exist at {atlas_file}"
+    with open(atlas_file, "r", encoding="utf-8") as f:
         atlas = json.load(f)
-    console.print("  ✅ [green]File exists and is valid, parseable JSON.[/green]")
+    console.print(f"  ✅ [green]File exists ({atlas_file}) and is valid, parseable JSON.[/green]")
 
     tables = atlas.get("tables", {})
     assert len(tables) >= 50, f"Expected >= 50 tables, got {len(tables)}"
@@ -161,4 +169,20 @@ def run_verification():
 
 
 if __name__ == "__main__":
-    run_verification()
+    parser = argparse.ArgumentParser(description="Verify Behavioral Schema Atlas")
+    parser.add_argument("--db", type=str, default="erp_main", help="Target database id (default: erp_main)")
+    parser.add_argument("--atlas", type=Path, default=None, help="Path to behavioral_atlas.json")
+    parser.add_argument("--schema", type=Path, default=None, help="Path to schema.json")
+    args = parser.parse_args()
+
+    atlas = args.atlas
+    if atlas is None:
+        target = ROOT_DIR / "databases" / args.db / "semantics" / "behavioral_atlas.json"
+        atlas = target if target.exists() else ATLAS_PATH
+
+    schema = args.schema
+    if schema is None:
+        target = ROOT_DIR / "databases" / args.db / "schema" / "schema.json"
+        schema = target if target.exists() else SCHEMA_PATH
+
+    run_verification(atlas_path=atlas, schema_path=schema)

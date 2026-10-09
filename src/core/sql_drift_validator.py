@@ -14,11 +14,12 @@ import sqlglot
 from sqlglot import exp
 
 from src.core.config import CONFIG_DIR, PROJECT_ROOT
+from src.sql.knowledge.loaders import get_knowledge_path
 
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = PROJECT_ROOT
-SCHEMA_FILE = REPO_ROOT / "evals" / "Antarkosh" / "Antarkosh_schema.json"
+SCHEMA_FILE = get_knowledge_path("schema")
 GLOSSARY_FILE = CONFIG_DIR / "sql_column_glossary.json"
 RELATIONSHIPS_FILE = CONFIG_DIR / "sql_relationships.json"
 

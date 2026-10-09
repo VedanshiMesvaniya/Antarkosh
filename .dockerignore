@@ -23,4 +23,6 @@ data/
 # Local secrets — provided as environment variables on the host instead.
 .env
 config/db_connection.json
+config/connections.json
 config/ingestion.json
+databases/*/learned/*

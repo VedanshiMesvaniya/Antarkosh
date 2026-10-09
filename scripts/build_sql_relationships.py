@@ -20,7 +20,10 @@ import argparse
 import json
 from pathlib import Path
 
-from scripts._paths import REPO_ROOT
+try:
+    from scripts._paths import REPO_ROOT
+except ModuleNotFoundError:
+    from _paths import REPO_ROOT
 
 REPO = REPO_ROOT
 DEFAULT_OUT = REPO / "config" / "sql_relationships.json"
@@ -46,11 +49,28 @@ def extract(schema: dict) -> list[dict]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Build sql_relationships.json from a schema JSON")
-    ap.add_argument("schema", type=Path, help="schema JSON with a 'relationships' array")
-    ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    ap.add_argument("schema", type=Path, nargs="?", default=None, help="schema JSON with a 'relationships' array")
+    ap.add_argument("--db", type=str, default="erp_main", help="Target database id (default: erp_main)")
+    ap.add_argument("--out", type=Path, default=None, help="Output path (default: databases/<db>/schema/relationships.json)")
     args = ap.parse_args()
 
-    schema = json.loads(args.schema.read_text(encoding="utf-8"))
+    schema_path = args.schema
+    if schema_path is None:
+        target_schema = REPO / "databases" / args.db / "schema" / "schema.json"
+        if target_schema.exists():
+            schema_path = target_schema
+        else:
+            schema_path = REPO / "evals" / "Antarkosh" / "Antarkosh_schema.json"
+
+    out_path = args.out
+    if out_path is None:
+        out_path = REPO / "databases" / args.db / "schema" / "relationships.json"
+
+    if not schema_path.exists():
+        print(f"Schema file not found at {schema_path}.")
+        return 1
+
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
     rels = extract(schema)
     if not rels:
         print(f"No relationships found in {args.schema}. Nothing written.")
@@ -65,11 +85,11 @@ def main() -> int:
         ),
         "relationships": rels,
     }
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
     tables = {r["from_table"] for r in rels} | {r["to_table"] for r in rels}
-    print(f"Wrote {len(rels)} relationships across {len(tables)} tables -> {args.out}")
+    print(f"Wrote {len(rels)} relationships across {len(tables)} tables -> {out_path}")
     return 0
 
 

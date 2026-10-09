@@ -46,3 +46,36 @@ Chronological reports produced after completing each refactoring phase.
 5. **FOUND_ISSUES additions:** None.
 6. **What the next phase will touch:** Phase C: create `databases/_template/` and `databases/erp_main/`, copy schema/glossary/relationships/atlas files, implement `src/sql/knowledge/loaders.py` with fallback to `config/`, update build scripts to accept `--db`, and add identity test.
 
+---
+
+## Phase C Report: Knowledge Packs and Fallback Loaders
+
+1. **What changed:**
+   - Created directory scaffolds `databases/_template/` and `databases/erp_main/` with `schema/`, `semantics/`, `learned/` (with `.gitkeep`), and `evals/`.
+   - Created `databases/README.md`, `databases/_template/db.yaml`, and `databases/erp_main/db.yaml`.
+   - Copied 5 core knowledge files into `databases/erp_main/`:
+     - `evals/Antarkosh/Antarkosh_schema.json` -> `databases/erp_main/schema/schema.json`
+     - `config/sql_relationships.json` -> `databases/erp_main/schema/relationships.json`
+     - `config/sql_glossary.json` -> `databases/erp_main/semantics/glossary.json`
+     - `config/sql_column_glossary.json` -> `databases/erp_main/semantics/column_glossary.json`
+     - `config/behavioral_schema_atlas.json` -> `databases/erp_main/semantics/behavioral_atlas.json`
+   - Created `src/sql/knowledge/loaders.py` providing `get_database_knowledge_path(db_id, relative_path)` and `get_knowledge_path(kind, db_id)` with automatic fallback to legacy paths and warning logs.
+   - Switched loaders in `src/stages/s12b_sql_retrieval.py` (`_get_raw_relationships`, `_load_glossary`, `_get_raw_column_glossary`, `_get_raw_behavioral_atlas`), `src/pipeline/schema_ingestion.py` (`schema_file`, `rel_path`), and `src/core/sql_drift_validator.py` (`SCHEMA_FILE`, `RELATIONSHIPS_FILE`).
+   - Updated 6 build and verification scripts (`build_sql_relationships.py`, `build_sql_glossary.py`, `build_behavioral_atlas.py`, `generate_behavioral_atlas.py`, `auto_harvest_metadata.py`, `verify_atlas.py`) to accept `--db <id>` (default `erp_main`) and target `databases/<id>/` while keeping old CLI flags working.
+   - Created `tests/test_database_knowledge_parity.py` asserting byte-identity between old and new copies and testing loader fallback.
+   - Added `config/connections.example.json` connection template.
+   - Updated `.gitignore` (`databases/*/learned/*`, `!databases/*/learned/.gitkeep`, `config/connections.json`, `data/sqlite/`), `.dockerignore`, and `.github/workflows/ci.yml` (added JSON/YAML parse validation for `databases/`).
+2. **PATH_CHANGES rows added:**
+   - Rows C-1 through C-14.
+3. **Verification results (a-g):**
+   - a. Byte parity test: all 5 file pairs byte-identical; fallback loader verified.
+   - b. Syntax/compileall: passed with 0 errors.
+   - c. Ruff lint: passed.
+   - d. Import `src.main`: passed.
+   - e. Pytest: 546 passed (537 baseline + 9 new parity/fallback tests), 17 skipped, 8 deselected (`live`), 1 xfailed, 0 failed.
+   - f. CI scripts: `sql_drift_validator.py` (zero drift) and `evals/Antarkosh/run_eval.py --offline` (163/163 valid) passed; CI yaml/json validator passed on all config and databases files.
+   - g. Proof test: temporarily renaming old `config/sql_relationships.json` proved pipeline successfully reads from `databases/erp_main/schema/relationships.json` (294 relationships loaded), then restored. Server `/health` and `/api/overview` returned HTTP 200.
+4. **Anything left as a shim:** Fallback logic in `src/sql/knowledge/loaders.py` and old copies in `config/` and `evals/Antarkosh/Antarkosh_schema.json` kept for backward compatibility until Phase I.
+5. **FOUND_ISSUES additions:** None.
+6. **What the next phase will touch:** Phase D: introduce `src/sql/engine.py` (Engine enum) and `src/sql/context.py` (DatabaseContext), re-key caches by `db_id`, add Qdrant payload `db_id` filter, and add two-database isolation tests.
+

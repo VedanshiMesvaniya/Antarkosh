@@ -1,0 +1,13 @@
+id: _template
+display_name: Template Database
+description: Template database description
+engine: sqlite                 # sqlite | mysql | postgresql | mssql | oracle
+connection: _template          # key in config/connections.json
+enabled: false
+soft_delete:
+  column: deleted_at
+default_filters: []
+allowed_users: [admin]
+schema_sync:
+  last_synced_at: null
+  schema_hash: null

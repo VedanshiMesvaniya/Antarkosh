@@ -1,0 +1,13 @@
+id: erp_main
+display_name: ERP (Main)
+description: Manufacturing ERP - parties, sales and purchase orders, stock, production, leads
+engine: mysql                 # sqlite | mysql | postgresql | mssql | oracle (single source of truth)
+connection: erp_main          # key in config/connections.json; sqlite uses data/sqlite/<id>.db
+enabled: true
+soft_delete:
+  column: deleted_at          # tables with this column are auto-detected from schema.json
+default_filters: []
+allowed_users: [admin]        # same semantics as documents; admins always allowed
+schema_sync:
+  last_synced_at: null
+  schema_hash: null           # used by schema_monitor to detect drift

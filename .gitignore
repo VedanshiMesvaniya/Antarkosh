@@ -64,8 +64,14 @@ evals/**/results/
 
 
 config/db_connection.json
+config/connections.json
 config/ingestion.json
 qdrant/
 data/sessions.json
+data/sqlite/
+
+# Multi-database learned state
+databases/*/learned/*
+!databases/*/learned/.gitkeep
 
 

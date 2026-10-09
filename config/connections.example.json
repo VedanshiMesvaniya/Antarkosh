@@ -1,0 +1,31 @@
+{
+  "erp_main": {
+    "host": "localhost",
+    "port": 3306,
+    "database": "Antarkosh",
+    "username": "readonly_user",
+    "password": "change_me"
+  },
+  "sales_pg": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "sales",
+    "username": "readonly_user",
+    "password": "change_me"
+  },
+  "legacy_sql": {
+    "host": "localhost",
+    "port": 1433,
+    "database": "legacy_erp",
+    "odbc_driver": "ODBC Driver 18 for SQL Server",
+    "username": "readonly_user",
+    "password": "change_me"
+  },
+  "hr_oracle": {
+    "host": "localhost",
+    "port": 1521,
+    "service_name": "XEPDB1",
+    "username": "readonly_user",
+    "password": "change_me"
+  }
+}

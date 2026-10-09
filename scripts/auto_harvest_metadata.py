@@ -8,19 +8,29 @@ Systematically introspects ALL tables in the MySQL database:
 4. Updates config/sql_column_glossary.json and config/sql_relationships.json.
 """
 
+import argparse
 import asyncio
 import json
 from pathlib import Path
 from rich.console import Console
 
 from src.core.db_client import run_readonly_query
+try:
+    from scripts._paths import REPO_ROOT
+except ModuleNotFoundError:
+    from _paths import REPO_ROOT
 
 console = Console()
-GLOSSARY_PATH = Path("config/sql_column_glossary.json")
-RELATIONSHIPS_PATH = Path("config/sql_relationships.json")
+GLOSSARY_PATH = REPO_ROOT / "config" / "sql_column_glossary.json"
+RELATIONSHIPS_PATH = REPO_ROOT / "config" / "sql_relationships.json"
 
 
-async def harvest_full_database() -> None:
+async def harvest_full_database(
+    glossary_path: Path | None = None,
+    relationships_path: Path | None = None,
+) -> None:
+    glossary_file = glossary_path or GLOSSARY_PATH
+    relationships_file = relationships_path or RELATIONSHIPS_PATH
     console.print("[bold cyan]Starting Full Database Introspection...[/bold cyan]")
 
     # 1. Fetch all base tables
@@ -47,9 +57,10 @@ async def harvest_full_database() -> None:
 
     # 3. Load existing glossary
     glossary = {}
-    if GLOSSARY_PATH.exists():
+    read_glossary_path = glossary_file if glossary_file.exists() else GLOSSARY_PATH
+    if read_glossary_path.exists():
         try:
-            with open(GLOSSARY_PATH, "r", encoding="utf-8") as f:
+            with open(read_glossary_path, "r", encoding="utf-8") as f:
                 glossary = json.load(f)
         except Exception:
             glossary = {}
@@ -126,9 +137,10 @@ async def harvest_full_database() -> None:
             }
 
     # Write back glossary
-    with open(GLOSSARY_PATH, "w", encoding="utf-8") as f:
+    glossary_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(glossary_file, "w", encoding="utf-8") as f:
         json.dump(glossary, f, indent=2)
-    console.print(f"[bold green]Updated {GLOSSARY_PATH} ({len(glossary)} entries)[/bold green]")
+    console.print(f"[bold green]Updated {glossary_file} ({len(glossary)} entries)[/bold green]")
 
     # 6. Auto-harvest Join Relationships
     console.print("[bold cyan]Harvesting Join Relationships...[/bold cyan]")
@@ -169,10 +181,29 @@ async def harvest_full_database() -> None:
                     }
                     relationships.append(rel)
 
-    with open(RELATIONSHIPS_PATH, "w", encoding="utf-8") as f:
+    relationships_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(relationships_file, "w", encoding="utf-8") as f:
         json.dump(relationships, f, indent=2)
-    console.print(f"[bold green]Updated {RELATIONSHIPS_PATH} ({len(relationships)} join paths)[/bold green]")
+    console.print(f"[bold green]Updated {relationships_file} ({len(relationships)} join paths)[/bold green]")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Auto-Harvest Metadata & Live DB Values")
+    parser.add_argument("--db", type=str, default="erp_main", help="Target database id (default: erp_main)")
+    parser.add_argument("--glossary", type=Path, default=None, help="Output path for column glossary")
+    parser.add_argument("--relationships", type=Path, default=None, help="Output path for relationships")
+    args = parser.parse_args()
+
+    glossary = args.glossary
+    if glossary is None:
+        glossary = REPO_ROOT / "databases" / args.db / "semantics" / "column_glossary.json"
+
+    rels = args.relationships
+    if rels is None:
+        rels = REPO_ROOT / "databases" / args.db / "schema" / "relationships.json"
+
+    asyncio.run(harvest_full_database(glossary_path=glossary, relationships_path=rels))
 
 
 if __name__ == "__main__":
-    asyncio.run(harvest_full_database())
+    main()

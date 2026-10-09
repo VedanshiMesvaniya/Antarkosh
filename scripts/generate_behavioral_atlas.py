@@ -21,7 +21,10 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeEl
 
 from src.core.provider_client import ProviderRouter
 
-from scripts._paths import REPO_ROOT
+try:
+    from scripts._paths import REPO_ROOT
+except ModuleNotFoundError:
+    from _paths import REPO_ROOT
 
 console = Console()
 
@@ -161,21 +164,39 @@ async def enrich_table(
 
 async def main():
     parser = argparse.ArgumentParser(description="Generate Behavioral Schema Atlas")
+    parser.add_argument("--db", type=str, default="erp_main", help="Target database id (default: erp_main)")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of tables to process (for testing)")
+    parser.add_argument("--schema", type=Path, default=None, help="Path to schema.json")
+    parser.add_argument("--glossary", type=Path, default=None, help="Path to column_glossary.json")
+    parser.add_argument("--out", type=Path, default=None, help="Output path for behavioral_atlas.json")
     args = parser.parse_args()
+
+    schema_path = args.schema
+    if schema_path is None:
+        target = ROOT_DIR / "databases" / args.db / "schema" / "schema.json"
+        schema_path = target if target.exists() else INPUT_SCHEMA_PATH
+
+    glossary_path = args.glossary
+    if glossary_path is None:
+        target = ROOT_DIR / "databases" / args.db / "semantics" / "column_glossary.json"
+        glossary_path = target if target.exists() else INPUT_GLOSSARY_PATH
+
+    out_path = args.out
+    if out_path is None:
+        out_path = ROOT_DIR / "databases" / args.db / "semantics" / "behavioral_atlas.json"
 
     console.print("\n[bold cyan]🚀 Starting Behavioral Schema Atlas Generation...[/bold cyan]\n")
 
-    if not INPUT_SCHEMA_PATH.exists():
-        console.print(f"[bold red]❌ Input schema file not found:[/bold red] {INPUT_SCHEMA_PATH}")
+    if not schema_path.exists():
+        console.print(f"[bold red]❌ Input schema file not found:[/bold red] {schema_path}")
         return
 
-    with open(INPUT_SCHEMA_PATH, "r", encoding="utf-8") as f:
+    with open(schema_path, "r", encoding="utf-8") as f:
         schema_data = json.load(f)
 
     glossary = {}
-    if INPUT_GLOSSARY_PATH.exists():
-        with open(INPUT_GLOSSARY_PATH, "r", encoding="utf-8") as f:
+    if glossary_path.exists():
+        with open(glossary_path, "r", encoding="utf-8") as f:
             glossary = json.load(f)
 
     tables_list = schema_data.get("tables", [])
@@ -241,11 +262,11 @@ async def main():
             # Pacing delay to respect API limits
             await asyncio.sleep(2.5)
 
-    OUTPUT_ATLAS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_ATLAS_PATH, "w", encoding="utf-8") as f:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(atlas, f, indent=2)
 
-    console.print(f"\n[bold green]✅ Successfully generated Behavioral Schema Atlas at:[/bold green] [underline]{OUTPUT_ATLAS_PATH}[/underline]\n")
+    console.print(f"\n[bold green]✅ Successfully generated Behavioral Schema Atlas at:[/bold green] [underline]{out_path}[/underline]\n")
 
 
 if __name__ == "__main__":

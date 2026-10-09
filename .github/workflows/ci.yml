@@ -58,9 +58,19 @@ jobs:
                   json.loads(p.read_text(encoding="utf-8"))
               except Exception as e:
                   bad.append(f"{p}: {e}")
+          for p in sorted(pathlib.Path("databases").glob("**/*.yaml")):
+              try:
+                  yaml.safe_load(p.read_text(encoding="utf-8"))
+              except Exception as e:
+                  bad.append(f"{p}: {e}")
+          for p in sorted(pathlib.Path("databases").glob("**/*.json")):
+              try:
+                  json.loads(p.read_text(encoding="utf-8"))
+              except Exception as e:
+                  bad.append(f"{p}: {e}")
           if bad:
               sys.exit("Invalid config files:\n" + "\n".join(bad))
-          print("All config/*.yaml and config/*.json files parse.")
+          print("All config and databases YAML/JSON files parse.")
           PY
 
       - name: SQL glossary & relationship drift validator

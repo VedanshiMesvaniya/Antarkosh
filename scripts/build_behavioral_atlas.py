@@ -11,7 +11,10 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-from scripts._paths import REPO_ROOT
+try:
+    from scripts._paths import REPO_ROOT
+except ModuleNotFoundError:
+    from _paths import REPO_ROOT
 
 ROOT_DIR = REPO_ROOT
 SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
@@ -375,13 +378,23 @@ COLUMN_BEHAVIORAL_KNOWLEDGE = {
 }
 
 
-def build_behavioral_atlas() -> Dict[str, Any]:
-    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+import argparse
+
+
+def build_behavioral_atlas(
+    schema_path: Path | None = None,
+    glossary_path: Path | None = None,
+    rels_path: Path | None = None,
+) -> Dict[str, Any]:
+    schema_file = schema_path or SCHEMA_PATH
+    glossary_file = glossary_path or GLOSSARY_PATH
+
+    with open(schema_file, "r", encoding="utf-8") as f:
         schema_data = json.load(f)
 
     glossary = {}
-    if GLOSSARY_PATH.exists():
-        with open(GLOSSARY_PATH, "r", encoding="utf-8") as f:
+    if glossary_file and glossary_file.exists():
+        with open(glossary_file, "r", encoding="utf-8") as f:
             glossary = json.load(f)
 
     tables_list = schema_data.get("tables", [])
@@ -460,12 +473,33 @@ def build_behavioral_atlas() -> Dict[str, Any]:
 
 
 def main():
-    atlas = build_behavioral_atlas()
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+    parser = argparse.ArgumentParser(description="Build Behavioral Schema Atlas")
+    parser.add_argument("--db", type=str, default="erp_main", help="Target database id (default: erp_main)")
+    parser.add_argument("--schema", type=Path, default=None, help="Path to schema.json")
+    parser.add_argument("--glossary", type=Path, default=None, help="Path to column_glossary.json")
+    parser.add_argument("--out", type=Path, default=None, help="Output path for behavioral_atlas.json")
+    args = parser.parse_args()
+
+    schema = args.schema
+    if schema is None:
+        target = ROOT_DIR / "databases" / args.db / "schema" / "schema.json"
+        schema = target if target.exists() else SCHEMA_PATH
+
+    glossary = args.glossary
+    if glossary is None:
+        target = ROOT_DIR / "databases" / args.db / "semantics" / "column_glossary.json"
+        glossary = target if target.exists() else GLOSSARY_PATH
+
+    out = args.out
+    if out is None:
+        out = ROOT_DIR / "databases" / args.db / "semantics" / "behavioral_atlas.json"
+
+    atlas = build_behavioral_atlas(schema_path=schema, glossary_path=glossary)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
         json.dump(atlas, f, indent=2)
 
-    print(f"✅ Generated Behavioral Schema Atlas with {len(atlas['tables'])} tables at: {OUTPUT_PATH}")
+    print(f"✅ Generated Behavioral Schema Atlas with {len(atlas['tables'])} tables at: {out}")
 
 
 if __name__ == "__main__":

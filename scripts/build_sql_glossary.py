@@ -9,7 +9,10 @@ config/sql_column_glossary.json mapping business terms to exact table.column pat
 import json
 from pathlib import Path
 
-from scripts._paths import REPO_ROOT
+try:
+    from scripts._paths import REPO_ROOT
+except ModuleNotFoundError:
+    from _paths import REPO_ROOT
 
 HERE = Path(__file__).parent.resolve()
 REPO = REPO_ROOT
@@ -92,12 +95,18 @@ OVERRIDES = {
 }
 
 
-def build_glossary() -> None:
-    print(f"Reading schema from {SCHEMA_FILE}")
-    schema_data = json.loads(SCHEMA_FILE.read_text())
+import argparse
 
-    print(f"Reading base glossary from {OLD_GLOSSARY_FILE}")
-    base_glossary = json.loads(OLD_GLOSSARY_FILE.read_text())
+def build_glossary(schema_path: Path | None = None, base_glossary_path: Path | None = None, out_path: Path | None = None) -> None:
+    schema_file = schema_path or SCHEMA_FILE
+    base_file = base_glossary_path or OLD_GLOSSARY_FILE
+    dest_file = out_path or OUT_FILE
+
+    print(f"Reading schema from {schema_file}")
+    schema_data = json.loads(schema_file.read_text(encoding="utf-8"))
+
+    print(f"Reading base glossary from {base_file}")
+    base_glossary = json.loads(base_file.read_text(encoding="utf-8"))
 
     glossary = {}
 
@@ -125,9 +134,35 @@ def build_glossary() -> None:
                     "synonyms": syns,
                 }
 
-    print(f"Writing column glossary with {len(glossary)} terms to {OUT_FILE}")
-    OUT_FILE.write_text(json.dumps(glossary, indent=2))
+    dest_file.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Writing column glossary with {len(glossary)} terms to {dest_file}")
+    dest_file.write_text(json.dumps(glossary, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Build column glossary from schema and base glossary")
+    ap.add_argument("--db", type=str, default="erp_main", help="Target database id (default: erp_main)")
+    ap.add_argument("--schema", type=Path, default=None, help="Path to schema.json")
+    ap.add_argument("--base-glossary", type=Path, default=None, help="Path to base glossary.json")
+    ap.add_argument("--out", type=Path, default=None, help="Output path for column_glossary.json")
+    args = ap.parse_args()
+
+    schema = args.schema
+    if schema is None:
+        target = REPO / "databases" / args.db / "schema" / "schema.json"
+        schema = target if target.exists() else SCHEMA_FILE
+
+    base = args.base_glossary
+    if base is None:
+        target = REPO / "databases" / args.db / "semantics" / "glossary.json"
+        base = target if target.exists() else OLD_GLOSSARY_FILE
+
+    out = args.out
+    if out is None:
+        out = REPO / "databases" / args.db / "semantics" / "column_glossary.json"
+
+    build_glossary(schema_path=schema, base_glossary_path=base, out_path=out)
 
 
 if __name__ == "__main__":
-    build_glossary()
+    main()
