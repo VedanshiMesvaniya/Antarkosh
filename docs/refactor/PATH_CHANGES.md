@@ -119,5 +119,18 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | D1-2 | tests/test_database_knowledge_parity.py | tests/test_database_knowledge_parity.py | test | updated fallback test, added validation/traversal/not-found tests | a-g pass | e59165a |
 | D1-3 | docs/refactor/FOUND_ISSUES.md | docs/refactor/FOUND_ISSUES.md | doc | recorded resolution of findings #9 and #10 | a-g pass | e59165a |
 
+---
+
+## Step D2 — Engine Enum Mapping
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| D2-1 | (new) | src/sql/engine.py | code | class Engine(str, Enum) with sqlite, mysql, postgresql, mssql, oracle, .key, .sqlglot, from_value() | a-g pass | 5aa0a06 |
+| D2-2 | (new) | tests/test_sql_engine.py | test | unit tests for enum members, properties, aliases, case-insensitivity, and validation | a-g pass | 5aa0a06 |
+| D2-3 | src/core/sql_column_registry.py | src/core/sql_column_registry.py | wire | replaced ad-hoc dialect strings in ColumnRegistry with Engine-derived checks | a-g pass | 5aa0a06 |
+| D2-4 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | wire | replaced ad-hoc dialect strings in format_schema_rows and foreign key fetch with Engine | a-g pass | 5aa0a06 |
+| D2-5 | src/pipeline/schema_ingestion.py | src/pipeline/schema_ingestion.py | wire | replaced ad-hoc dialect checks in _split_schema_by_table and sync_live_schema with Engine | a-g pass | 5aa0a06 |
+
+
 
 

@@ -137,8 +137,14 @@ Chronological reports produced after completing each refactoring phase.
 - **Checks a-g**: a-g all passed; pytest: 552 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +4 passed vs 548 last recorded count due to new hardening/traversal tests); zero drift; offline eval 163/163 valid; health/overview 200 OK.
 - **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
 - **Issues Found**: Resolved findings #9 and #10 in `FOUND_ISSUES.md`.
-- **Next Step ID**: D2
+---
 
-
-
-
+## Step D2 Report: Engine Enum Mapping
+- **Step ID**: D2
+- **Commits**: 5aa0a06
+- **Files Changed**: `src/sql/engine.py`, `tests/test_sql_engine.py`, `src/core/sql_column_registry.py`, `src/stages/s12b_sql_retrieval.py`, `src/pipeline/schema_ingestion.py`.
+- **What Changed**: Created `Engine(str, Enum)` with `sqlite`, `mysql`, `postgresql`, `mssql`, `oracle` having `.sqlglot` ("sqlite", "mysql", "postgres", "tsql", "oracle") and `.key` properties. Added `Engine.from_value()` accepting aliases (`"postgres"`, `"tsql"`), case/whitespace insensitively, and rejecting unrecognized dialects (including `mariadb`, which is not registered in `src/`). Replaced ad-hoc dialect strings/tuples with `Engine` comparisons in `ColumnRegistry`, `format_schema_rows`, `fetch_sqlite_foreign_keys`, `_split_schema_by_table`, and `sync_live_schema`. Left `src/core/sql_dialects.py` untouched for Phase E. Added comprehensive unit tests in `tests/test_sql_engine.py`.
+- **Checks a-g**: a-g all passed; pytest: 559 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +7 passed vs 552 last recorded count due to new engine tests); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: D3
