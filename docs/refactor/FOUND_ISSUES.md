@@ -22,6 +22,10 @@ Tracks bugs, architectural gaps, and differences between design docs and live re
 - Today, `db_settings._apply_runtime` clears all retriever and semantic caches globally on every database connection change.
   - *Refactor Treatment*: Key all caches and contexts by `db_id` (Phase D).
 
+### Resolved Issues (Step D1)
+- **Finding #9 (Cross-database contamination in loader)**: Previously, `get_database_knowledge_path` fell back to legacy ERP files for any `db_id` with missing files. Resolved in Step D1: fallback is restricted strictly to `DEFAULT_DB_ID` (`erp_main`); all other databases raise `KnowledgeFileNotFound`.
+- **Finding #10 (db_id validation & path traversal)**: `db_id` was unvalidated and could allow traversal. Resolved in Step D1: added `validate_db_id` enforcing regex `^[a-z][a-z0-9_]{1,39}$`, reject `..` / absolute paths, and assert path stays within `DATABASES_DIR`.
+
 ---
 
 ## 2. Assumptions & Decisions Made

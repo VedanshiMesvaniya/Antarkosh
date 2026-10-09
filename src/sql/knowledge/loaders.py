@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,22 @@ from src.core.config import CONFIG_DIR, DATABASES_DIR, PROJECT_ROOT
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_ID = "erp_main"
+
+DB_ID_REGEX = re.compile(r"^[a-z][a-z0-9_]{1,39}$")
+
+
+class KnowledgeFileNotFound(FileNotFoundError):
+    """Raised when a knowledge file for a database does not exist."""
+
+
+def validate_db_id(db_id: str) -> None:
+    """Validate database ID format: lowercase alphanumeric and underscores, length 2-40, starts with letter."""
+    if not isinstance(db_id, str) or not DB_ID_REGEX.match(db_id):
+        raise ValueError(
+            f"Invalid db_id {db_id!r}: must match regex ^[a-z][a-z0-9_]{{1,39}}$ "
+            "(lowercase alphanumeric and underscores, starting with letter, length 2-40)"
+        )
+
 
 # Mapping of kind -> (relative_path_in_db_folder, legacy_fallback_path)
 _KNOWLEDGE_PATHS: dict[str, tuple[str, Path]] = {
@@ -26,7 +43,7 @@ _KNOWLEDGE_PATHS: dict[str, tuple[str, Path]] = {
 
 def get_database_knowledge_path(db_id: str = DEFAULT_DB_ID, relative_path: str | None = None) -> Path:
     """Return the Path for a knowledge file, preferring databases/<db_id>/<relative_path>
-    and falling back to the old config/ location with a warning if missing.
+    and falling back to the old config/ location with a warning only for erp_main.
     """
     if relative_path is None:
         # Support calling with just relative_path as first arg: get_database_knowledge_path("schema/relationships.json")
@@ -36,19 +53,35 @@ def get_database_knowledge_path(db_id: str = DEFAULT_DB_ID, relative_path: str |
         else:
             raise ValueError("relative_path must be specified")
 
-    target_path = DATABASES_DIR / db_id / relative_path
+    validate_db_id(db_id)
+
+    rel_p = Path(relative_path)
+    if rel_p.is_absolute() or ".." in rel_p.parts:
+        raise ValueError(f"Invalid relative_path (traversal/absolute): {relative_path!r}")
+
+    target_path = DATABASES_DIR / db_id / rel_p
+    try:
+        target_path.resolve().relative_to(DATABASES_DIR.resolve())
+    except ValueError:
+        raise ValueError(f"Path traversal outside DATABASES_DIR: {relative_path!r}")
+
     if target_path.exists():
         return target_path
 
-    # Determine legacy fallback
+    if db_id != DEFAULT_DB_ID:
+        raise KnowledgeFileNotFound(
+            f"Knowledge file {relative_path!r} missing for database {db_id!r} at {target_path}"
+        )
+
+    # Determine legacy fallback for erp_main
     legacy_path = None
-    norm_rel = relative_path.replace("\\", "/")
-    for _kind, (k_rel, k_leg) in _KNOWLEDGE_PATHS.items():
+    norm_rel = str(rel_p).replace("\\", "/")
+    for k_rel, k_leg in _KNOWLEDGE_PATHS.values():
         if norm_rel == k_rel:
             legacy_path = k_leg
             break
     if legacy_path is None:
-        legacy_path = CONFIG_DIR / Path(relative_path).name
+        legacy_path = CONFIG_DIR / rel_p.name
 
     logger.warning(
         "Database knowledge file %s missing at %s; falling back to legacy location %s",
@@ -70,9 +103,11 @@ def load_knowledge_json(kind: str, db_id: str = DEFAULT_DB_ID) -> Any:
     """Load JSON data for a knowledge file kind, preferring databases/<db_id>/ with fallback."""
     path = get_knowledge_path(kind, db_id)
     if not path.exists():
+        if db_id != DEFAULT_DB_ID:
+            raise KnowledgeFileNotFound(f"Knowledge file for kind {kind!r} missing at {path}")
         return {}
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as e:
+    except (json.JSONDecodeError, OSError) as e:
         logger.warning("Failed to load knowledge JSON from %s: %s", path, e)
         return {}

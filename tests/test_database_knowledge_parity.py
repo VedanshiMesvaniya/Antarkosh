@@ -3,14 +3,15 @@ and verify fallback loaders.
 """
 
 from pathlib import Path
+
 import pytest
 
 from src.core.config import CONFIG_DIR, DATABASES_DIR, PROJECT_ROOT
 from src.sql.knowledge.loaders import (
-    DEFAULT_DB_ID,
+    KnowledgeFileNotFound,
     get_database_knowledge_path,
-    get_knowledge_path,
     load_knowledge_json,
+    validate_db_id,
 )
 
 PAIRS = [
@@ -54,12 +55,45 @@ def test_get_database_knowledge_path_prefers_database_dir():
     assert p.exists()
 
 
-def test_get_database_knowledge_path_fallback(caplog):
-    """When a file in databases/ does not exist, it falls back to legacy path with a warning."""
+def test_get_database_knowledge_path_non_existent_db_raises():
+    """Non-existent database without files must raise KnowledgeFileNotFound, never fall back to erp_main."""
+    with pytest.raises(KnowledgeFileNotFound, match="missing for database"):
+        get_database_knowledge_path("non_existent_db", "schema/relationships.json")
+
+
+def test_get_database_knowledge_path_fallback(tmp_path, monkeypatch, caplog):
+    """When an erp_main knowledge file is missing, it falls back to legacy path with a warning."""
+    monkeypatch.setattr("src.sql.knowledge.loaders.DATABASES_DIR", tmp_path)
     with caplog.at_level("WARNING"):
-        p = get_database_knowledge_path("non_existent_db", "schema/relationships.json")
+        p = get_database_knowledge_path("erp_main", "schema/relationships.json")
     assert p == CONFIG_DIR / "sql_relationships.json"
     assert "falling back to legacy location" in caplog.text
+
+
+def test_validate_db_id_validation():
+    """Valid and invalid db_ids must be correctly accepted or rejected."""
+    # Valid IDs
+    validate_db_id("erp_main")
+    validate_db_id("db2")
+    validate_db_id("custom_analytics_db_01")
+
+    # Invalid IDs
+    for invalid in ["", "a", "1db", "ERP_MAIN", "db-2", "../x", "a/b", "a" * 41]:
+        with pytest.raises(ValueError):
+            validate_db_id(invalid)
+
+
+def test_get_database_knowledge_path_path_traversal_rejected():
+    """Relative paths with path traversal or absolute paths must raise ValueError."""
+    for bad_path in ["../secret.json", "schema/../../passwords", "/etc/passwd"]:
+        with pytest.raises(ValueError):
+            get_database_knowledge_path("erp_main", bad_path)
+
+
+def test_load_knowledge_json_propagates_not_found_for_other_db():
+    """load_knowledge_json propagates KnowledgeFileNotFound for non-erp_main databases."""
+    with pytest.raises(KnowledgeFileNotFound):
+        load_knowledge_json("relationships", "other_db")
 
 
 def test_load_knowledge_json():
