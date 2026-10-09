@@ -22,7 +22,7 @@ from sqlglot import exp
 
 from src.core.config import CONFIG_DIR, settings
 from src.sql.engine import Engine
-from src.sql.knowledge.loaders import get_knowledge_path
+from src.sql.knowledge.loaders import DEFAULT_DB_ID, get_knowledge_path
 from src.core.db_client import run_readonly_query
 from src.core.pipeline_metrics import log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
@@ -288,16 +288,24 @@ def _extract_table_names(sql: str, dialect: str) -> list[str]:
         return []
 
 
-@functools.lru_cache(maxsize=1)
-def _get_raw_relationships() -> list[dict[str, Any]]:
-    """Load raw relationship list via knowledge loader."""
-    path = get_knowledge_path("relationships")
+@functools.lru_cache(maxsize=32)
+def _get_raw_relationships_cached(db_id: str) -> list[dict[str, Any]]:
+    path = get_knowledge_path("relationships", db_id=db_id)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         rels = data.get("relationships") if isinstance(data, dict) else data
         return rels if isinstance(rels, list) else []
     except Exception:
         return []
+
+
+def _get_raw_relationships(db_id: str = DEFAULT_DB_ID) -> list[dict[str, Any]]:
+    """Load raw relationship list via knowledge loader for db_id."""
+    normalized_id = (db_id or DEFAULT_DB_ID).strip()
+    return _get_raw_relationships_cached(normalized_id)
+
+
+_get_raw_relationships.cache_clear = _get_raw_relationships_cached.cache_clear  # type: ignore[attr-defined]
 
 
 def _extract_schema_table_names(schema: str) -> set[str]:
@@ -376,23 +384,9 @@ def _format_scoped_relationships(
     )
 
 
-@functools.lru_cache(maxsize=1)
-def _load_relationships() -> str:
-    """Load the inferred join map from disk, cached for process lifetime.
-
-    Databases without explicit FOREIGN KEY constraints give the SQL-generation
-    model no way to know how tables join, so it guesses — producing errors like
-    `Unknown column 'p.product_color_id' in 'on clause'` (the column lives on the
-    line-item tables and joins to product_color, not on product). Feeding an
-    explicit join map into the prompt removes that guesswork.
-
-    Formatted one line per source table for compactness:
-        - sales_order_products: sales_order_id->sales_order.id, product_id->product.id, ...
-
-    Returns "" when no relationships file is present (e.g. a deployment whose DB
-    has real FK constraints and needs no inferred map), so injection is opt-in.
-    """
-    rels = _get_raw_relationships()
+@functools.lru_cache(maxsize=32)
+def _load_relationships_cached(db_id: str) -> str:
+    rels = _get_raw_relationships(db_id)
     if not rels:
         return ""
     grouped: dict[str, list[str]] = {}
@@ -407,10 +401,18 @@ def _load_relationships() -> str:
     )
 
 
-@functools.lru_cache(maxsize=1)
-def _load_glossary() -> str:
-    """Load SQL glossary from disk, cached for process lifetime. ARCH-9."""
-    path = get_knowledge_path("glossary")
+def _load_relationships(db_id: str = DEFAULT_DB_ID) -> str:
+    """Load the inferred join map from disk, cached per database."""
+    normalized_id = (db_id or DEFAULT_DB_ID).strip()
+    return _load_relationships_cached(normalized_id)
+
+
+_load_relationships.cache_clear = _load_relationships_cached.cache_clear  # type: ignore[attr-defined]
+
+
+@functools.lru_cache(maxsize=32)
+def _load_glossary_cached(db_id: str) -> str:
+    path = get_knowledge_path("glossary", db_id=db_id)
     try:
         groups = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(groups, dict) or not groups:
@@ -433,10 +435,18 @@ def _load_glossary() -> str:
         return ""
 
 
-@functools.lru_cache(maxsize=1)
-def _get_raw_column_glossary() -> dict:
-    """Load column-mapped glossary dict from disk."""
-    path = get_knowledge_path("column_glossary")
+def _load_glossary(db_id: str = DEFAULT_DB_ID) -> str:
+    """Load SQL glossary from disk, cached per database. ARCH-9."""
+    normalized_id = (db_id or DEFAULT_DB_ID).strip()
+    return _load_glossary_cached(normalized_id)
+
+
+_load_glossary.cache_clear = _load_glossary_cached.cache_clear  # type: ignore[attr-defined]
+
+
+@functools.lru_cache(maxsize=32)
+def _get_raw_column_glossary_cached(db_id: str) -> dict:
+    path = get_knowledge_path("column_glossary", db_id=db_id)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
@@ -444,6 +454,15 @@ def _get_raw_column_glossary() -> dict:
         return data
     except Exception:
         return {}
+
+
+def _get_raw_column_glossary(db_id: str = DEFAULT_DB_ID) -> dict:
+    """Load column-mapped glossary dict from disk, cached per database."""
+    normalized_id = (db_id or DEFAULT_DB_ID).strip()
+    return _get_raw_column_glossary_cached(normalized_id)
+
+
+_get_raw_column_glossary.cache_clear = _get_raw_column_glossary_cached.cache_clear  # type: ignore[attr-defined]
 
 
 _GLOSSARY_STOP_WORDS = frozenset({
@@ -514,23 +533,34 @@ def _build_column_glossary_for_query(query: str) -> str:
     return "\n".join(lines)
 
 
-_BEHAVIORAL_ATLAS_CACHE: dict[str, Any] | None = None
+_BEHAVIORAL_ATLAS_CACHE: dict[str, dict[str, Any]] = {}
 
 
-def _get_raw_behavioral_atlas() -> dict[str, Any]:
+def _get_raw_behavioral_atlas(db_id: str = DEFAULT_DB_ID) -> dict[str, Any]:
     global _BEHAVIORAL_ATLAS_CACHE
-    if _BEHAVIORAL_ATLAS_CACHE is not None:
-        return _BEHAVIORAL_ATLAS_CACHE
-    atlas_path = get_knowledge_path("behavioral_atlas")
+    norm_id = (db_id or DEFAULT_DB_ID).strip()
+    if norm_id in _BEHAVIORAL_ATLAS_CACHE:
+        return _BEHAVIORAL_ATLAS_CACHE[norm_id]
+    atlas_path = get_knowledge_path("behavioral_atlas", db_id=norm_id)
     if atlas_path.exists():
         try:
             with open(atlas_path, "r", encoding="utf-8") as f:
-                _BEHAVIORAL_ATLAS_CACHE = json.load(f)
+                _BEHAVIORAL_ATLAS_CACHE[norm_id] = json.load(f)
         except Exception:
-            _BEHAVIORAL_ATLAS_CACHE = {}
+            _BEHAVIORAL_ATLAS_CACHE[norm_id] = {}
     else:
-        _BEHAVIORAL_ATLAS_CACHE = {}
-    return _BEHAVIORAL_ATLAS_CACHE
+        _BEHAVIORAL_ATLAS_CACHE[norm_id] = {}
+    return _BEHAVIORAL_ATLAS_CACHE[norm_id]
+
+
+def _clear_behavioral_atlas_cache(db_id: str | None = None) -> None:
+    if db_id is None:
+        _BEHAVIORAL_ATLAS_CACHE.clear()
+    else:
+        _BEHAVIORAL_ATLAS_CACHE.pop(db_id, None)
+
+
+_get_raw_behavioral_atlas.cache_clear = _clear_behavioral_atlas_cache  # type: ignore[attr-defined]
 
 
 def detect_soft_delete_intent(query: str) -> str:
@@ -560,20 +590,21 @@ def detect_soft_delete_intent(query: str) -> str:
     return "ACTIVE_ONLY"
 
 
-_SOFT_DELETE_TABLES_CACHE: set[str] | None = None
+_SOFT_DELETE_TABLES_CACHE: dict[str, set[str]] = {}
 
 
-def _get_tables_with_soft_delete() -> set[str]:
+def _get_tables_with_soft_delete(db_id: str = DEFAULT_DB_ID) -> set[str]:
     """Return the set of lowercase table names that possess a deleted_at column.
 
     Sourced from behavioral schema atlas via knowledge loader with fallback to known
     soft-delete schema tables.
     """
     global _SOFT_DELETE_TABLES_CACHE
-    if _SOFT_DELETE_TABLES_CACHE is not None:
-        return _SOFT_DELETE_TABLES_CACHE
+    norm_id = (db_id or DEFAULT_DB_ID).strip()
+    if norm_id in _SOFT_DELETE_TABLES_CACHE:
+        return _SOFT_DELETE_TABLES_CACHE[norm_id]
 
-    atlas_data = _get_raw_behavioral_atlas()
+    atlas_data = _get_raw_behavioral_atlas(norm_id)
     tables = atlas_data.get("tables", {})
     tables_with_col = {
         t_name.lower()
@@ -581,7 +612,7 @@ def _get_tables_with_soft_delete() -> set[str]:
         if "deleted_at" in t_meta.get("columns", {})
     }
 
-    if not tables_with_col:
+    if not tables_with_col and norm_id == DEFAULT_DB_ID:
         tables_with_col = {
             "actual_production", "category", "color", "delivery_challan",
             "delivery_challan_products", "delivery_dispatch_attachment",
@@ -596,8 +627,18 @@ def _get_tables_with_soft_delete() -> set[str]:
             "stock_adjustment", "stock_temp", "unit", "warehouse"
         }
 
-    _SOFT_DELETE_TABLES_CACHE = tables_with_col
-    return _SOFT_DELETE_TABLES_CACHE
+    _SOFT_DELETE_TABLES_CACHE[norm_id] = tables_with_col
+    return _SOFT_DELETE_TABLES_CACHE[norm_id]
+
+
+def _clear_soft_delete_tables_cache(db_id: str | None = None) -> None:
+    if db_id is None:
+        _SOFT_DELETE_TABLES_CACHE.clear()
+    else:
+        _SOFT_DELETE_TABLES_CACHE.pop(db_id, None)
+
+
+_get_tables_with_soft_delete.cache_clear = _clear_soft_delete_tables_cache  # type: ignore[attr-defined]
 
 
 def enforce_soft_delete_filter(sql: str, intent: str, dialect: str = "mysql") -> str:
