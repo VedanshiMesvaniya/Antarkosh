@@ -112,29 +112,8 @@ async def _execute(engine: str, sql: str, params: dict | None) -> list[dict[str,
         return await SQLiteConnector().run_readonly(sql, params)
 
     elif engine == "mysql":
-        import aiomysql
-
-        # Layer 1 defense here is NOT a connection-string trick (MySQL has no
-        # equivalent) — it's connecting as a dedicated read-only DB user with
-        # only SELECT granted (GRANT SELECT ON db.* TO 'readonly_user'@'%';
-        # no INSERT/UPDATE/DELETE grants). That's a deployment/DBA step, not
-        # application code, and it's enforced server-side even if the AST
-        # validation above were ever bypassed.
-        conn = await aiomysql.connect(
-            host=settings.db_host,
-            port=settings.db_port,
-            user=settings.db_readonly_user,
-            password=settings.db_readonly_password,
-            db=settings.db_name,
-            cursorclass=aiomysql.cursors.DictCursor,
-        )
-        try:
-            async with conn.cursor() as cursor:
-                await cursor.execute(sql, params)
-                rows = await cursor.fetchall()
-                return list(rows)
-        finally:
-            conn.close()
+        from src.sql.connectors.mysql import MySQLConnector
+        return await MySQLConnector().run_readonly(sql, params)
 
     elif engine == "postgresql":
         import asyncpg

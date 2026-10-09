@@ -45,6 +45,18 @@ def test_get_connector_sqlite():
     assert isinstance(conn, SQLiteConnector)
 
 
+def test_mysql_connector_implements_protocol():
+    from src.sql.connectors.mysql import MySQLConnector
+    connector = MySQLConnector()
+    assert isinstance(connector, Connector)
+
+
+def test_get_connector_mysql():
+    from src.sql.connectors.mysql import MySQLConnector
+    conn = get_connector("mysql")
+    assert isinstance(conn, MySQLConnector)
+
+
 def test_get_connector_unsupported():
     with pytest.raises(ValueError, match="Unsupported db_engine"):
         get_connector("cockroachdb")
