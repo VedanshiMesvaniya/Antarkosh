@@ -256,4 +256,17 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None new (Findings #11 and #12 timing jitter on full suite run remain documented).
 - **Next Step ID**: E4
 
+---
+
+## Step E4 Report: Move Engine Form Spec and Connector Test Delegation
+- **Step ID**: E4
+- **Commits**: pending
+- **Files Changed**: `src/sql/engine.py`, `src/core/db_settings.py`, `tests/test_sql_engine.py`, `tests/test_sql_connectors.py`.
+- **What Changed**: Moved the engine form spec `ENGINES` and `REQUIRED_FIELDS` into `src/sql/engine.py`. Delegated the per-engine connection test logic in `src/core/db_settings.py` (`_test_mysql`, `_test_postgresql`, `_test_mssql`, `_test_oracle`, and `_test_connection`) to the matching connector `test()` implementations. Preserved all public functions in `src/core/db_settings.py` with identical signatures, behavior, and JSON structure. In `db_settings.save()`, mirrored connections to `config/connections.json` via `registry.save_connection(DEFAULT_DB_ID, updates)`. Verified `tests/test_db_settings.py` passes completely unmodified.
+- **Checks a-g**: a-g all passed; pytest: 621 passed, 18 skipped, 8 deselected, 1 xfailed (+3 passed vs 618 last recorded count); zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I).
+- **Issues Found**: None new (Findings #11 and #12 timing jitter on full suite run remain documented).
+- **Next Step ID**: E5
+
+
 

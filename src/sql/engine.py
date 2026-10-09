@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Any
 
 
 class Engine(str, Enum):
@@ -53,3 +54,52 @@ _ENGINE_ALIASES: dict[str, Engine] = {
     "tsql": Engine.MSSQL,
     "oracle": Engine.ORACLE,
 }
+
+# Engine form specification and UI catalogue
+# `ready` = the query layer (connectors / dialects) can run this engine today.
+ENGINES: dict[str, dict[str, Any]] = {
+    "mysql": {
+        "label": "MySQL",
+        "ready": True,
+        "default_port": 3306,
+        "fields": ["host", "port", "database", "username", "password"],
+    },
+    "postgresql": {
+        "label": "PostgreSQL",
+        "ready": True,
+        "default_port": 5432,
+        "fields": ["host", "port", "database", "username", "password"],
+    },
+    "sqlite": {
+        "label": "SQLite",
+        "ready": True,
+        "default_port": None,
+        "fields": [],
+    },
+    "mssql": {
+        "label": "Microsoft SQL Server",
+        "ready": True,
+        "default_port": 1433,
+        "fields": ["host", "port", "database", "username", "password", "odbc_driver"],
+    },
+    "oracle": {
+        "label": "Oracle",
+        "ready": True,
+        "default_port": 1521,
+        "fields": ["host", "port", "service_name", "username", "password"],
+    },
+}
+
+REQUIRED_FIELDS: dict[str, list[str]] = {
+    "mysql": ["host", "database", "username"],
+    "postgresql": ["host", "database", "username"],
+    "sqlite": [],
+    "mssql": ["host", "database", "username"],
+    "oracle": ["host", "service_name", "username"],
+}
+
+__all__ = [
+    "ENGINES",
+    "REQUIRED_FIELDS",
+    "Engine",
+]

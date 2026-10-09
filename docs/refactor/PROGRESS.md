@@ -22,7 +22,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | E1 | Connectors split out of db_client | 00e709f, d4f3b35, 5aee3dc, 23f6af7, 481aac9 | 599 passed |
 | [x] | E2 | Dialects package, mssql/oracle stubs (not registered) | 5b9ba01 | 603 passed |
 | [x] | E3 | registry.py (connections.json, db.yaml) | 25a13bf | 618 passed |
-| [ ] | E4 | db_settings into connectors/registry | | |
+| [x] | E4 | db_settings into connectors/registry | pending | 621 passed |
 | [ ] | E5 | Per-database connection, remove global cache wipe | | |
 | [ ] | E6 | Database access control and admin endpoints | | |
 | [ ] | F1 | Extract soft_delete | | |

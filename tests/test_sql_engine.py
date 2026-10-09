@@ -55,3 +55,31 @@ def test_engine_from_value_invalid():
     for invalid in ["", "mariadb", "db2", "invalid_engine", 123, None]:
         with pytest.raises(ValueError):
             Engine.from_value(invalid)
+
+
+def test_engines_form_spec():
+    from src.core import db_settings
+    from src.sql.engine import ENGINES
+
+    assert set(ENGINES.keys()) == {"mysql", "postgresql", "sqlite", "mssql", "oracle"}
+    for spec in ENGINES.values():
+        assert "label" in spec
+        assert "ready" in spec
+        assert "default_port" in spec
+        assert "fields" in spec
+        assert isinstance(spec["fields"], list)
+
+    # db_settings re-exports identical ENGINES
+    assert db_settings.ENGINES is ENGINES
+
+
+def test_required_fields():
+    from src.sql.engine import REQUIRED_FIELDS
+
+    assert "mysql" in REQUIRED_FIELDS
+    assert "postgresql" in REQUIRED_FIELDS
+    assert "sqlite" in REQUIRED_FIELDS
+    assert REQUIRED_FIELDS["sqlite"] == []
+    assert "host" in REQUIRED_FIELDS["mysql"]
+    assert "database" in REQUIRED_FIELDS["mysql"]
+

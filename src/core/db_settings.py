@@ -13,32 +13,12 @@ from typing import Any
 
 from src.core import db_config_file
 from src.core.config import settings
+from src.sql.engine import ENGINES
+from src.sql.engine import REQUIRED_FIELDS as _REQUIRED
 
 logger = logging.getLogger(__name__)
 
 _save_lock = asyncio.Lock()
-
-# `ready` = the query layer (db_client / sql_dialects) can really run this engine today.
-# Flip an engine to True only after its inner-layer work is done and tested.
-ENGINES: dict[str, dict[str, Any]] = {
-    "mysql":      {"label": "MySQL",                "ready": True,  "default_port": 3306,
-                   "fields": ["host", "port", "database", "username", "password"]},
-    "postgresql": {"label": "PostgreSQL",           "ready": True,  "default_port": 5432,
-                   "fields": ["host", "port", "database", "username", "password"]},
-    "sqlite":     {"label": "SQLite",               "ready": True,  "default_port": None,
-                   "fields": []},  # fixed file data/live_data.db for now
-    "mssql":      {"label": "Microsoft SQL Server", "ready": True, "default_port": 1433,
-                   "fields": ["host", "port", "database", "username", "password", "odbc_driver"]},
-    "oracle":     {"label": "Oracle",               "ready": True, "default_port": 1521,
-                   "fields": ["host", "port", "service_name", "username", "password"]},
-}
-_REQUIRED = {
-    "mysql": ["host", "database", "username"],
-    "postgresql": ["host", "database", "username"],
-    "sqlite": [],
-    "mssql": ["host", "database", "username"],
-    "oracle": ["host", "service_name", "username"],
-}
 
 
 class DBSettingsError(ValueError):
@@ -113,108 +93,45 @@ def _clean(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _test_mysql(cfg: dict[str, Any]) -> None:
-    import aiomysql
-    conn = await asyncio.wait_for(
-        aiomysql.connect(host=cfg["host"], port=cfg["port"], user=cfg["username"],
-                         password=cfg["password"], db=cfg["database"], connect_timeout=5),
-        timeout=8,
-    )
-    try:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT 1")
-    finally:
-        conn.close()
+    from src.sql.connectors.mysql import test
+    await test(cfg)
 
 
 async def _test_postgresql(cfg: dict[str, Any]) -> None:
-    try:
-        import asyncpg
-    except ImportError:
-        raise DBSettingsError(
-            "The PostgreSQL driver is not installed on the server. Run: uv add asyncpg"
-        ) from None
-    conn = await asyncio.wait_for(
-        asyncpg.connect(host=cfg["host"], port=cfg["port"], user=cfg["username"],
-                        password=cfg["password"], database=cfg["database"], timeout=5),
-        timeout=8,
-    )
-    try:
-        await conn.fetchval("SELECT 1")
-    finally:
-        await conn.close()
+    from src.sql.connectors.postgresql import test
+    await test(cfg)
 
 
 async def _test_mssql(cfg: dict[str, Any]) -> None:
-    try:
-        import pyodbc
-    except ImportError:
-        raise DBSettingsError(
-            "The pyodbc driver is not installed on the server. Run: uv add pyodbc"
-        ) from None
-    driver = cfg.get("odbc_driver") or settings.db_odbc_driver or "ODBC Driver 18 for SQL Server"
-    conn_str = (
-        f"DRIVER={{{driver}}};"
-        f"SERVER={cfg['host']},{cfg['port']};"
-        f"DATABASE={cfg['database']};"
-        f"UID={cfg['username']};"
-        f"PWD={cfg['password']};"
-        "TrustServerCertificate=yes;"
-    )
-
-    def _connect() -> None:
-        with pyodbc.connect(conn_str, timeout=5) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
-                cur.fetchone()
-
-    await asyncio.wait_for(asyncio.to_thread(_connect), timeout=8)
+    from src.sql.connectors.mssql import test
+    await test(cfg)
 
 
 async def _test_oracle(cfg: dict[str, Any]) -> None:
-    try:
-        import oracledb
-    except ImportError:
-        raise DBSettingsError(
-            "The oracledb driver is not installed on the server. Run: uv add oracledb"
-        ) from None
-    svc = cfg.get("service_name") or cfg.get("database") or ""
-
-    def _connect() -> None:
-        with oracledb.connect(
-            user=cfg["username"],
-            password=cfg["password"],
-            host=cfg["host"],
-            port=cfg["port"],
-            service_name=svc,
-            tcp_connect_timeout=5,
-        ) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1 FROM DUAL")
-                cur.fetchone()
-
-    await asyncio.wait_for(asyncio.to_thread(_connect), timeout=8)
+    from src.sql.connectors.oracle import test
+    await test(cfg)
 
 
 async def _test_connection(cfg: dict[str, Any]) -> None:
-    if cfg["engine"] == "sqlite":
-        from src.core.db_client import DB_PATH
-        if not DB_PATH.exists():
-            raise DBSettingsError(f"SQLite file not found at {DB_PATH}.")
+    engine = cfg["engine"]
+    if engine == "sqlite":
+        from src.sql.connectors.sqlite import test as test_sqlite
+        try:
+            await test_sqlite(cfg)
+        except FileNotFoundError as e:
+            raise DBSettingsError(str(e)) from None
         return
     try:
-        if cfg["engine"] == "postgresql":
-            await _test_postgresql(cfg)
-        elif cfg["engine"] == "mssql":
-            await _test_mssql(cfg)
-        elif cfg["engine"] == "oracle":
-            await _test_oracle(cfg)
-        else:
-            await _test_mysql(cfg)
+        from src.sql.connectors import get_connector
+        connector = get_connector(engine)
+        await connector.test(cfg)
     except DBSettingsError:
         raise
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise DBSettingsError("Connection timed out. Check host and port.") from None
-    except Exception as e:                            # driver errors never echo the password
+    except (RuntimeError, FileNotFoundError) as e:
+        raise DBSettingsError(str(e)) from None
+    except Exception as e:  # noqa: BLE001 - driver errors never echo the password
         raise DBSettingsError(f"Could not connect: {type(e).__name__}: {e}") from None
 
 
@@ -254,6 +171,9 @@ async def save(payload: dict[str, Any]) -> dict[str, Any]:
                 updates["db_odbc_driver"] = cfg["odbc_driver"]
         try:                                          # 2. persist (atomic; old file kept on failure)
             db_config_file.write(updates)
+            from src.sql import registry
+            from src.sql.knowledge.loaders import DEFAULT_DB_ID
+            registry.save_connection(DEFAULT_DB_ID, updates)
         except (OSError, ValueError) as e:
             reason = getattr(e, "strerror", None) or str(e)
             raise DBSettingsError(f"Could not save the connection settings: {reason}") from None

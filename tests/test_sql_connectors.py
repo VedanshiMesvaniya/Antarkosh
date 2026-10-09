@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 
 import pytest
 
-from src.sql.connectors.base import Connector
-from src.sql.connectors.sqlite import SQLiteConnector, DB_PATH
 from src.sql.connectors import get_connector
+from src.sql.connectors.base import Connector
+from src.sql.connectors.sqlite import SQLiteConnector
 
 
 def test_sqlite_connector_implements_protocol():
@@ -104,3 +103,21 @@ def test_get_connector_oracle():
 def test_get_connector_unsupported():
     with pytest.raises(ValueError, match="Unsupported db_engine"):
         get_connector("cockroachdb")
+
+
+@pytest.mark.asyncio
+async def test_mysql_connector_test_signature():
+    from src.sql.connectors.mysql import MySQLConnector
+    assert callable(MySQLConnector().test)
+
+
+@pytest.mark.asyncio
+async def test_mssql_connector_build_conn_str():
+    from src.sql.connectors.mssql import MSSQLConnector
+    c = MSSQLConnector()
+    s = c._build_conn_str({"host": "h", "port": 1433, "database": "d", "username": "u", "password": "p"})
+    assert "SERVER=h,1433" in s
+    assert "DATABASE=d" in s
+    assert "UID=u" in s
+    assert "PWD=p" in s
+
