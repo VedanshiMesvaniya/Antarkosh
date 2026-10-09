@@ -25,6 +25,7 @@ from src.stages.s12_s13_s14_retrieval import (
     _is_exhaustive_query,
     _source_mode,
 )
+from src.sql.context import DEFAULT_DB_ID
 from src.stages.s12b_sql_retrieval import SQLRetriever
 from src.utils.query_classifier import QueryType, classify_query
 from src.utils.semantic_cache import get_semantic_cache
@@ -225,11 +226,12 @@ class QueryPipeline:
         logger.info("=== Query [%s] [Budget Limit: %d] [Mode: %s]: %s ===", query_id, budget_ctrl.max_tokens, mode, question[:100])
 
         import os
+        target_db_id = (filters.get("db_id") if filters else None) or getattr(self._sql_retriever, "db_id", DEFAULT_DB_ID)
         scope_key = (filters.get("scope_key") or filters.get("erp_instance_id")) if filters else None
         if not scope_key:
             scope_key = os.environ.get("Antarkosh_ERP_INSTANCE_ID", "").strip() or None
         if scope_key:
-            scope_key = f"{scope_key}|{_cache_acl_signature(filters.get('user_id') if filters else None)}"
+            scope_key = f"{target_db_id}:{scope_key}|{_cache_acl_signature(filters.get('user_id') if filters else None)}"
 
         query_type = classify_query(question)
 

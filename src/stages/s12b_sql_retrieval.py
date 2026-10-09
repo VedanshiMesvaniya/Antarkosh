@@ -290,8 +290,8 @@ def _extract_table_names(sql: str, dialect: str) -> list[str]:
 
 @functools.lru_cache(maxsize=32)
 def _get_raw_relationships_cached(db_id: str) -> list[dict[str, Any]]:
-    path = get_knowledge_path("relationships", db_id=db_id)
     try:
+        path = get_knowledge_path("relationships", db_id=db_id)
         data = json.loads(path.read_text(encoding="utf-8"))
         rels = data.get("relationships") if isinstance(data, dict) else data
         return rels if isinstance(rels, list) else []
@@ -412,8 +412,8 @@ _load_relationships.cache_clear = _load_relationships_cached.cache_clear  # type
 
 @functools.lru_cache(maxsize=32)
 def _load_glossary_cached(db_id: str) -> str:
-    path = get_knowledge_path("glossary", db_id=db_id)
     try:
+        path = get_knowledge_path("glossary", db_id=db_id)
         groups = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(groups, dict) or not groups:
             return ""
@@ -431,7 +431,7 @@ def _load_glossary_cached(db_id: str) -> str:
             if synonym_text:
                 lines.append(f"- {concept}: {synonym_text}")
         return "\n".join(lines)
-    except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError, ValueError):
+    except Exception:
         return ""
 
 
@@ -446,8 +446,8 @@ _load_glossary.cache_clear = _load_glossary_cached.cache_clear  # type: ignore[a
 
 @functools.lru_cache(maxsize=32)
 def _get_raw_column_glossary_cached(db_id: str) -> dict:
-    path = get_knowledge_path("column_glossary", db_id=db_id)
     try:
+        path = get_knowledge_path("column_glossary", db_id=db_id)
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             return {}
@@ -541,14 +541,14 @@ def _get_raw_behavioral_atlas(db_id: str = DEFAULT_DB_ID) -> dict[str, Any]:
     norm_id = (db_id or DEFAULT_DB_ID).strip()
     if norm_id in _BEHAVIORAL_ATLAS_CACHE:
         return _BEHAVIORAL_ATLAS_CACHE[norm_id]
-    atlas_path = get_knowledge_path("behavioral_atlas", db_id=norm_id)
-    if atlas_path.exists():
-        try:
+    try:
+        atlas_path = get_knowledge_path("behavioral_atlas", db_id=norm_id)
+        if atlas_path.exists():
             with open(atlas_path, "r", encoding="utf-8") as f:
                 _BEHAVIORAL_ATLAS_CACHE[norm_id] = json.load(f)
-        except Exception:
+        else:
             _BEHAVIORAL_ATLAS_CACHE[norm_id] = {}
-    else:
+    except Exception:
         _BEHAVIORAL_ATLAS_CACHE[norm_id] = {}
     return _BEHAVIORAL_ATLAS_CACHE[norm_id]
 
@@ -1035,26 +1035,28 @@ _MAX_RESULT_CACHE_ENTRIES = 256
 
 class SQLRetriever:
     """Generates and executes SQL queries for analytical questions."""
-    _full_schema_cache: str | None = None
-    _column_registry: ColumnRegistry | None = None
-    # Bounded LRU cache for query results, keyed on normalized question text.
-    _result_cache: OrderedDict[str, tuple[float, list[RetrievedChunk]]] = OrderedDict()
+    _full_schema_cache: dict[str, str] = {}
+    _column_registry: dict[str, ColumnRegistry] = {}
+    # Bounded LRU cache for query results, keyed on (db_id, normalized question text).
+    _result_cache: OrderedDict[tuple[str, str], tuple[float, list[RetrievedChunk]]] = OrderedDict()
 
     def __init__(
         self,
         router: ProviderRouter,
         vector_store: QdrantStore | None = None,
         embedding_service: EmbeddingService | None = None,
+        db_id: str = DEFAULT_DB_ID,
     ) -> None:
+        self.db_id = (db_id or DEFAULT_DB_ID).strip()
         self._router = router
         self._vector_store = vector_store
         self._embeddings = embedding_service
         self._dialect = get_dialect_profile(settings.db_engine)
-        self._glossary = _load_glossary()
-        self._relationships = _load_relationships()
+        self._glossary = _load_glossary(self.db_id)
+        self._relationships = _load_relationships(self.db_id)
         self._pattern_learner = PatternLearner()
         self._confidence_scorer = ConfidenceScorer()
-        self._result_validator = ResultValidator(_get_raw_behavioral_atlas() or {})
+        self._result_validator = ResultValidator(_get_raw_behavioral_atlas(self.db_id) or {})
         self.last_infra_error: str | None = None
         self.last_query_status: str | None = None
         self.last_cot_plan: str | None = None
@@ -1062,10 +1064,20 @@ class SQLRetriever:
         self.last_confidence_breakdown: ConfidenceBreakdown | None = None
         self.last_sql_payload: dict[str, Any] | None = None
 
+    @property
+    def column_registry(self) -> ColumnRegistry | None:
+        """Return the column registry for this retriever's database."""
+        return SQLRetriever._column_registry.get(self.db_id)
+
     @classmethod
-    def clear_result_cache(cls) -> None:
-        """Clear the cached query results."""
-        cls._result_cache.clear()
+    def clear_result_cache(cls, db_id: str | None = None) -> None:
+        """Clear the cached query results for all databases or a specific db_id."""
+        if db_id is None:
+            cls._result_cache.clear()
+        else:
+            keys_to_remove = [k for k in cls._result_cache if k[0] == db_id]
+            for k in keys_to_remove:
+                cls._result_cache.pop(k, None)
 
     async def retrieve(self, query: str) -> list[RetrievedChunk]:
         """Convert NL to SQL, execute, and return formatted results (with 1 retry)."""
@@ -1075,14 +1087,14 @@ class SQLRetriever:
         self.last_confidence_score = None
         self.last_confidence_breakdown = None
         self.last_sql_payload = None
-        cache_key = query.strip().lower()
+        cache_key = (self.db_id, query.strip().lower())
         now = time.monotonic()
 
         cached = SQLRetriever._result_cache.get(cache_key)
         if cached is not None:
             cached_at, cached_chunks = cached
             if now - cached_at < settings.sql_result_cache_ttl_seconds:
-                logger.info("SQL result cache hit for query: %s", query)
+                logger.info("SQL result cache hit for query [%s]: %s", self.db_id, query)
                 SQLRetriever._result_cache.move_to_end(cache_key)
                 self.last_query_status = "success"
                 return [c.model_copy(deep=True) for c in cached_chunks]
@@ -1171,8 +1183,9 @@ class SQLRetriever:
                             message="Soft-delete filtering verified",
                         ))
                     # --- 1. Column validation (catches hallucinated columns before DB) ---
-                    if SQLRetriever._column_registry:
-                        validation = SQLRetriever._column_registry.validate_columns(sql)
+                    col_reg = self.column_registry
+                    if col_reg:
+                        validation = col_reg.validate_columns(sql)
                         if not validation.is_valid:
                             logger.warning("Column validation failed: %s", validation.errors)
                             err_msg = "\n".join(validation.errors)
@@ -1200,7 +1213,7 @@ class SQLRetriever:
 
                         # Alias validation (first attempt only — don't loop forever)
                         if attempt == 0:
-                            alias_warnings = self._column_registry.validate_aliases(sql, query)
+                            alias_warnings = col_reg.validate_aliases(sql, query)
                             if alias_warnings:
                                 logger.warning("Alias validation: %s", alias_warnings)
                                 alias_err_msg = "\n".join(alias_warnings)
@@ -1480,8 +1493,9 @@ class SQLRetriever:
                         )
 
                 # 1. Column validation
-                if not val_error and SQLRetriever._column_registry:
-                    validation = SQLRetriever._column_registry.validate_columns(current_sql)
+                col_reg = self.column_registry
+                if not val_error and col_reg:
+                    validation = col_reg.validate_columns(current_sql)
                     if not validation.is_valid:
                         logger.warning("Column validation failed (repair attempt %d): %s", repair_attempt, validation.errors)
                         val_error = "\n".join(validation.errors)
@@ -1504,8 +1518,8 @@ class SQLRetriever:
                         )
 
                 # 2. Alias validation (on attempt 0)
-                if not val_error and repair_attempt == 0 and SQLRetriever._column_registry:
-                    alias_warnings = self._column_registry.validate_aliases(current_sql, query)
+                if not val_error and repair_attempt == 0 and col_reg:
+                    alias_warnings = col_reg.validate_aliases(current_sql, query)
                     if alias_warnings:
                         logger.warning("Alias validation: %s", alias_warnings)
                         val_error = "\n".join(alias_warnings)
@@ -1774,15 +1788,19 @@ class SQLRetriever:
         return []
 
     @classmethod
-    def clear_schema_cache(cls) -> None:
+    def clear_schema_cache(cls, db_id: str | None = None) -> None:
         """Clear the cached full schema and column registry (e.g. after schema sync)."""
-        cls._full_schema_cache = None
-        cls._column_registry = None
+        if db_id is None:
+            cls._full_schema_cache.clear()
+            cls._column_registry.clear()
+        else:
+            cls._full_schema_cache.pop(db_id, None)
+            cls._column_registry.pop(db_id, None)
 
     async def _fetch_full_schema(self) -> str:
         """Fetch the full, un-truncated DB schema to initialize the ColumnRegistry."""
-        if SQLRetriever._full_schema_cache is not None:
-            return SQLRetriever._full_schema_cache
+        if self.db_id in SQLRetriever._full_schema_cache:
+            return SQLRetriever._full_schema_cache[self.db_id]
 
         try:
             rows = await run_readonly_query(self._dialect.schema_query, max_rows=20000)
@@ -1801,13 +1819,13 @@ class SQLRetriever:
             # Only cache and build registry if the schema was successfully retrieved and non-empty.
             # An empty string from a missing/unready DB must never be cached as permanent truth.
             if full_schema.strip():
-                SQLRetriever._full_schema_cache = full_schema
+                SQLRetriever._full_schema_cache[self.db_id] = full_schema
                 try:
-                    SQLRetriever._column_registry = ColumnRegistry(
+                    SQLRetriever._column_registry[self.db_id] = ColumnRegistry(
                         full_schema, self._dialect.sqlglot_dialect
                     )
                 except Exception as reg_err:
-                    logger.warning("Failed to build column registry: %s", reg_err)
+                    logger.warning("Failed to build column registry for %s: %s", self.db_id, reg_err)
 
             return full_schema
         except Exception as e:

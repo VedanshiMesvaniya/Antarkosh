@@ -12,10 +12,9 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
 from src.models.schemas import QueryResult
-from src.utils.query_classifier import QueryType, TTL_BY_QUERY_TYPE
+from src.utils.query_classifier import TTL_BY_QUERY_TYPE, QueryType
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +70,18 @@ class SemanticCache:
         """Reset the singleton instance (primarily for tests)."""
         cls._instance = None
 
+    @staticmethod
+    def build_scope_key(scope_key: str, db_id: str | None = None) -> str:
+        """Construct scope key incorporating optional db_id."""
+        if not scope_key or not isinstance(scope_key, str) or not scope_key.strip():
+            raise ValueError("scope_key is required and cannot be empty.")
+        clean_key = scope_key.strip()
+        if db_id and db_id.strip():
+            clean_db = db_id.strip()
+            if not clean_key.startswith(f"{clean_db}:") and not clean_key.startswith(f"{clean_db}|"):
+                clean_key = f"{clean_db}:{clean_key}"
+        return clean_key
+
     def _get_scope_dict(self, scope_key: str) -> collections.OrderedDict[str, CachedEntry]:
         if not scope_key or not isinstance(scope_key, str) or not scope_key.strip():
             raise ValueError("scope_key is required and cannot be empty.")
@@ -83,6 +94,7 @@ class SemanticCache:
         question: str,
         embedding: list[float],
         scope_key: str,
+        db_id: str | None = None,
     ) -> QueryResult | None:
         """Lookup a cached QueryResult using semantic cosine similarity >= 0.95 and TTL check.
 
@@ -90,17 +102,17 @@ class SemanticCache:
             question: Original natural-language question.
             embedding: Dense vector representation of the question.
             scope_key: Tenant / ERP instance / RBAC role identifier.
+            db_id: Optional database ID incorporated into scope key.
 
         Returns:
             Cached QueryResult if found and within TTL, else None.
         """
-        if not scope_key or not isinstance(scope_key, str) or not scope_key.strip():
-            raise ValueError("scope_key is required and cannot be empty.")
+        effective_scope = self.build_scope_key(scope_key, db_id)
 
         if not embedding or not question:
             return None
 
-        scope_dict = self._get_scope_dict(scope_key)
+        scope_dict = self._get_scope_dict(effective_scope)
         now = time.time()
         best_entry_key: str | None = None
         best_entry: CachedEntry | None = None
@@ -121,23 +133,23 @@ class SemanticCache:
                 best_entry_key = entry_key
                 best_entry = entry
 
-        if best_entry and best_entry_key:
-            # Move to end (MRU in LRU cache)
-            scope_dict.move_to_end(best_entry_key)
-            best_entry.hit_count += 1
-            logger.info(
-                "SemanticCache HIT (sim=%.4f, scope=%s, type=%s): '%s' -> matched '%s'",
-                best_sim,
-                scope_key,
-                best_entry.query_type.value,
-                question[:60],
-                best_entry.question[:60],
-            )
-            # Return deep copy of QueryResult with zeroed latency metadata
-            cached_res = best_entry.result.model_copy(deep=True)
-            return cached_res
+            if best_entry and best_entry_key:
+                # Move to end (MRU in LRU cache)
+                scope_dict.move_to_end(best_entry_key)
+                best_entry.hit_count += 1
+                logger.info(
+                    "SemanticCache HIT (sim=%.4f, scope=%s, type=%s): '%s' -> matched '%s'",
+                    best_sim,
+                    effective_scope,
+                    best_entry.query_type.value,
+                    question[:60],
+                    best_entry.question[:60],
+                )
+                # Return deep copy of QueryResult with zeroed latency metadata
+                cached_res = best_entry.result.model_copy(deep=True)
+                return cached_res
 
-        logger.debug("SemanticCache MISS (scope=%s): '%s'", scope_key, question[:60])
+        logger.debug("SemanticCache MISS (scope=%s): '%s'", effective_scope, question[:60])
         return None
 
     def store(
@@ -148,6 +160,7 @@ class SemanticCache:
         scope_key: str,
         query_type: QueryType,
         ast_gate_passed: bool = True,
+        db_id: str | None = None,
     ) -> None:
         """Store a QueryResult into SemanticCache with dynamic TTL.
 
@@ -158,15 +171,15 @@ class SemanticCache:
             scope_key: Tenant / ERP instance / RBAC role identifier.
             query_type: QueryType enum for TTL rules.
             ast_gate_passed: Whether the query successfully passed AST validation.
+            db_id: Optional database ID incorporated into scope key.
         """
-        if not scope_key or not isinstance(scope_key, str) or not scope_key.strip():
-            raise ValueError("scope_key is required and cannot be empty.")
+        effective_scope = self.build_scope_key(scope_key, db_id)
 
         # Never cache if AST gate failed or if result is missing/error
         if not ast_gate_passed or result is None or not embedding:
             return
 
-        scope_dict = self._get_scope_dict(scope_key)
+        scope_dict = self._get_scope_dict(effective_scope)
 
         # LRU Eviction: drop oldest if at capacity
         while len(scope_dict) >= self._max_entries:
@@ -177,7 +190,7 @@ class SemanticCache:
 
         # Construct unique key based on embedding and question
         rounded_emb_hash = hash(tuple(round(x, 4) for x in embedding[:16]))
-        entry_key = f"{scope_key}::{rounded_emb_hash}::{hash(question)}"
+        entry_key = f"{effective_scope}::{rounded_emb_hash}::{hash(question)}"
 
         entry = CachedEntry(
             question=question,

@@ -310,7 +310,7 @@ async def test_empty_schema_not_cached_permanently(tmp_path: Path, monkeypatch: 
     schema1 = await retriever._fetch_full_schema()
     assert schema1 == ""
     # Should NOT be cached in SQLRetriever._full_schema_cache
-    assert SQLRetriever._full_schema_cache is None
+    assert retriever.db_id not in SQLRetriever._full_schema_cache
 
     # Now populate the database
     conn = sqlite3.connect(empty_db)
@@ -319,7 +319,7 @@ async def test_empty_schema_not_cached_permanently(tmp_path: Path, monkeypatch: 
 
     schema2 = await retriever._fetch_full_schema()
     assert "CREATE TABLE products" in schema2
-    assert SQLRetriever._full_schema_cache is not None
+    assert retriever.db_id in SQLRetriever._full_schema_cache
     SQLRetriever.clear_schema_cache()
 
 
