@@ -244,4 +244,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: Finding #12: `test_shadow_guards_latency_budget` jitter under heavy test suite load (logged in FOUND_ISSUES.md).
 - **Next Step ID**: E3
 
+---
+
+## Step E3 Report: Database Registry & Connections Persistence
+- **Step ID**: E3
+- **Commits**: 25a13bf
+- **Files Changed**: `src/sql/registry.py`, `src/core/db_config_file.py`, `src/sql/context.py`, `tests/test_sql_registry.py`.
+- **What Changed**: Added `src/sql/registry.py` providing `list_databases()`, `get_database(db_id)`, `save_connection(db_id, fields)`, and `get_connection(db_id)`. Connections are atomically written to `config/connections.json` with `0o600` permissions via `tempfile.mkstemp` and `os.replace` without logging credentials. On first use, missing `connections.json` is bootstrapped by importing existing `config/db_connection.json` (or `DB_*` settings) into `connections.json` as `erp_main` once. `db.yaml` loading validates database engine with `Engine`. Kept `src/core/db_config_file.py` as a backward-compatible shim delegating `read`, `write`, and `apply_to` to `registry` for `erp_main`. Wired `src/sql/context.py` to delegate `db.yaml` loading to `get_database()`. Added unit tests in `tests/test_sql_registry.py`.
+- **Checks a-g**: a-g all passed; pytest: 618 passed, 18 skipped, 8 deselected, 1 xfailed (+15 passed vs 603 last recorded count); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I).
+- **Issues Found**: None new (Findings #11 and #12 timing jitter on full suite run remain documented).
+- **Next Step ID**: E4
+
 

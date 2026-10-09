@@ -1,4 +1,4 @@
-"""Persisted live-database connection, stored in a config file instead of .env.
+"""Persisted live-database connection — backward-compatible shim delegating to src.sql.registry.
 
 Why a file: the host that runs Antarkosh (Render, Docker, a VM, a laptop) decides
 where environment variables come from, and real env vars silently beat ``.env``.
@@ -66,31 +66,50 @@ def _coerce(key: str, value: Any) -> Any:
             raise ValueError("port out of range")
         return port
     if not isinstance(value, str):
-        raise ValueError(f"{key} must be a string")
+        raise TypeError(f"{key} must be a string")
     return value.strip().lower() if key == "db_engine" else value
 
 
 def read() -> dict[str, Any]:
     """Return the valid ``CONFIG_KEYS`` found in the file ({} if absent/unreadable)."""
-    path = config_path()
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8-sig"))  # -sig: tolerate a Windows BOM
-    except FileNotFoundError:
-        return {}
-    except (OSError, ValueError) as exc:
-        logger.warning("Ignoring unreadable DB config file %s: %s", path, exc)
-        return {}
-    if not isinstance(raw, dict):
-        logger.warning("Ignoring DB config file %s: top level must be a JSON object", path)
+    override = os.environ.get("DB_CONFIG_FILE", "").strip()
+    if override:
+        path = Path(override).expanduser()
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8-sig"))  # -sig: tolerate a Windows BOM
+        except FileNotFoundError:
+            return {}
+        except (OSError, ValueError) as exc:
+            logger.warning("Ignoring unreadable DB config file %s: %s", path, exc)
+            return {}
+        if not isinstance(raw, dict):
+            logger.warning("Ignoring DB config file %s: top level must be a JSON object", path)
+            return {}
+
+        out: dict[str, Any] = {}
+        for key in CONFIG_KEYS:
+            if key in raw:
+                try:
+                    out[key] = _coerce(key, raw[key])
+                except (TypeError, ValueError):
+                    logger.warning("Ignoring invalid %r in DB config file %s", key, path)
+        return out
+
+    # If no DB_CONFIG_FILE override is set, delegate to registry for erp_main
+    from src.sql import registry
+    from src.sql.knowledge.loaders import DEFAULT_DB_ID
+
+    conn = registry.get_connection(DEFAULT_DB_ID)
+    if not conn:
         return {}
 
-    out: dict[str, Any] = {}
-    for key in CONFIG_KEYS:
-        if key in raw:
+    out = {}
+    for canon_k, leg_k in registry.CANONICAL_TO_LEGACY_KEYS.items():
+        if canon_k in conn and conn[canon_k] is not None:
             try:
-                out[key] = _coerce(key, raw[key])
+                out[leg_k] = _coerce(leg_k, conn[canon_k])
             except (TypeError, ValueError):
-                logger.warning("Ignoring invalid %r in DB config file %s", key, path)
+                pass
     return out
 
 
@@ -102,26 +121,41 @@ def write(values: dict[str, Any]) -> None:
     OSError if the file cannot be written; the old file is left untouched.
     """
     clean = {k: _coerce(k, v) for k, v in values.items() if k in CONFIG_KEYS}
-    merged = {**read(), **clean}
 
-    path = config_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".db_connection.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(merged, fh, indent=2)
-            fh.write("\n")
+    override = os.environ.get("DB_CONFIG_FILE", "").strip()
+    if override:
+        path = Path(override).expanduser()
+        merged = {**read(), **clean}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".db_connection.", suffix=".tmp")
         try:
-            os.chmod(tmp, 0o600)  # holds a password; best effort (no-op on Windows)
-        except OSError:
-            pass
-        os.replace(tmp, path)
-    except BaseException:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh, indent=2)
+                fh.write("\n")
+            try:
+                os.chmod(tmp, 0o600)  # holds a password; best effort (no-op on Windows)
+            except OSError:
+                pass
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
         try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+            from src.sql import registry
+            from src.sql.knowledge.loaders import DEFAULT_DB_ID
+
+            registry.save_connection(DEFAULT_DB_ID, clean)
+        except (OSError, ValueError) as exc:
+            logger.debug("Could not mirror connection to registry: %s", exc)
+        return
+
+    from src.sql import registry
+    from src.sql.knowledge.loaders import DEFAULT_DB_ID
+
+    registry.save_connection(DEFAULT_DB_ID, clean)
 
 
 def apply_to(target: Any) -> list[str]:

@@ -218,6 +218,10 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | E2-7 | src/core/sql_dialects.py (registry) | src/sql/dialects/__init__.py | code | DIALECTS registry (sqlite, mysql, postgresql) & get_dialect_profile() | a-g pass | 5b9ba01 |
 | E2-8 | src/core/sql_dialects.py | src/core/sql_dialects.py | shim | re-exports DIALECTS, SQLDialectProfile, get_dialect_profile for 5 importers | a-g pass | 5b9ba01 |
 | E2-9 | tests/test_sql_dialects.py | tests/test_sql_dialects.py | test | tests pinning mssql/oracle ValueError on get_dialect_profile and NotImplementedError on stubs | a-g pass | 5b9ba01 |
+| E3-1 | (new) | src/sql/registry.py | code | list_databases, get_database, save_connection, get_connection, connections.json atomic write and first-use bootstrap | a-g pass | 25a13bf |
+| E3-2 | src/core/db_config_file.py | src/core/db_config_file.py | shim | backward-compatible shim delegating read, write, apply_to to src.sql.registry | a-g pass | 25a13bf |
+| E3-3 | src/sql/context.py | src/sql/context.py | wire | get_context delegates db.yaml loading and validation to get_database | a-g pass | 25a13bf |
+| E3-4 | (new) | tests/test_sql_registry.py | test | tests for database discovery, engine validation, connections atomic persistence, legacy bootstrap, password safety | a-g pass | 25a13bf |
 
 
 

@@ -5,9 +5,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
-
-import yaml
 
 from src.core.config import DATABASES_DIR
 from src.sql.engine import Engine
@@ -16,6 +13,7 @@ from src.sql.knowledge.loaders import (
     get_knowledge_path,
     validate_db_id,
 )
+from src.sql.registry import get_database
 
 logger = logging.getLogger(__name__)
 
@@ -71,24 +69,15 @@ def get_context(db_id: str = DEFAULT_DB_ID) -> DatabaseContext:
     if db_id in _CONTEXT_CACHE:
         return _CONTEXT_CACHE[db_id]
 
-    db_dir = DATABASES_DIR / db_id
-    yaml_path = db_dir / "db.yaml"
-
-    if not yaml_path.exists():
+    try:
+        data = get_database(db_id)
+    except FileNotFoundError as e:
+        yaml_path = DATABASES_DIR / db_id / "db.yaml"
         raise UnknownDatabaseError(
             f"Database configuration not found for {db_id!r} at {yaml_path}"
-        )
+        ) from e
 
-    try:
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            data: dict[str, Any] = yaml.safe_load(f) or {}
-    except (yaml.YAMLError, OSError) as e:
-        raise ValueError(f"Failed to parse database configuration {yaml_path}: {e}") from e
-
-    raw_engine = data.get("engine")
-    if not raw_engine:
-        raise ValueError(f"Missing required 'engine' field in {yaml_path}")
-    engine = Engine.from_value(str(raw_engine))
+    engine = Engine.from_value(data["engine"])
 
     display_name = str(data.get("display_name") or db_id)
     description = str(data.get("description") or "")

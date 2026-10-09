@@ -21,7 +21,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | D7 | db_id through API and pipeline, metrics field | d4046a4 | 586 passed |
 | [x] | E1 | Connectors split out of db_client | 00e709f, d4f3b35, 5aee3dc, 23f6af7, 481aac9 | 599 passed |
 | [x] | E2 | Dialects package, mssql/oracle stubs (not registered) | 5b9ba01 | 603 passed |
-| [ ] | E3 | registry.py (connections.json, db.yaml) | | |
+| [x] | E3 | registry.py (connections.json, db.yaml) | 25a13bf | 618 passed |
 | [ ] | E4 | db_settings into connectors/registry | | |
 | [ ] | E5 | Per-database connection, remove global cache wipe | | |
 | [ ] | E6 | Database access control and admin endpoints | | |
@@ -49,6 +49,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 ## Shims currently in place
 - `src/sql/knowledge/loaders.py` legacy fallback to `config/` and `evals/Antarkosh/` (removed in Phase I)
 - `src/core/sql_dialects.py` re-exporting `DIALECTS`, `SQLDialectProfile`, `get_dialect_profile` from `src.sql.dialects` (removed in Phase I)
+- `src/core/db_config_file.py` delegating `read`, `write`, `apply_to` to `src.sql.registry` for `erp_main` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.
