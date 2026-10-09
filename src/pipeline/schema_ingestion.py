@@ -75,7 +75,7 @@ def _split_schema_by_table(
 
 
 def _load_table_metadata() -> dict[str, dict[str, Any]]:
-    """Load table domain and metadata from evals/Antarkosh/Antarkosh_schema.json if present."""
+    """Load table domain and metadata from schema knowledge pack if present."""
     schema_file = get_knowledge_path("schema")
     if not schema_file.exists():
         return {}
@@ -167,7 +167,7 @@ async def sync_live_schema(
         logger.warning("Could not fetch FK info for schema sync: %s", e)
 
     # If DB introspection gave no FKs (databases without formal FK constraints),
-    # fall back to inferred relationships from config/sql_relationships.json
+    # fall back to inferred relationships from relationships knowledge pack
     if not fk_map:
         try:
             rel_path = get_knowledge_path("relationships")

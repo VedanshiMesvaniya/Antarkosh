@@ -91,3 +91,15 @@ Chronological reports produced after completing each refactoring phase.
 - **Issues Found**: Added freeze rule to `FOUND_ISSUES.md` forbidding regeneration of knowledge files until Phase I parity test.
 - **Next Step ID**: C2-2
 
+---
+
+## Step C2-2 Report: Switch Remaining Readers in src/ to Loaders
+- **Step ID**: C2-2
+- **Commits**: pending
+- **Files Changed**: `src/core/sql_column_registry.py`, `src/utils/sql_safety.py`, `src/core/sql_drift_validator.py`, `src/stages/s12b_sql_retrieval.py`, `src/pipeline/schema_ingestion.py`, `src/core/join_graph.py`, `src/core/result_validator.py`.
+- **What Changed**: Switched all remaining legacy file readers in `src/` to `get_knowledge_path`; confirmed `join_graph.py` and `result_validator.py` access relationships via `s12b._get_raw_relationships` (not reading files directly); cleaned all stale docstrings/comments naming legacy files. Verified that `git grep` for legacy knowledge files across `src/` now matches only `src/sql/knowledge/loaders.py`.
+- **Checks a-g**: a-g all passed; pytest: 546 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; matches last recorded count of 546 passed); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations (to be removed in Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: C2-3
+

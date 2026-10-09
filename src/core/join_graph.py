@@ -53,7 +53,7 @@ class JoinGraphBuilder:
                         self.valid_joins.add((table_name.lower(), ref_table.lower()))
                         self.valid_joins.add((ref_table.lower(), table_name.lower()))
         
-        # 2. From canonical sql_relationships.json
+        # 2. From canonical relationships (via s12b _get_raw_relationships)
         rels = self.relationships
         if rels is None:
             try:

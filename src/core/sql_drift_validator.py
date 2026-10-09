@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 REPO_ROOT = PROJECT_ROOT
 SCHEMA_FILE = get_knowledge_path("schema")
-GLOSSARY_FILE = CONFIG_DIR / "sql_column_glossary.json"
-RELATIONSHIPS_FILE = CONFIG_DIR / "sql_relationships.json"
+GLOSSARY_FILE = get_knowledge_path("column_glossary")
+RELATIONSHIPS_FILE = get_knowledge_path("relationships")
 
 
 def load_schema_tables_and_columns(schema_path: Path | None = None) -> dict[str, set[str]]:

@@ -83,7 +83,7 @@ class JoinPathValidator:
                 if ref_table:
                     paths.add((table_name.lower(), ref_table.lower()))
                     paths.add((ref_table.lower(), table_name.lower()))
-        # 2. From canonical relationships registry (config/sql_relationships.json)
+        # 2. From canonical relationships registry (via s12b _get_raw_relationships)
         rels = self.relationships
         if rels is None:
             try:

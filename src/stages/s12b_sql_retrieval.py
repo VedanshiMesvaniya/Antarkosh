@@ -289,7 +289,7 @@ def _extract_table_names(sql: str, dialect: str) -> list[str]:
 
 @functools.lru_cache(maxsize=1)
 def _get_raw_relationships() -> list[dict[str, Any]]:
-    """Load raw relationship list from config/sql_relationships.json."""
+    """Load raw relationship list via knowledge loader."""
     path = get_knowledge_path("relationships")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -565,7 +565,7 @@ _SOFT_DELETE_TABLES_CACHE: set[str] | None = None
 def _get_tables_with_soft_delete() -> set[str]:
     """Return the set of lowercase table names that possess a deleted_at column.
 
-    Sourced from config/behavioral_schema_atlas.json with fallback to known
+    Sourced from behavioral schema atlas via knowledge loader with fallback to known
     soft-delete schema tables.
     """
     global _SOFT_DELETE_TABLES_CACHE

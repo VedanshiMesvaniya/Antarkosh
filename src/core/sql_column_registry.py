@@ -27,12 +27,13 @@ import sqlglot
 from sqlglot import exp
 
 from src.core.config import CONFIG_DIR, PROJECT_ROOT
+from src.sql.knowledge.loaders import get_knowledge_path
 
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = PROJECT_ROOT
-GLOSSARY_PATH = CONFIG_DIR / "sql_glossary.json"
-COLUMN_GLOSSARY_PATH = CONFIG_DIR / "sql_column_glossary.json"
+GLOSSARY_PATH = get_knowledge_path("glossary")
+COLUMN_GLOSSARY_PATH = get_knowledge_path("column_glossary")
 
 _CACHED_GLOSSARY: set[str] | None = None
 
@@ -404,7 +405,7 @@ class ColumnRegistry:
                                 if token:
                                     concepts.add(token)
             except Exception as exc:
-                logger.debug("Failed to load sql_glossary.json: %s", exc)
+                logger.debug("Failed to load glossary from %s: %s", GLOSSARY_PATH, exc)
 
         if COLUMN_GLOSSARY_PATH.exists():
             try:
@@ -415,7 +416,7 @@ class ColumnRegistry:
                         if token:
                             concepts.add(token)
             except Exception as exc:
-                logger.debug("Failed to load sql_column_glossary.json: %s", exc)
+                logger.debug("Failed to load column glossary from %s: %s", COLUMN_GLOSSARY_PATH, exc)
 
         _CACHED_GLOSSARY = concepts
         return _CACHED_GLOSSARY
