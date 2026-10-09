@@ -27,6 +27,7 @@ import sqlglot
 from sqlglot import exp
 
 from src.core.config import CONFIG_DIR, PROJECT_ROOT
+from src.sql.engine import Engine
 from src.sql.knowledge.loaders import get_knowledge_path
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,10 @@ class ColumnRegistry:
 
     def __init__(self, schema_text: str, dialect: str) -> None:
         self._dialect = dialect
+        try:
+            self._engine = Engine.from_value(dialect)
+        except ValueError:
+            self._engine = None
         self._tables: dict[str, set[str]] = {}  # table_name → {col_name (lower)}
         self._tables_original: dict[str, list[str]] = {}  # for display
         self._parse_schema(schema_text)
@@ -90,9 +95,9 @@ class ColumnRegistry:
 
     def _parse_schema(self, text: str) -> None:
         """Extract table → column mappings from the schema text."""
-        if self._dialect == "sqlite":
+        if self._engine == Engine.SQLITE:
             self._parse_sqlite(text)
-        elif self._dialect in ("mysql", "postgres", "tsql", "oracle"):
+        elif self._engine in (Engine.MYSQL, Engine.POSTGRESQL, Engine.MSSQL, Engine.ORACLE):
             self._parse_mysql(text)  # same "TABLE name (col type, ...)" format
         else:
             logger.warning("ColumnRegistry: unsupported dialect %r", self._dialect)
@@ -334,7 +339,7 @@ class ColumnRegistry:
                         # compared against a known, valid column. A double-quoted token in a projection
                         # (SELECT "fake" FROM t) or compared against a non-column (WHERE "fake" = 1)
                         # remains a hallucinated column.
-                        if self._dialect == "sqlite" and self._is_sqlite_literal_fallback(col_node, from_tables, table_aliases):
+                        if self._engine == Engine.SQLITE and self._is_sqlite_literal_fallback(col_node, from_tables, table_aliases):
                             continue
 
                         table_list = ", ".join(sorted(from_tables))

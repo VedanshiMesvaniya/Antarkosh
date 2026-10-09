@@ -16,13 +16,14 @@ import logging
 from typing import Any
 
 from src.core.config import CONFIG_DIR, PROJECT_ROOT, settings
-from src.sql.knowledge.loaders import get_knowledge_path
 from src.core.db_client import run_readonly_query
-from src.core.sql_dialects import get_dialect_profile, SQLDialectProfile
+from src.core.sql_dialects import SQLDialectProfile, get_dialect_profile
 from src.models.schemas import Chunk, ChunkType, DocumentType
+from src.sql.engine import Engine
+from src.sql.knowledge.loaders import get_knowledge_path
 from src.stages.s10_embeddings import EmbeddingService
 from src.stages.s11_vector_store import QdrantStore
-from src.stages.s12b_sql_retrieval import format_schema_rows, format_fk_rows
+from src.stages.s12b_sql_retrieval import format_fk_rows, format_schema_rows
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +68,9 @@ def _split_schema_by_table(
     dialect: SQLDialectProfile, rows: list[dict[str, Any]]
 ) -> dict[str, str]:
     """Return {table_name: schema_text} for each table in the database."""
-    if dialect.key in ("mysql", "postgresql", "mssql", "oracle"):
+    if dialect.key in (Engine.MYSQL, Engine.POSTGRESQL, Engine.MSSQL, Engine.ORACLE):
         return _split_mysql_tables(rows)  # same one-row-per-column shape
-    if dialect.key == "sqlite":
+    if dialect.key == Engine.SQLITE:
         return _split_sqlite_tables(rows)
     raise ValueError(f"Unsupported dialect key {dialect.key!r}")
 
@@ -149,7 +150,7 @@ async def sync_live_schema(
     try:
         if dialect.fk_query:  # MySQL / PostgreSQL / SQL Server / Oracle: one query covers all FKs
             fk_rows = await run_readonly_query(dialect.fk_query, max_rows=20000)
-        elif dialect.key == "sqlite":
+        elif dialect.key == Engine.SQLITE:
             from src.stages.s12b_sql_retrieval import fetch_sqlite_foreign_keys
             fk_rows = await fetch_sqlite_foreign_keys()
         else:

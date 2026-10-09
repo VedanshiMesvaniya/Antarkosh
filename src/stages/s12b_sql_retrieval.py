@@ -21,6 +21,7 @@ import sqlglot
 from sqlglot import exp
 
 from src.core.config import CONFIG_DIR, settings
+from src.sql.engine import Engine
 from src.sql.knowledge.loaders import get_knowledge_path
 from src.core.db_client import run_readonly_query
 from src.core.pipeline_metrics import log_event as _log_pipeline_event
@@ -134,12 +135,12 @@ def format_schema_rows(profile: SQLDialectProfile, rows: list[dict[str, Any]]) -
     statement per row. MySQL's information_schema.columns query returns
     one row per column, so those need grouping by table first.
     """
-    if profile.key == "sqlite":
+    if profile.key == Engine.SQLITE:
         return "\n\n".join(
             row["sql"] for row in rows if row["name"] != "sqlite_sequence"
         )
 
-    if profile.key in ("mysql", "postgresql"):
+    if profile.key in (Engine.MYSQL, Engine.POSTGRESQL):
         tables: dict[str, list[str]] = {}
         for row in rows:
             comment = row.get("column_comment") or ""
@@ -1748,7 +1749,7 @@ class SQLRetriever:
 
             if self._dialect.fk_query:  # MySQL / PostgreSQL: one query covers all FKs
                 fk_rows = await run_readonly_query(self._dialect.fk_query, max_rows=20000)
-            elif self._dialect.key == "sqlite":
+            elif self._dialect.key == Engine.SQLITE:
                 fk_rows = await fetch_sqlite_foreign_keys()
             else:
                 fk_rows = []
