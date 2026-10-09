@@ -222,10 +222,10 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | E3-2 | src/core/db_config_file.py | src/core/db_config_file.py | shim | backward-compatible shim delegating read, write, apply_to to src.sql.registry | a-g pass | 25a13bf |
 | E3-3 | src/sql/context.py | src/sql/context.py | wire | get_context delegates db.yaml loading and validation to get_database | a-g pass | 25a13bf |
 | E3-4 | (new) | tests/test_sql_registry.py | test | tests for database discovery, engine validation, connections atomic persistence, legacy bootstrap, password safety | a-g pass | 25a13bf |
-| E4-1 | src/core/db_settings.py (ENGINES) | src/sql/engine.py | code | ENGINES form spec and REQUIRED_FIELDS moved to engine.py | a-g pass | pending |
-| E4-2 | src/core/db_settings.py (_test_*) | src/sql/connectors/*.py | code | _test_* functions delegate to connector.test() | a-g pass | pending |
-| E4-3 | src/core/db_settings.py | src/core/db_settings.py | wire | db_settings delegates ENGINES, connector tests, and mirrors erp_main via registry.save_connection | a-g pass | pending |
-| E4-4 | tests/test_db_settings.py | tests/test_db_settings.py | test | existing test suite passes unmodified | a-g pass | pending |
+| E4-1 | src/core/db_settings.py (ENGINES) | src/sql/engine.py | code | ENGINES form spec and REQUIRED_FIELDS moved to engine.py | a-g pass | cba67de |
+| E4-2 | src/core/db_settings.py (_test_*) | src/sql/connectors/*.py | code | _test_* functions delegate to connector.test() | a-g pass | cba67de |
+| E4-3 | src/core/db_settings.py | src/core/db_settings.py | wire | db_settings delegates ENGINES, connector tests, and mirrors erp_main via registry.save_connection | a-g pass | cba67de |
+| E4-4 | tests/test_db_settings.py | tests/test_db_settings.py | test | existing test suite passes unmodified | a-g pass | cba67de |
 
 
 
