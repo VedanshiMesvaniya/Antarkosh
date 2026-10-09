@@ -101,3 +101,12 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | C2-3-8 | evals/Antarkosh/baseline_v2/run_full_eval.py | evals/Antarkosh/baseline_v2/run_full_eval.py | wire | _load_schema_context -> get_knowledge_path("schema") | a-g pass | 375a3df |
 | C2-3-9 | tests/test_sql_retrieval.py | tests/test_sql_retrieval.py | test | added test_relationships_knowledge_file_exists_and_loads | a-g pass | 375a3df |
 
+---
+
+## Step C2-4 — Guard Test Against Legacy Knowledge Paths in src/
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| C2-4-1 | (new) | tests/test_no_legacy_knowledge_paths.py | test | guard scanning all src/ .py files for forbidden legacy names | a-g pass | 3426347 |
+
+

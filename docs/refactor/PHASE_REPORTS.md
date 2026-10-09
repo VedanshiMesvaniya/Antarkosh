@@ -115,4 +115,17 @@ Chronological reports produced after completing each refactoring phase.
 - **Issues Found**: None.
 - **Next Step ID**: C2-4
 
+---
+
+## Step C2-4 Report: Guard Test Against Legacy Knowledge Paths in src/
+- **Step ID**: C2-4
+- **Commits**: 3426347
+- **Files Changed**: `tests/test_no_legacy_knowledge_paths.py`.
+- **What Changed**: Added guard test `test_no_legacy_knowledge_paths_in_src` scanning every `.py` file under `src/` for forbidden legacy knowledge filenames (`sql_glossary.json`, `sql_column_glossary.json`, `sql_relationships.json`, `behavioral_schema_atlas.json`, `Antarkosh_schema.json`), excluding `src/sql/knowledge/loaders.py`. Confirmed it passes and fails if a forbidden string is injected into `src/`.
+- **Checks a-g**: a-g all passed; pytest: 548 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +1 passed vs 547 last recorded count due to new guard test); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations (to be removed in Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: D1
+
+
 
