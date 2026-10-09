@@ -22,6 +22,8 @@ from src.core.state import state_manager
 from src.core.pipeline_metrics import get_score_summary, log_event as _log_pipeline_event
 from src.models.schemas import ThinkingStep
 from src.pipeline.query import QueryPipeline
+from src.sql.context import DEFAULT_DB_ID
+from src.sql.knowledge.loaders import validate_db_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -225,6 +227,8 @@ class SendMessage(BaseModel):
     provider: str | None = None
     # Knowledge source mode: "auto", "sql", "rag", or "mix"
     mode: str = "auto"
+    # Optional target database identifier (defaults to erp_main)
+    db_id: str | None = None
 
 class MessageFeedback(BaseModel):
     # "up", "down", or None to clear the rating.
@@ -341,12 +345,20 @@ async def send_message(
     }
     state_manager.add_message(chat_id, user_message)
 
+    target_db_id = DEFAULT_DB_ID
+    if msg.db_id is not None:
+        try:
+            validate_db_id(msg.db_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        target_db_id = msg.db_id.strip()
+
     try:
         # Fresh pipeline per request — avoids accumulated RateLimiter backoff
         # bleeding across unrelated queries and biasing provider selection.
-        pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider))
+        pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider), db_id=target_db_id)
         filters = {"user_id": current_user}
-        result = await pipeline.query(msg.message, filters=filters, history=history, mode=msg.mode)
+        result = await pipeline.query(msg.message, filters=filters, history=history, mode=msg.mode, db_id=target_db_id)
 
 
         # Save the assistant's message
@@ -405,12 +417,20 @@ async def send_message_stream(
     }
     state_manager.add_message(chat_id, user_message)
 
-    pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider))
+    target_db_id = DEFAULT_DB_ID
+    if msg.db_id is not None:
+        try:
+            validate_db_id(msg.db_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        target_db_id = msg.db_id.strip()
+
+    pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider), db_id=target_db_id)
     filters = {"user_id": current_user}
 
     async def event_generator():
         try:
-            async for chunk in pipeline.query_stream(msg.message, filters=filters, history=history, mode=msg.mode):
+            async for chunk in pipeline.query_stream(msg.message, filters=filters, history=history, mode=msg.mode, db_id=target_db_id):
                 if isinstance(chunk, ThinkingStep):
                     # A reasoning step — stream it live for the "thinking" block.
                     yield f"data: {json.dumps({'type': 'thinking', 'step': chunk.model_dump()}, default=json_serial)}\n\n"

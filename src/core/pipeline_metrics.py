@@ -17,15 +17,18 @@ from __future__ import annotations
 import datetime
 import json
 import logging
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from src.core.config import DATA_DIR
+from src.sql.context import DEFAULT_DB_ID
 
 logger = logging.getLogger(__name__)
 
 METRICS_FILE = DATA_DIR / "pipeline_metrics.jsonl"
+CURRENT_DB_ID: ContextVar[str] = ContextVar("current_db_id", default=DEFAULT_DB_ID)
 
 # Score deltas for each event type.  Positive = pipeline did well (caught a
 # problem or succeeded cleanly), negative = something slipped through.
@@ -52,6 +55,7 @@ class PipelineEvent:
     query: str
     details: dict[str, Any] = field(default_factory=dict)
     score_delta: int = 0
+    db_id: str = DEFAULT_DB_ID
 
 
 def log_event(
@@ -60,6 +64,7 @@ def log_event(
     *,
     query: str = "",
     score_delta: int | None = None,
+    db_id: str | None = None,
 ) -> None:
     """Append a structured event to the metrics log.
 
@@ -69,12 +74,21 @@ def log_event(
     if score_delta is None:
         score_delta = _SCORE_MAP.get(event_type, 0)
 
+    resolved_db_id = (
+        db_id
+        or (details.get("db_id") if details else None)
+        or CURRENT_DB_ID.get()
+        or DEFAULT_DB_ID
+    )
+    resolved_db_id = str(resolved_db_id).strip() or DEFAULT_DB_ID
+
     event = PipelineEvent(
         timestamp=datetime.datetime.now(datetime.UTC).isoformat(),
         event_type=event_type,
         query=query[:500],  # cap for storage
         details=details or {},
         score_delta=score_delta,
+        db_id=resolved_db_id,
     )
 
     try:

@@ -1081,6 +1081,9 @@ class SQLRetriever:
 
     async def retrieve(self, query: str) -> list[RetrievedChunk]:
         """Convert NL to SQL, execute, and return formatted results (with 1 retry)."""
+        from src.core.pipeline_metrics import CURRENT_DB_ID
+        CURRENT_DB_ID.set(self.db_id)
+
         self.last_infra_error = None
         self.last_query_status = None
         self.last_cot_plan = None

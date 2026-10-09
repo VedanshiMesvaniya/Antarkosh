@@ -26,6 +26,7 @@ from src.stages.s12_s13_s14_retrieval import (
     _source_mode,
 )
 from src.sql.context import DEFAULT_DB_ID
+from src.sql.knowledge.loaders import validate_db_id
 from src.stages.s12b_sql_retrieval import SQLRetriever
 from src.utils.query_classifier import QueryType, classify_query
 from src.utils.semantic_cache import get_semantic_cache
@@ -187,7 +188,9 @@ class QueryPipeline:
         embedding_service: EmbeddingService | None = None,
         vector_store: QdrantStore | None = None,
         preferred_provider: str | None = None,
+        db_id: str = DEFAULT_DB_ID,
     ) -> None:
+        self.db_id = (db_id or DEFAULT_DB_ID).strip()
         # Shared process-wide limiter so provider quota and 429
         # backoff span requests, exactly like the LLM providers.
         self._rate_limiter = get_shared_rate_limiter()
@@ -197,9 +200,15 @@ class QueryPipeline:
         self._embeddings = embedding_service or EmbeddingService()
         self._store = vector_store or QdrantStore(embedding_service=self._embeddings)
         self._retriever = Retriever(self._store, self._embeddings)
-        self._sql_retriever = SQLRetriever(self._router, self._store, self._embeddings)
+        self._sql_retriever = SQLRetriever(self._router, self._store, self._embeddings, db_id=self.db_id)
         self._reranker = Reranker()
         self._generator = Generator(self._router)
+
+    def _get_sql_retriever(self, target_db_id: str) -> SQLRetriever:
+        """Return an SQLRetriever scoped to the requested database."""
+        if target_db_id == self.db_id or getattr(self._sql_retriever, "db_id", None) == target_db_id:
+            return self._sql_retriever
+        return SQLRetriever(self._router, self._store, self._embeddings, db_id=target_db_id)
 
     async def query(
         self,
@@ -207,6 +216,7 @@ class QueryPipeline:
         filters: dict | None = None,
         history: list[dict] | None = None,
         mode: str = "auto",
+        db_id: str | None = None,
     ) -> QueryResult:
         """Run a full RAG query: retrieve → rerank → generate.
 
@@ -226,7 +236,16 @@ class QueryPipeline:
         logger.info("=== Query [%s] [Budget Limit: %d] [Mode: %s]: %s ===", query_id, budget_ctrl.max_tokens, mode, question[:100])
 
         import os
-        target_db_id = (filters.get("db_id") if filters else None) or getattr(self._sql_retriever, "db_id", DEFAULT_DB_ID)
+        target_db_id = (
+            db_id
+            or (filters.get("db_id") if filters else None)
+            or self.db_id
+        )
+        validate_db_id(target_db_id)
+        from src.core.pipeline_metrics import CURRENT_DB_ID
+        CURRENT_DB_ID.set(target_db_id)
+        sql_retriever = self._get_sql_retriever(target_db_id)
+
         scope_key = (filters.get("scope_key") or filters.get("erp_instance_id")) if filters else None
         if not scope_key:
             scope_key = os.environ.get("Antarkosh_ERP_INSTANCE_ID", "").strip() or None
@@ -288,7 +307,7 @@ class QueryPipeline:
             if effective_mode == "sql":
                 logger.info("[Tokens: %d/%d] [Mode: SQL] Querying live database only", budget_ctrl.get_current_usage(), budget_ctrl.max_tokens)
                 with branch_context("sql_branch"):
-                    sql_chunks = await self._sql_retriever.retrieve(search_query)
+                    sql_chunks = await sql_retriever.retrieve(search_query)
                 vector_chunks = []
                 if not sql_chunks and mode == "auto":
                     logger.info("Auto mode SQL returned no rows; falling back to documents")
@@ -318,7 +337,7 @@ class QueryPipeline:
 
                 async def _run_sql():
                     with branch_context("sql_branch"):
-                        return await self._sql_retriever.retrieve(sql_subquery)
+                        return await sql_retriever.retrieve(sql_subquery)
 
                 async def _run_rag():
                     with branch_context("rag_branch"):
@@ -333,7 +352,7 @@ class QueryPipeline:
                 sql_chunks, vector_chunks = await asyncio.gather(_run_sql(), _run_rag())
 
             logger.info("Retrieved %d vector chunks and %d SQL chunks", len(vector_chunks), len(sql_chunks))
-            sql_infra_error = self._sql_retriever.last_infra_error
+            sql_infra_error = sql_retriever.last_infra_error
             if sql_chunks:
                 logger.info("SQL query succeeded and returned rows.")
             else:
@@ -406,7 +425,7 @@ class QueryPipeline:
                 "sql_rows": len(sql_chunks),
                 "doc_chunks": len(vector_chunks),
                 "reranked": len(reranked),
-            }, query=question)
+            }, query=question, db_id=target_db_id)
             result = await self._generator.generate(
                 question, reranked, history=gen_history, context_limit=context_limit, source_mode=mode
             )
@@ -454,7 +473,7 @@ class QueryPipeline:
             )
             # Non-blocking background cache update after pipeline completes (strictly requires scope_key)
             if scope_key and query_emb is not None and result is not None and not getattr(result, "error", None):
-                ast_passed = getattr(self._sql_retriever, "last_query_status", "success") != "failed"
+                ast_passed = getattr(sql_retriever, "last_query_status", "success") != "failed"
                 asyncio.create_task(
                     asyncio.to_thread(
                         get_semantic_cache().store,
@@ -501,7 +520,12 @@ class QueryPipeline:
             raise
 
     async def query_stream(
-        self, question: str, filters: dict | None = None, history: list[dict] | None = None, mode: str = "auto"
+        self,
+        question: str,
+        filters: dict | None = None,
+        history: list[dict] | None = None,
+        mode: str = "auto",
+        db_id: str | None = None,
     ):
         """Run a full RAG query and yield SSE stream chunks.
 
@@ -510,6 +534,7 @@ class QueryPipeline:
             filters: Optional metadata filters (same keys as query()).
             history: Prior conversation turns for follow-up resolution.
             mode: Knowledge source mode: "auto", "sql", "rag", or "mix".
+            db_id: Optional database identifier (defaults to self.db_id).
         """
         from typing import AsyncGenerator
         from src.models.schemas import QueryResult
@@ -560,12 +585,20 @@ class QueryPipeline:
             effective_mode = _classify_auto_mode(search_query)
             logger.info("Auto-classified query '%s' -> mode '%s'", search_query[:80], effective_mode)
 
+        target_db_id = (
+            db_id
+            or (filters.get("db_id") if filters else None)
+            or self.db_id
+        )
+        validate_db_id(target_db_id)
+        sql_retriever = self._get_sql_retriever(target_db_id)
+
         doc_subquery = search_query
         if effective_mode == "sql":
             yield _think("Understanding the question", "querying live database")
-            sql_chunks = await self._sql_retriever.retrieve(search_query)
+            sql_chunks = await sql_retriever.retrieve(search_query)
             vector_chunks = []
-            sql_infra_error = self._sql_retriever.last_infra_error
+            sql_infra_error = sql_retriever.last_infra_error
             if sql_chunks:
                 sql_match = re.search(r"SQL Query Executed: `(.+?)`", sql_chunks[0].chunk.content)
                 sql_detail = sql_match.group(1) if sql_match else "returned matching rows"
@@ -611,7 +644,7 @@ class QueryPipeline:
             if sql_subquery != search_query or doc_subquery != search_query:
                 logger.info("Decomposed hybrid query into SQL: '%s' | DOC: '%s'", sql_subquery, doc_subquery)
 
-            sql_task = asyncio.create_task(self._sql_retriever.retrieve(sql_subquery))
+            sql_task = asyncio.create_task(sql_retriever.retrieve(sql_subquery))
 
             vector_chunks = await self._retriever.retrieve(
                 doc_subquery,
@@ -631,7 +664,7 @@ class QueryPipeline:
             yield _think("Searched the documents", doc_detail)
 
             sql_chunks = await sql_task
-            sql_infra_error = self._sql_retriever.last_infra_error
+            sql_infra_error = sql_retriever.last_infra_error
             if sql_chunks:
                 sql_match = re.search(r"SQL Query Executed: `(.+?)`", sql_chunks[0].chunk.content)
                 sql_detail = sql_match.group(1) if sql_match else "returned matching rows"
@@ -716,7 +749,7 @@ class QueryPipeline:
             "sql_rows": len(sql_chunks),
             "doc_chunks": len(vector_chunks),
             "reranked": len(reranked),
-        }, query=question)
+        }, query=question, db_id=target_db_id)
         async for chunk in self._generator.generate_stream(
             question, reranked, history=gen_history, context_limit=context_limit, source_mode=mode
         ):
