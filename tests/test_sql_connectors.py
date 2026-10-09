@@ -57,6 +57,26 @@ def test_get_connector_mysql():
     assert isinstance(conn, MySQLConnector)
 
 
+def test_postgresql_connector_implements_protocol():
+    from src.sql.connectors.postgresql import PostgreSQLConnector
+    connector = PostgreSQLConnector()
+    assert isinstance(connector, Connector)
+
+
+def test_get_connector_postgresql():
+    from src.sql.connectors.postgresql import PostgreSQLConnector
+    conn = get_connector("postgresql")
+    assert isinstance(conn, PostgreSQLConnector)
+
+
+@pytest.mark.asyncio
+async def test_postgresql_connector_named_params_rejected():
+    pytest.importorskip("asyncpg")
+    from src.sql.connectors.postgresql import PostgreSQLConnector
+    with pytest.raises(ValueError, match="Named query parameters"):
+        await PostgreSQLConnector().run_readonly("SELECT 1", {"a": 1})
+
+
 def test_get_connector_unsupported():
     with pytest.raises(ValueError, match="Unsupported db_engine"):
         get_connector("cockroachdb")
