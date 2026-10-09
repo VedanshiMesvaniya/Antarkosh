@@ -148,3 +148,15 @@ Chronological reports produced after completing each refactoring phase.
 - **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
 - **Issues Found**: None.
 - **Next Step ID**: D3
+
+---
+
+## Step D3 Report: DatabaseContext and Context Cache
+- **Step ID**: D3
+- **Commits**: a877abd
+- **Files Changed**: `src/sql/context.py`, `tests/test_sql_context.py`.
+- **What Changed**: Created frozen dataclass `DatabaseContext` (holding `db_id`, `engine`, `display_name`, `description`, paths for the 5 knowledge files, `soft_delete_column`, `routing_hints_path`, and properties `.behavioral_atlas_path` and `.paths`). Implemented `get_context(db_id=DEFAULT_DB_ID)` cached per `db_id` in `_CONTEXT_CACHE`, parsing configuration from `databases/<db_id>/db.yaml` via `validate_db_id` and knowledge loaders. Exported `DEFAULT_DB_ID` and added `clear_context_cache(db_id=None)`. Kept pipeline untouched per instructions. Added comprehensive tests in `tests/test_sql_context.py` verifying `erp_main` loading, unknown/invalid database error handling, context isolation, cache clearing, and immutability.
+- **Checks a-g**: a-g all passed; pytest: 564 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +5 passed vs 559 last recorded count due to new context tests); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: D4

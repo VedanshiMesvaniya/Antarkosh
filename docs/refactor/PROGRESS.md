@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 559 passed, 17 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 564 passed, 17 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -14,7 +14,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | C2-4 | Guard test: no legacy knowledge paths in `src/` | 3426347 | 548 passed |
 | [x] | D1 | Loader hardening: db_id validation, fallback only for erp_main | e59165a | 552 passed |
 | [x] | D2 | Engine enum | 5aa0a06 | 559 passed |
-| [ ] | D3 | DatabaseContext | | |
+| [x] | D3 | DatabaseContext | a877abd | 564 passed |
 | [ ] | D4 | Knowledge caches keyed by db_id | | |
 | [ ] | D5 | SQLRetriever and semantic caches keyed by db_id | | |
 | [ ] | D6 | Qdrant schema chunks tagged and filtered by db_id | | |

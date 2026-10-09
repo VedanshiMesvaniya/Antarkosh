@@ -131,6 +131,11 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | D2-4 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | wire | replaced ad-hoc dialect strings in format_schema_rows and foreign key fetch with Engine | a-g pass | 5aa0a06 |
 | D2-5 | src/pipeline/schema_ingestion.py | src/pipeline/schema_ingestion.py | wire | replaced ad-hoc dialect checks in _split_schema_by_table and sync_live_schema with Engine | a-g pass | 5aa0a06 |
 
+---
 
+## Step D3 — DatabaseContext and Context Cache
 
-
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| D3-1 | (new) | src/sql/context.py | code | DatabaseContext frozen dataclass, get_context, clear_context_cache, DEFAULT_DB_ID | a-g pass | a877abd |
+| D3-2 | (new) | tests/test_sql_context.py | test | unit tests for erp_main loading, unknown db_id, context isolation, cache clearing, immutability | a-g pass | a877abd |
