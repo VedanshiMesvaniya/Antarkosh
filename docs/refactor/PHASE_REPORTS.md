@@ -127,5 +127,18 @@ Chronological reports produced after completing each refactoring phase.
 - **Issues Found**: None.
 - **Next Step ID**: D1
 
+---
+
+## Step D1 Report: Loader Hardening and Database ID Validation
+- **Step ID**: D1
+- **Commits**: e59165a
+- **Files Changed**: `src/sql/knowledge/loaders.py`, `tests/test_database_knowledge_parity.py`, `docs/refactor/FOUND_ISSUES.md`.
+- **What Changed**: Hardened knowledge loaders with `validate_db_id` (regex `^[a-z][a-z0-9_]{1,39}$`), path traversal prevention (rejecting `..` and absolute paths), and `KnowledgeFileNotFound` exception. Restricted legacy knowledge file fallback exclusively to `DEFAULT_DB_ID` (`erp_main`); missing files for other databases raise `KnowledgeFileNotFound`. Updated tests in `test_database_knowledge_parity.py` and resolved findings #9 and #10 in `FOUND_ISSUES.md`.
+- **Checks a-g**: a-g all passed; pytest: 552 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +4 passed vs 548 last recorded count due to new hardening/traversal tests); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
+- **Issues Found**: Resolved findings #9 and #10 in `FOUND_ISSUES.md`.
+- **Next Step ID**: D2
+
+
 
 

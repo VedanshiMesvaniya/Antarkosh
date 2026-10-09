@@ -109,4 +109,15 @@ Format: | # | old path / module | new path / module | kind | references updated 
 |---|---|---|---|---|---|---|
 | C2-4-1 | (new) | tests/test_no_legacy_knowledge_paths.py | test | guard scanning all src/ .py files for forbidden legacy names | a-g pass | 3426347 |
 
+---
+
+## Step D1 — Loader Hardening and Database ID Validation
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| D1-1 | src/sql/knowledge/loaders.py | src/sql/knowledge/loaders.py | behavior | added validate_db_id, KnowledgeFileNotFound, traversal guards, erp_main-only fallback | a-g pass | e59165a |
+| D1-2 | tests/test_database_knowledge_parity.py | tests/test_database_knowledge_parity.py | test | updated fallback test, added validation/traversal/not-found tests | a-g pass | e59165a |
+| D1-3 | docs/refactor/FOUND_ISSUES.md | docs/refactor/FOUND_ISSUES.md | doc | recorded resolution of findings #9 and #10 | a-g pass | e59165a |
+
+
 
