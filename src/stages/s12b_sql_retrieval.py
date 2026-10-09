@@ -1850,8 +1850,27 @@ class SQLRetriever:
                 sparse_vector=sparse_vec,
                 query_text=query,
                 top_k=4,
-                filters={"chunk_type": ChunkType.SQL_SCHEMA.value},
+                filters={
+                    "chunk_type": ChunkType.SQL_SCHEMA.value,
+                    "db_id": self.db_id,
+                },
             )
+
+            # Transition rule & isolation defense: ensure retrieved chunks strictly belong to self.db_id
+            filtered_chunks = []
+            for c in chunks:
+                chunk_obj = c.chunk
+                c_db_id = getattr(chunk_obj, "db_id", None) or chunk_obj.metadata.get("db_id")
+                c_doc_id = chunk_obj.document_id
+                if c_db_id:
+                    if c_db_id == self.db_id:
+                        filtered_chunks.append(c)
+                elif c_doc_id == f"schema:{self.db_id}":
+                    filtered_chunks.append(c)
+                elif c_doc_id == "live_db_schema" and self.db_id == DEFAULT_DB_ID:
+                    # Legacy chunks (document_id "live_db_schema", no db_id) accepted ONLY for erp_main until re-synced
+                    filtered_chunks.append(c)
+            chunks = filtered_chunks
             
             if not chunks:
                 logger.warning("Schema RAG returned 0 chunks. Falling back to scoped schema.")
@@ -1930,7 +1949,7 @@ class SQLRetriever:
             for chunk in chunks:
                 tbls = _extract_schema_table_names(chunk.chunk.content)
                 for tbl in tbls:
-                    if tbl not in seen_tables and tbl in full_ddls:
+                    if tbl not in seen_tables and (not full_ddls or tbl in full_ddls):
                         seen_tables.add(tbl)
                         candidate_list.append({
                             "table_name": tbl,
@@ -1947,7 +1966,7 @@ class SQLRetriever:
 
             if needed_neighbors and full_ddls:
                 # Rank neighbors by how many active tables they connect to (bridge priority)
-                raw_rels = _get_raw_relationships()
+                raw_rels = _get_raw_relationships(self.db_id)
                 conn_scores = {}
                 for r in raw_rels:
                     frm = (r.get("from_table") or "").lower()

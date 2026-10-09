@@ -12,7 +12,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field, computed_field
 
-
 # ---------------------------------------------------------------------------
 # Stage 1 — File Detection
 # ---------------------------------------------------------------------------
@@ -165,6 +164,7 @@ class Chunk(BaseModel):
     document_type: DocumentType = DocumentType.GENERAL
     source_file: str = ""
     confidence: float = 1.0
+    db_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -228,7 +228,7 @@ class TokenUsage(BaseModel):
     def has_data(self) -> bool:
         return self.total_tokens > 0
 
-    def add_call(self, other: "TokenUsage") -> None:
+    def add_call(self, other: TokenUsage) -> None:
         """Fold one LLM call's usage into this running total (in place).
 
         Counts accumulate; provider/model track the *most recent* non-empty

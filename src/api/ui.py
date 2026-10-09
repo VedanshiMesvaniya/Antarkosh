@@ -871,17 +871,26 @@ async def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/settings/sync-schema")
-async def sync_schema(_admin: str = Depends(require_admin)) -> dict[str, Any]:
+async def sync_schema(
+    db_id: str = "erp_main",
+    _admin: str = Depends(require_admin),
+) -> dict[str, Any]:
     """Sync the live database schema into the vector store for Schema RAG.
 
     Fetches all tables from the configured database, embeds each table's
     CREATE TABLE statement as a separate chunk, and upserts them into
-    Qdrant.  Old schema chunks are deleted first to avoid stale data.
+    Qdrant under document_id="schema:<db_id>" with payload db_id.
     """
     from src.pipeline.schema_ingestion import sync_live_schema
+    from src.sql.knowledge.loaders import validate_db_id
 
     try:
-        result = await sync_live_schema()
+        validate_db_id(db_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        result = await sync_live_schema(db_id=db_id)
         return result
     except Exception as e:
         logger.error("Schema sync failed: %s", e)

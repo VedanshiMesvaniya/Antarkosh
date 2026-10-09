@@ -302,6 +302,10 @@ class QdrantStore:
             if image_path:
                 payload["image_path"] = image_path
 
+            db_id = getattr(chunk, "db_id", None) or (chunk.metadata.get("db_id") if chunk.metadata else None)
+            if db_id:
+                payload["db_id"] = str(db_id).strip()
+
             # Build the vectors dict — always include dense; add sparse if available
             vectors_dict: dict[str, Any] = {"": vector}  # unnamed = dense
             if self._has_sparse and not sparse.is_empty():
@@ -543,6 +547,30 @@ class QdrantStore:
                 )
                 conditions.append(user_clause)
 
+        if "db_id" in filters and filters["db_id"]:
+            target_db = str(filters["db_id"]).strip()
+            from src.sql.context import DEFAULT_DB_ID
+            if target_db == DEFAULT_DB_ID:
+                from qdrant_client.models import IsEmptyCondition, PayloadField
+                conditions.append(
+                    Filter(
+                        should=[
+                            FieldCondition(key="db_id", match=MatchValue(value=DEFAULT_DB_ID)),
+                            FieldCondition(key="document_id", match=MatchValue(value=f"schema:{DEFAULT_DB_ID}")),
+                            Filter(
+                                must=[
+                                    FieldCondition(key="document_id", match=MatchValue(value="live_db_schema")),
+                                    IsEmptyCondition(is_empty=PayloadField(key="db_id")),
+                                ]
+                            ),
+                        ]
+                    )
+                )
+            else:
+                conditions.append(
+                    FieldCondition(key="db_id", match=MatchValue(value=target_db))
+                )
+
         # Always hide superseded chunks.
         exclude_inactive = [FieldCondition(key="active", match=MatchValue(value=False))]
         
@@ -572,7 +600,12 @@ class QdrantStore:
             document_type=payload.get("document_type", "general"),
             source_file=payload.get("source_file", ""),
             confidence=payload.get("confidence", 1.0),
-            metadata={"user_id": payload.get("user_id", "system")},
+            db_id=payload.get("db_id"),
+            metadata={
+                "user_id": payload.get("user_id", "system"),
+                **({"db_id": payload["db_id"]} if "db_id" in payload else {}),
+                **({"image_path": payload["image_path"]} if "image_path" in payload else {}),
+            },
         )
         return RetrievedChunk(
             chunk=chunk,

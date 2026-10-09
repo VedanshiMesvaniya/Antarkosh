@@ -19,8 +19,9 @@ from src.core.config import CONFIG_DIR, PROJECT_ROOT, settings
 from src.core.db_client import run_readonly_query
 from src.core.sql_dialects import SQLDialectProfile, get_dialect_profile
 from src.models.schemas import Chunk, ChunkType, DocumentType
+from src.sql.context import DEFAULT_DB_ID
 from src.sql.engine import Engine
-from src.sql.knowledge.loaders import get_knowledge_path
+from src.sql.knowledge.loaders import get_knowledge_path, validate_db_id
 from src.stages.s10_embeddings import EmbeddingService
 from src.stages.s11_vector_store import QdrantStore
 from src.stages.s12b_sql_retrieval import format_fk_rows, format_schema_rows
@@ -28,6 +29,11 @@ from src.stages.s12b_sql_retrieval import format_fk_rows, format_schema_rows
 logger = logging.getLogger(__name__)
 
 SCHEMA_DOCUMENT_ID = "live_db_schema"
+
+
+def get_schema_document_id(db_id: str) -> str:
+    """Return the canonical Qdrant document_id for a database's schema chunks."""
+    return f"schema:{db_id}"
 
 
 def _split_mysql_tables(rows: list[dict[str, Any]]) -> dict[str, str]:
@@ -75,18 +81,18 @@ def _split_schema_by_table(
     raise ValueError(f"Unsupported dialect key {dialect.key!r}")
 
 
-def _load_table_metadata() -> dict[str, dict[str, Any]]:
+def _load_table_metadata(db_id: str = DEFAULT_DB_ID) -> dict[str, dict[str, Any]]:
     """Load table domain and metadata from schema knowledge pack if present."""
-    schema_file = get_knowledge_path("schema")
-    if not schema_file.exists():
-        return {}
     try:
         import json
+        schema_file = get_knowledge_path("schema", db_id=db_id)
+        if not schema_file.exists():
+            return {}
         data = json.loads(schema_file.read_text(encoding="utf-8"))
         tables = data.get("tables", [])
         return {t["name"].lower(): t for t in tables if isinstance(t, dict) and "name" in t}
     except Exception as e:
-        logger.warning("Could not load schema metadata from %s: %s", schema_file, e)
+        logger.warning("Could not load schema metadata for %s: %s", db_id, e)
         return {}
 
 
@@ -122,15 +128,17 @@ def _enrich_table_schema(
 async def sync_live_schema(
     embedding_service: EmbeddingService | None = None,
     vector_store: QdrantStore | None = None,
+    db_id: str = DEFAULT_DB_ID,
 ) -> dict[str, Any]:
     """Fetch the live DB schema, chunk per table, embed, and upsert to Qdrant.
 
     Returns a summary dict with table count and status.
     """
-    from pathlib import Path
     import json
+    from pathlib import Path
     from src.core.rate_limiter import get_shared_rate_limiter
 
+    validate_db_id(db_id)
     rate_limiter = get_shared_rate_limiter()
     embeddings = embedding_service or EmbeddingService()
     store = vector_store or QdrantStore(embedding_service=embeddings)
@@ -171,7 +179,7 @@ async def sync_live_schema(
     # fall back to inferred relationships from relationships knowledge pack
     if not fk_map:
         try:
-            rel_path = get_knowledge_path("relationships")
+            rel_path = get_knowledge_path("relationships", db_id=db_id)
             if rel_path.exists():
                 rel_data = json.loads(rel_path.read_text(encoding="utf-8"))
                 rels = rel_data.get("relationships") if isinstance(rel_data, dict) else rel_data
@@ -185,8 +193,9 @@ async def sync_live_schema(
             logger.warning("Could not load fallback inferred relationships: %s", e)
 
     # 4. Build Chunk objects — one per table, enriched with domain metadata and FKs
-    meta_map = _load_table_metadata()
+    meta_map = _load_table_metadata(db_id=db_id)
     chunks: list[Chunk] = []
+    doc_id = get_schema_document_id(db_id)
     for table_name, schema_text in table_schemas.items():
         enriched_content = _enrich_table_schema(
             table_name=table_name,
@@ -195,16 +204,18 @@ async def sync_live_schema(
             fk_lines=fk_map.get(table_name),
         )
 
-        chunk_id = f"schema_{table_name}"
+        chunk_id = f"{db_id}_schema_{table_name}"
         chunks.append(
             Chunk(
                 chunk_id=chunk_id,
-                document_id=SCHEMA_DOCUMENT_ID,
+                document_id=doc_id,
                 chunk_type=ChunkType.SQL_SCHEMA,
                 content=enriched_content,
                 token_count=len(enriched_content) // 4,  # rough estimate
                 document_type=DocumentType.DATABASE,
-                source_file=f"live_database/{table_name}",
+                source_file=f"database/{db_id}/{table_name}",
+                db_id=db_id,
+                metadata={"db_id": db_id},
             )
         )
 
@@ -221,17 +232,20 @@ async def sync_live_schema(
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.stages.s12b_sql_retrieval import SQLRetriever
-        SQLRetriever.clear_schema_cache()
+        SQLRetriever.clear_schema_cache(db_id=db_id)
     except Exception as e:
         logger.warning("Could not clear SQLRetriever schema cache: %s", e)
 
     logger.info(
-        "Schema sync complete: %d tables embedded and upserted to Qdrant",
+        "Schema sync complete: %d tables embedded and upserted to Qdrant for %s",
         len(chunks),
+        db_id,
     )
 
     return {
         "status": "ok",
+        "db_id": db_id,
+        "document_id": doc_id,
         "tables_synced": len(chunks),
         "table_names": sorted(table_schemas.keys()),
     }
