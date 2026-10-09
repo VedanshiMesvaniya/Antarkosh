@@ -160,3 +160,15 @@ Chronological reports produced after completing each refactoring phase.
 - **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
 - **Issues Found**: None.
 - **Next Step ID**: D4
+
+---
+
+## Step D4 Report: Knowledge Caches Keyed by db_id
+- **Step ID**: D4
+- **Commits**: 5954519
+- **Files Changed**: `src/stages/s12b_sql_retrieval.py`, `tests/test_sql_knowledge_caches.py`.
+- **What Changed**: Keyed all module-level knowledge caches in `s12b_sql_retrieval.py` (`_get_raw_relationships`, `_load_relationships`, `_load_glossary`, `_get_raw_column_glossary`, `_get_raw_behavioral_atlas`, and `_get_tables_with_soft_delete`) by `db_id` defaulting to `DEFAULT_DB_ID` ("erp_main"). Implemented normalizer wrappers ensuring `f()` and `f("erp_main")` share cache entries, preserved `.cache_clear()` on public function names, and retained exact `erp_main` fallback behaviors. Added unit tests in `tests/test_sql_knowledge_caches.py` asserting exact golden baseline metric parity for `erp_main`, zero-sharing isolation between distinct database folders, and `cache_clear()` functionality.
+- **Checks a-g**: a-g all passed; pytest: 567 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +3 passed vs 564 last recorded count due to new knowledge cache isolation tests); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: D5

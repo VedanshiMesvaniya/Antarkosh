@@ -139,3 +139,13 @@ Format: | # | old path / module | new path / module | kind | references updated 
 |---|---|---|---|---|---|---|
 | D3-1 | (new) | src/sql/context.py | code | DatabaseContext frozen dataclass, get_context, clear_context_cache, DEFAULT_DB_ID | a-g pass | a877abd |
 | D3-2 | (new) | tests/test_sql_context.py | test | unit tests for erp_main loading, unknown db_id, context isolation, cache clearing, immutability | a-g pass | a877abd |
+
+---
+
+## Step D4 — Knowledge Caches Keyed by db_id
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| D4-1 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | behavior | keyed _get_raw_relationships, _load_relationships, _load_glossary, _get_raw_column_glossary, _get_raw_behavioral_atlas, _get_tables_with_soft_delete by db_id | a-g pass | 5954519 |
+| D4-2 | (new) | tests/test_sql_knowledge_caches.py | test | golden snapshot parity, shared cache for default/erp_main, isolation between db folders, cache_clear | a-g pass | 5954519 |
+
