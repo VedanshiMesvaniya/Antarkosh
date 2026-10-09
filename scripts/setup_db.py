@@ -4,8 +4,9 @@ from pathlib import Path
 
 # Paths — this script lives in scripts/, so the repo root is one level up.
 # Both the source CSV and the generated SQLite DB live under data/ (gitignored
-# runtime state). Drop the synthetic sales CSV there before running.
-repo_root = Path(__file__).resolve().parent.parent
+from scripts._paths import REPO_ROOT
+
+repo_root = REPO_ROOT
 csv_path = repo_root / "data" / "nvidia_gpu_sales_synthetic_2026.csv"
 db_path = repo_root / "data" / "live_data.db"
 

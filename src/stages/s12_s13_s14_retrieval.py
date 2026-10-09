@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from src.core.config import settings
+from src.core.config import CONFIG_DIR, settings
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import Citation, Chunk, ChunkType, QueryResult, RetrievedChunk
 from src.stages.s10_embeddings import EmbeddingService
@@ -45,7 +45,7 @@ _ACRONYM_MAP_CACHE: dict[str, str] | None = None
 def _get_acronym_expansions() -> dict[str, str]:
     global _ACRONYM_MAP_CACHE
     if _ACRONYM_MAP_CACHE is None:
-        expansion_path = Path(__file__).resolve().parent.parent.parent / "config" / "acronym_expansions.json"
+        expansion_path = CONFIG_DIR / "acronym_expansions.json"
         if expansion_path.exists():
             try:
                 with open(expansion_path, "r", encoding="utf-8") as f:

@@ -9,7 +9,9 @@ import random
 import uuid
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+from scripts._paths import REPO_ROOT
+
+PROJECT_ROOT = REPO_ROOT
 DATA_DIR = PROJECT_ROOT / "data"
 DEFAULT_OUTPUT_FILE = DATA_DIR / "mock_telemetry_events.jsonl"
 

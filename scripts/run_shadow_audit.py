@@ -22,9 +22,11 @@ from src.guards.schema_guard import evaluate_schema_sufficiency
 from src.guards.temporal_guard import evaluate_temporal_filter
 from src.stages.s12b_sql_retrieval import _extract_table_names
 
-BENCHMARK_FILE = Path(__file__).resolve().parent.parent / "tests" / "golden" / "v1_benchmark.json"
-FIXTURES_DIR = Path(__file__).resolve().parent.parent / "tests" / "golden" / "fixtures"
-PROD_METRICS_FILE = Path(__file__).resolve().parent.parent / "data" / "pipeline_metrics.jsonl"
+from scripts._paths import REPO_ROOT
+
+BENCHMARK_FILE = REPO_ROOT / "tests" / "golden" / "v1_benchmark.json"
+FIXTURES_DIR = REPO_ROOT / "tests" / "golden" / "fixtures"
+PROD_METRICS_FILE = REPO_ROOT / "data" / "pipeline_metrics.jsonl"
 
 
 def load_production_samples(max_samples: int = 50) -> list[dict[str, Any]]:

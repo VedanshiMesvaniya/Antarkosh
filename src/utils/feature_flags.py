@@ -8,10 +8,9 @@ from typing import Any
 
 import yaml
 
-logger = logging.getLogger(__name__)
+from src.core.config import CONFIG_DIR, PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-CONFIG_DIR = PROJECT_ROOT / "config"
+logger = logging.getLogger(__name__)
 
 DEFAULT_FLAGS: dict[str, bool] = {
     "delta_repair_enabled": False,

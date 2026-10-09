@@ -20,7 +20,8 @@ from pathlib import Path
 
 import sqlglot
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from scripts._paths import REPO_ROOT
+
 DB_PATH = REPO_ROOT / "data" / "live_data.db"
 
 

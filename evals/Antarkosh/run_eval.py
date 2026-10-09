@@ -39,8 +39,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parents[1]
-sys.path.insert(0, str(REPO))
+REPO = next((p for p in [HERE] + list(HERE.parents) if (p / "pyproject.toml").is_file()), HERE.parents[1])
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 
 QUESTIONS = HERE / "questions.jsonl"
 SCHEMA = HERE / "Antarkosh_schema.json"

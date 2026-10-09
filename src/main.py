@@ -12,8 +12,11 @@ from fastapi.staticfiles import StaticFiles
 import sys
 from pathlib import Path
 
+from src.core.config import PROJECT_ROOT, settings
+from src.core.paths import contained_path
+
 # Ensure project root is in sys.path and fix namespace shadowing if launched from subdirectories
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_PROJECT_ROOT = PROJECT_ROOT
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 if "src" in sys.modules:
@@ -24,9 +27,6 @@ if "src" in sys.modules:
             src_mod.__path__.append(real_src_path)
         except Exception:
             pass
-
-from src.core.config import PROJECT_ROOT, settings
-from src.core.paths import contained_path
 
 # Configure logging
 logging.basicConfig(

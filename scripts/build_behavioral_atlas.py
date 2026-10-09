@@ -11,7 +11,9 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+from scripts._paths import REPO_ROOT
+
+ROOT_DIR = REPO_ROOT
 SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 GLOSSARY_PATH = ROOT_DIR / "config" / "sql_column_glossary.json"
 RELS_PATH = ROOT_DIR / "config" / "sql_relationships.json"

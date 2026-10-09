@@ -14,6 +14,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Generator, TypeVar
 
+from src.core.config import DATA_DIR, PROJECT_ROOT
 from src.utils.error_classification import classify_error
 from src.utils.feature_flags import DEFAULT_FLAGS, _load_flags_from_yaml
 
@@ -32,8 +33,6 @@ def set_current_query_id(qid: str | None) -> contextvars.Token[str | None]:
     return _CURRENT_QUERY_ID.set(qid)
 
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
 TELEMETRY_FILE = DATA_DIR / "telemetry_events.jsonl"
 
 ALLOWED_STAGES = frozenset({

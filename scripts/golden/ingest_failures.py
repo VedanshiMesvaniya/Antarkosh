@@ -11,7 +11,9 @@ from typing import Any
 from src.utils.error_classification import normalize_error
 from src.utils.golden_models import GoldenCase
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+from scripts._paths import REPO_ROOT
+
+PROJECT_ROOT = REPO_ROOT
 DEFAULT_INPUT_FILE = PROJECT_ROOT / "data" / "failed_queries.jsonl"
 DEFAULT_DRAFT_OUTPUT = PROJECT_ROOT / "tests" / "golden" / "sql_repair" / "draft_cases.json"
 

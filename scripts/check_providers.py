@@ -31,8 +31,9 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO))
+from scripts._paths import REPO_ROOT
+
+REPO = REPO_ROOT
 
 
 def _classify(exc: Exception) -> tuple[str, str]:

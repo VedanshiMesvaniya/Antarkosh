@@ -10,13 +10,16 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
-from src.core.db_config_file import apply_to as _apply_db_config_file
 
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 DATA_DIR = PROJECT_ROOT / "data"
+DATABASES_DIR = PROJECT_ROOT / "databases"
+SQLITE_DIR = DATA_DIR / "sqlite"
+
+from src.core.db_config_file import apply_to as _apply_db_config_file
 
 
 class FeaturesConfig(BaseModel):

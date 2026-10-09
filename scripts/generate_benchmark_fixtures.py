@@ -9,8 +9,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-BENCHMARK_FILE = Path(__file__).resolve().parent.parent / "tests" / "golden" / "v1_benchmark.json"
-FIXTURES_DIR = Path(__file__).resolve().parent.parent / "tests" / "golden" / "fixtures"
+from scripts._paths import REPO_ROOT
+
+BENCHMARK_FILE = REPO_ROOT / "tests" / "golden" / "v1_benchmark.json"
+FIXTURES_DIR = REPO_ROOT / "tests" / "golden" / "fixtures"
 
 
 def generate_fixtures() -> None:

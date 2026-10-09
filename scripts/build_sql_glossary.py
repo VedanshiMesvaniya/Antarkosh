@@ -9,8 +9,10 @@ config/sql_column_glossary.json mapping business terms to exact table.column pat
 import json
 from pathlib import Path
 
+from scripts._paths import REPO_ROOT
+
 HERE = Path(__file__).parent.resolve()
-REPO = HERE.parent
+REPO = REPO_ROOT
 SCHEMA_FILE = REPO / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 OLD_GLOSSARY_FILE = REPO / "config" / "sql_glossary.json"
 OUT_FILE = REPO / "config" / "sql_column_glossary.json"

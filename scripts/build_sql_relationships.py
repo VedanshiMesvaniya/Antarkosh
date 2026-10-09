@@ -20,7 +20,9 @@ import argparse
 import json
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+from scripts._paths import REPO_ROOT
+
+REPO = REPO_ROOT
 DEFAULT_OUT = REPO / "config" / "sql_relationships.json"
 
 

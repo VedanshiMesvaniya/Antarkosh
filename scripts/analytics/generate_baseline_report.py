@@ -7,10 +7,9 @@ import datetime
 import sys
 from pathlib import Path
 
-# Add project root to sys.path if invoked directly
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from scripts._paths import REPO_ROOT
+
+PROJECT_ROOT = REPO_ROOT
 
 from scripts.analytics.baseline_aggregator import aggregate_baseline_metrics, BaselineMetrics
 from scripts.analytics.telemetry_parser import parse_telemetry_file

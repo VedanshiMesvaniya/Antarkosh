@@ -8,12 +8,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from src.core.config import DATA_DIR, PROJECT_ROOT
 from src.utils.error_classification import classify_error, normalize_error
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
 DEFAULT_FAILURE_LOG_FILE = DATA_DIR / "failed_queries.jsonl"
 
 

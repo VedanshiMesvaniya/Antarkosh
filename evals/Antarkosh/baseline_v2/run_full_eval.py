@@ -20,8 +20,7 @@ import sys
 import time
 from typing import Any
 
-# Add project root to path
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = next((p for p in [Path(__file__).resolve()] + list(Path(__file__).resolve().parents) if (p / "pyproject.toml").is_file()), Path(__file__).resolve().parents[3])
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 

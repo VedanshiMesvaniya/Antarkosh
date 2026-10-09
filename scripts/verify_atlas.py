@@ -14,9 +14,11 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
+from scripts._paths import REPO_ROOT
+
 console = Console()
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = REPO_ROOT
 ATLAS_PATH = ROOT_DIR / "config" / "behavioral_schema_atlas.json"
 SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
 

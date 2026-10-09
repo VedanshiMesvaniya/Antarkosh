@@ -13,9 +13,9 @@ from typing import Any
 
 import yaml
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from scripts._paths import REPO_ROOT
+
+PROJECT_ROOT = REPO_ROOT
 CONFIG_DIR = PROJECT_ROOT / "config"
 FLAG_FILE = CONFIG_DIR / "feature_flags.yaml"
 BACKUP_DIR = CONFIG_DIR / "backups"

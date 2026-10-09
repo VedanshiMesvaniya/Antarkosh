@@ -16,11 +16,13 @@ from typing import Any
 import sqlglot
 from sqlglot import exp
 
+from src.core.config import CONFIG_DIR, PROJECT_ROOT
+
 logger = logging.getLogger(__name__)
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-GLOSSARY_PATH = REPO_ROOT / "config" / "sql_glossary.json"
-COLUMN_GLOSSARY_PATH = REPO_ROOT / "config" / "sql_column_glossary.json"
+REPO_ROOT = PROJECT_ROOT
+GLOSSARY_PATH = CONFIG_DIR / "sql_glossary.json"
+COLUMN_GLOSSARY_PATH = CONFIG_DIR / "sql_column_glossary.json"
 
 _CACHED_GLOSSARY_CONCEPTS: set[str] | None = None
 

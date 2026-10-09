@@ -8,7 +8,9 @@ from typing import Any
 
 from src.utils.golden_models import GoldenCase
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+from scripts._paths import REPO_ROOT
+
+PROJECT_ROOT = REPO_ROOT
 GOLDEN_CASES_FILE = PROJECT_ROOT / "tests" / "golden" / "sql_repair" / "cases.json"
 
 SYNTHETIC_CASES: list[dict[str, Any]] = [

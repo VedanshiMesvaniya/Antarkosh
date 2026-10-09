@@ -34,7 +34,16 @@ CONFIG_KEYS: tuple[str, ...] = (
     "db_odbc_driver",
 )
 
-_DEFAULT_PATH = Path(__file__).resolve().parents[2] / "config" / "db_connection.json"
+
+def _get_default_path() -> Path:
+    current = Path(__file__).resolve()
+    for p in current.parents:
+        if (p / "pyproject.toml").is_file():
+            return p / "config" / "db_connection.json"
+    return current.parent.parent.parent / "config" / "db_connection.json"
+
+
+_DEFAULT_PATH = _get_default_path()
 
 
 def config_path() -> Path:

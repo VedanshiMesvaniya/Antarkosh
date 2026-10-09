@@ -13,12 +13,14 @@ from typing import Any
 import sqlglot
 from sqlglot import exp
 
+from src.core.config import CONFIG_DIR, PROJECT_ROOT
+
 logger = logging.getLogger(__name__)
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = PROJECT_ROOT
 SCHEMA_FILE = REPO_ROOT / "evals" / "Antarkosh" / "Antarkosh_schema.json"
-GLOSSARY_FILE = REPO_ROOT / "config" / "sql_column_glossary.json"
-RELATIONSHIPS_FILE = REPO_ROOT / "config" / "sql_relationships.json"
+GLOSSARY_FILE = CONFIG_DIR / "sql_column_glossary.json"
+RELATIONSHIPS_FILE = CONFIG_DIR / "sql_relationships.json"
 
 
 def load_schema_tables_and_columns(schema_path: Path | None = None) -> dict[str, set[str]]:
