@@ -105,47 +105,9 @@ async def run_readonly_query(
 async def _execute(engine: str, sql: str, params: dict | None) -> list[dict[str, Any]]:
     """Open a read-only connection for the configured engine and run the query.
 
-    This is the one place engine-specific connection/driver differences live.
+    Delegates to the engine-specific connector in src.sql.connectors.
     """
-    if engine == "sqlite":
-        from src.sql.connectors.sqlite import SQLiteConnector
-        return await SQLiteConnector().run_readonly(sql, params)
+    from src.sql.connectors import get_connector
 
-    elif engine == "mysql":
-        from src.sql.connectors.mysql import MySQLConnector
-        return await MySQLConnector().run_readonly(sql, params)
-
-    elif engine == "postgresql":
-        from src.sql.connectors.postgresql import PostgreSQLConnector
-        return await PostgreSQLConnector().run_readonly(sql, params)
-
-    elif engine == "mssql":
-        from src.sql.connectors.mssql import MSSQLConnector
-        return await MSSQLConnector().run_readonly(sql, params)
-
-    elif engine == "oracle":
-        import oracledb
-
-        def _run_oracle() -> list[dict[str, Any]]:
-            with oracledb.connect(
-                user=settings.db_readonly_user,
-                password=settings.db_readonly_password,
-                host=settings.db_host,
-                port=settings.db_port,
-                service_name=settings.db_name,
-                tcp_connect_timeout=int(QUERY_TIMEOUT_SECONDS),
-            ) as conn:
-                with conn.cursor() as cursor:
-                    if params:
-                        cursor.execute(sql, params)
-                    else:
-                        cursor.execute(sql)
-                    if not cursor.description:
-                        return []
-                    columns = [col[0].lower() for col in cursor.description]
-                    rows = cursor.fetchall()
-                    return [dict(zip(columns, row)) for row in rows]
-
-        return await asyncio.to_thread(_run_oracle)
-
-    raise ValueError(f"Unsupported db_engine {engine!r}")
+    connector = get_connector(engine)
+    return await connector.run_readonly(sql, params)

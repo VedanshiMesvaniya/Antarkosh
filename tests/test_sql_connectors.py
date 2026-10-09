@@ -89,6 +89,18 @@ def test_get_connector_mssql():
     assert isinstance(conn, MSSQLConnector)
 
 
+def test_oracle_connector_implements_protocol():
+    from src.sql.connectors.oracle import OracleConnector
+    connector = OracleConnector()
+    assert isinstance(connector, Connector)
+
+
+def test_get_connector_oracle():
+    from src.sql.connectors.oracle import OracleConnector
+    conn = get_connector("oracle")
+    assert isinstance(conn, OracleConnector)
+
+
 def test_get_connector_unsupported():
     with pytest.raises(ValueError, match="Unsupported db_engine"):
         get_connector("cockroachdb")
