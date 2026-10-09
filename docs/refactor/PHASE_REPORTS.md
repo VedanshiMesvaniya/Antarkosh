@@ -185,3 +185,27 @@ Chronological reports produced after completing each refactoring phase.
 - **Issues Found**: None.
 - **Next Step ID**: D6
 
+---
+
+## Step D6 Report: Qdrant Schema Chunks Tagged and Filtered by db_id
+- **Step ID**: D6
+- **Commits**: 5b58d8a
+- **Files Changed**: `src/models/schemas.py`, `src/pipeline/schema_ingestion.py`, `src/stages/s11_vector_store.py`, `src/stages/s12b_sql_retrieval.py`, `src/api/ui.py`, `tests/test_schema_retrieval_multi_db.py`.
+- **What Changed**: Tagged schema chunks in `sync_live_schema` with document_id `"schema:<db_id>"`, `chunk_id=f"{db_id}_schema_{table_name}"`, and payload `db_id`. In `s12b_sql_retrieval.py`, updated hybrid search and post-filtering to always filter on `db_id`, implementing the transition rule where legacy chunks (`document_id="live_db_schema"`, no `db_id`) are accepted ONLY for `db_id == "erp_main"` until re-synced. Extended `Chunk` model and `QdrantStore` payload/filter logic for `db_id`. Updated `/settings/sync-schema` endpoint to accept optional validated `db_id`. Added comprehensive tests in `tests/test_schema_retrieval_multi_db.py` verifying cross-database schema RAG isolation on identical table names, legacy chunk transition acceptance, and `sync_live_schema` tagging.
+- **Checks a-g**: a-g all passed; pytest: 574 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +3 passed vs 571 last recorded count due to new multi-db schema retrieval tests); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I). Transition rule in `s12b` and `s11` accepting legacy `live_db_schema` chunks for `erp_main` until re-synced.
+- **Issues Found**: None.
+- **Next Step ID**: D7
+
+### Deployed Environment Re-Sync Procedure (Admin Schema-Sync)
+To re-sync schema chunks in a deployed environment without downtime:
+1. Log in with an administrator account to obtain an authenticated session cookie or API token.
+2. Trigger the schema sync endpoint for `erp_main` (or trigger via the Web UI Settings panel):
+   `curl -X POST "https://<HOST>/api/ui/settings/sync-schema?db_id=erp_main" -H "Cookie: session_id=<ADMIN_SESSION>"`
+3. For each additional database configured in the cluster (`<db_id>`):
+   `curl -X POST "https://<HOST>/api/ui/settings/sync-schema?db_id=<db_id>" -H "Cookie: session_id=<ADMIN_SESSION>"`
+4. Verify HTTP 200 response returning `{"status": "ok", "db_id": "<db_id>", "document_id": "schema:<db_id>", "tables_synced": N, "table_names": [...]}`.
+5. In Qdrant, points are atomically upserted with `document_id: "schema:<db_id>"` and payload `db_id: "<db_id>"`.
+6. Once re-synced, legacy points with `document_id: "live_db_schema"` can optionally be deleted via Qdrant point selector, though the transition filter automatically prioritizes the new tagged chunks.
+
+

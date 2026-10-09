@@ -161,4 +161,18 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | D5-4 | tests/test_sql_retrieval.py | tests/test_sql_retrieval.py | test | updated test_empty_schema_not_cached_permanently to check keyed _full_schema_cache | a-g pass | 69def1f |
 | D5-5 | (new) | tests/test_sql_retriever_multi_db_cache.py | test | unit tests for SQLRetriever multi-db result & schema isolation, wipe all vs selective, SemanticCache db_id isolation | a-g pass | 69def1f |
 
+---
+
+## Step D6 — Qdrant Schema Chunks Tagged and Filtered by db_id
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| D6-1 | src/models/schemas.py | src/models/schemas.py | model | added optional db_id field to Chunk schema | a-g pass | 5b58d8a |
+| D6-2 | src/pipeline/schema_ingestion.py | src/pipeline/schema_ingestion.py | behavior | sync_live_schema accepts db_id (default erp_main), tags chunks with document_id "schema:<db_id>" and payload db_id, clears schema cache per db_id | a-g pass | 5b58d8a |
+| D6-3 | src/stages/s11_vector_store.py | src/stages/s11_vector_store.py | behavior | upsert persists db_id payload; _point_to_retrieved_chunk maps db_id; _build_filter supports db_id with erp_main legacy fallback | a-g pass | 5b58d8a |
+| D6-4 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | behavior | _get_schema filters hybrid search on db_id with transition rule; allows candidate_list vector chunks when full_ddls empty | a-g pass | 5b58d8a |
+| D6-5 | src/api/ui.py | src/api/ui.py | wire | /settings/sync-schema accepts optional validated db_id param | a-g pass | 5b58d8a |
+| D6-6 | (new) | tests/test_schema_retrieval_multi_db.py | test | integration tests for two dbs same table name isolation, legacy transition rule, and sync_live_schema db_id tagging | a-g pass | 5b58d8a |
+
+
 
