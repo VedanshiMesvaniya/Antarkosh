@@ -77,6 +77,18 @@ async def test_postgresql_connector_named_params_rejected():
         await PostgreSQLConnector().run_readonly("SELECT 1", {"a": 1})
 
 
+def test_mssql_connector_implements_protocol():
+    from src.sql.connectors.mssql import MSSQLConnector
+    connector = MSSQLConnector()
+    assert isinstance(connector, Connector)
+
+
+def test_get_connector_mssql():
+    from src.sql.connectors.mssql import MSSQLConnector
+    conn = get_connector("mssql")
+    assert isinstance(conn, MSSQLConnector)
+
+
 def test_get_connector_unsupported():
     with pytest.raises(ValueError, match="Unsupported db_engine"):
         get_connector("cockroachdb")

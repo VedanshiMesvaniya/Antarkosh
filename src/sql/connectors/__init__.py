@@ -5,12 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 from src.sql.connectors.base import Connector
+from src.sql.connectors.mssql import MSSQLConnector
 from src.sql.connectors.mysql import MySQLConnector
 from src.sql.connectors.postgresql import PostgreSQLConnector
 from src.sql.connectors.sqlite import SQLiteConnector
 
 __all__ = [
     "Connector",
+    "MSSQLConnector",
     "MySQLConnector",
     "PostgreSQLConnector",
     "SQLiteConnector",

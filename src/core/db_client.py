@@ -120,32 +120,8 @@ async def _execute(engine: str, sql: str, params: dict | None) -> list[dict[str,
         return await PostgreSQLConnector().run_readonly(sql, params)
 
     elif engine == "mssql":
-        import pyodbc
-
-        driver = settings.db_odbc_driver or "ODBC Driver 18 for SQL Server"
-        conn_str = (
-            f"DRIVER={{{driver}}};"
-            f"SERVER={settings.db_host},{settings.db_port};"
-            f"DATABASE={settings.db_name};"
-            f"UID={settings.db_readonly_user};"
-            f"PWD={settings.db_readonly_password};"
-            "TrustServerCertificate=yes;"
-        )
-
-        def _run_mssql() -> list[dict[str, Any]]:
-            with pyodbc.connect(conn_str, timeout=int(QUERY_TIMEOUT_SECONDS)) as conn:
-                with conn.cursor() as cursor:
-                    if params:
-                        cursor.execute(sql, params)
-                    else:
-                        cursor.execute(sql)
-                    if not cursor.description:
-                        return []
-                    columns = [col[0] for col in cursor.description]
-                    rows = cursor.fetchall()
-                    return [dict(zip(columns, row)) for row in rows]
-
-        return await asyncio.to_thread(_run_mssql)
+        from src.sql.connectors.mssql import MSSQLConnector
+        return await MSSQLConnector().run_readonly(sql, params)
 
     elif engine == "oracle":
         import oracledb
