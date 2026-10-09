@@ -77,10 +77,10 @@ Format: | # | old path / module | new path / module | kind | references updated 
 
 | # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
 |---|---|---|---|---|---|---|
-| C2-2-1 | src/core/sql_column_registry.py | src/core/sql_column_registry.py | wire | GLOSSARY_PATH, COLUMN_GLOSSARY_PATH -> get_knowledge_path | a-g pass | pending |
-| C2-2-2 | src/utils/sql_safety.py | src/utils/sql_safety.py | wire | GLOSSARY_PATH, COLUMN_GLOSSARY_PATH -> get_knowledge_path | a-g pass | pending |
-| C2-2-3 | src/core/sql_drift_validator.py | src/core/sql_drift_validator.py | wire | GLOSSARY_FILE, RELATIONSHIPS_FILE -> get_knowledge_path | a-g pass | pending |
-| C2-2-4 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | doc | cleaned legacy filenames from docstrings (L292, L568) | a-g pass | pending |
-| C2-2-5 | src/pipeline/schema_ingestion.py | src/pipeline/schema_ingestion.py | doc | cleaned legacy filenames from docstring & comment (L78, L170) | a-g pass | pending |
-| C2-2-6 | src/core/join_graph.py | src/core/join_graph.py | doc | cleaned legacy filename from comment (L56) | a-g pass | pending |
-| C2-2-7 | src/core/result_validator.py | src/core/result_validator.py | doc | cleaned legacy filename from comment (L86) | a-g pass | pending |
+| C2-2-1 | src/core/sql_column_registry.py | src/core/sql_column_registry.py | wire | GLOSSARY_PATH, COLUMN_GLOSSARY_PATH -> get_knowledge_path | a-g pass | 305bad1 |
+| C2-2-2 | src/utils/sql_safety.py | src/utils/sql_safety.py | wire | GLOSSARY_PATH, COLUMN_GLOSSARY_PATH -> get_knowledge_path | a-g pass | 305bad1 |
+| C2-2-3 | src/core/sql_drift_validator.py | src/core/sql_drift_validator.py | wire | GLOSSARY_FILE, RELATIONSHIPS_FILE -> get_knowledge_path | a-g pass | 305bad1 |
+| C2-2-4 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | doc | cleaned legacy filenames from docstrings (L292, L568) | a-g pass | 305bad1 |
+| C2-2-5 | src/pipeline/schema_ingestion.py | src/pipeline/schema_ingestion.py | doc | cleaned legacy filenames from docstring & comment (L78, L170) | a-g pass | 305bad1 |
+| C2-2-6 | src/core/join_graph.py | src/core/join_graph.py | doc | cleaned legacy filename from comment (L56) | a-g pass | 305bad1 |
+| C2-2-7 | src/core/result_validator.py | src/core/result_validator.py | doc | cleaned legacy filename from comment (L86) | a-g pass | 305bad1 |
