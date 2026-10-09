@@ -174,5 +174,18 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | D6-5 | src/api/ui.py | src/api/ui.py | wire | /settings/sync-schema accepts optional validated db_id param | a-g pass | 5b58d8a |
 | D6-6 | (new) | tests/test_schema_retrieval_multi_db.py | test | integration tests for two dbs same table name isolation, legacy transition rule, and sync_live_schema db_id tagging | a-g pass | 5b58d8a |
 
+---
+
+## Step D7 — db_id Through API and Pipeline, Metrics Field
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| D7-1 | src/core/pipeline_metrics.py | src/core/pipeline_metrics.py | model/log | added db_id to PipelineEvent, CURRENT_DB_ID ContextVar, log_event records db_id | a-g pass | d4046a4 |
+| D7-2 | src/api/query.py | src/api/query.py | api | added optional db_id to QueryRequest, validate_db_id validation (HTTP 400), passed to QueryPipeline | a-g pass | d4046a4 |
+| D7-3 | src/api/ui.py | src/api/ui.py | api | added optional db_id to SendMessage, validated in send_message and send_message_stream, passed to QueryPipeline | a-g pass | d4046a4 |
+| D7-4 | src/pipeline/query.py | src/pipeline/query.py | pipeline | QueryPipeline accepts db_id, routes queries with db_id, _get_sql_retriever returns scoped retriever, logs routing with db_id | a-g pass | d4046a4 |
+| D7-5 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | behavior | SQLRetriever.retrieve sets CURRENT_DB_ID context var | a-g pass | d4046a4 |
+| D7-6 | (new) | tests/test_api_query_db_id.py | test | tests verifying optional db_id defaults to erp_main, rejects invalid db_id with 400, UI routes validate db_id, and metrics records contain db_id | a-g pass | d4046a4 |
+
 
 

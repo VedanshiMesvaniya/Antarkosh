@@ -208,4 +208,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 5. In Qdrant, points are atomically upserted with `document_id: "schema:<db_id>"` and payload `db_id: "<db_id>"`.
 6. Once re-synced, legacy points with `document_id: "live_db_schema"` can optionally be deleted via Qdrant point selector, though the transition filter automatically prioritizes the new tagged chunks.
 
+---
+
+## Step D7 Report: Thread db_id Through API and Pipeline, Metrics Field
+- **Step ID**: D7
+- **Commits**: d4046a4
+- **Files Changed**: `src/core/pipeline_metrics.py`, `src/api/query.py`, `src/api/ui.py`, `src/pipeline/query.py`, `src/stages/s12b_sql_retrieval.py`, `tests/test_api_query_db_id.py`.
+- **What Changed**: Added optional `db_id` parameter to `QueryRequest` (/api/query) and `SendMessage` (/api/chats/{chat_id}/messages and /stream). Validates `db_id` using `validate_db_id` returning HTTP 400 on invalid input, and defaults absent `db_id` to `DEFAULT_DB_ID` ("erp_main"). Threaded `db_id` through `QueryPipeline` and dynamically resolved `SQLRetriever` instances per target database. Propagated `db_id` to `PipelineEvent` and `log_event()` in `pipeline_metrics.py` via `CURRENT_DB_ID` ContextVar and explicit arguments so every record in `pipeline_metrics.jsonl` contains `"db_id"`. Added comprehensive tests in `tests/test_api_query_db_id.py` verifying absent default, valid propagation, 400 rejection, and metric logging.
+- **Checks a-g**: a-g all passed; pytest: 586 passed, 17 skipped, 8 deselected, 1 xfailed (0 failed; +12 passed vs 574 last recorded count); zero drift; offline eval 163/163 valid; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (to be removed in Phase I). Transition rule in `s12b` and `s11` accepting legacy `live_db_schema` chunks for `erp_main` until re-synced.
+- **Issues Found**: None.
+- **Next Step ID**: E1
+
 
