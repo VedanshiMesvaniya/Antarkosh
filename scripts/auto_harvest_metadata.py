@@ -5,7 +5,7 @@ Systematically introspects ALL tables in the MySQL database:
 1. Harvests every enum and low-cardinality column's distinct values.
 2. Identifies all join paths and ID relationships across tables.
 3. Detects string-stored numeric columns that require CAST.
-4. Updates config/sql_column_glossary.json and config/sql_relationships.json.
+4. Updates column_glossary.json and relationships.json.
 """
 
 import argparse
@@ -20,9 +20,11 @@ try:
 except ModuleNotFoundError:
     from _paths import REPO_ROOT
 
+from src.sql.knowledge.loaders import get_knowledge_path
+
 console = Console()
-GLOSSARY_PATH = REPO_ROOT / "config" / "sql_column_glossary.json"
-RELATIONSHIPS_PATH = REPO_ROOT / "config" / "sql_relationships.json"
+GLOSSARY_PATH = get_knowledge_path("column_glossary")
+RELATIONSHIPS_PATH = get_knowledge_path("relationships")
 
 
 async def harvest_full_database(
@@ -196,11 +198,11 @@ def main() -> None:
 
     glossary = args.glossary
     if glossary is None:
-        glossary = REPO_ROOT / "databases" / args.db / "semantics" / "column_glossary.json"
+        glossary = get_knowledge_path("column_glossary", db_id=args.db)
 
     rels = args.relationships
     if rels is None:
-        rels = REPO_ROOT / "databases" / args.db / "schema" / "relationships.json"
+        rels = get_knowledge_path("relationships", db_id=args.db)
 
     asyncio.run(harvest_full_database(glossary_path=glossary, relationships_path=rels))
 

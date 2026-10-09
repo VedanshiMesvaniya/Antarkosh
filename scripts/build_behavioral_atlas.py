@@ -2,7 +2,7 @@
 """High-Fidelity Behavioral Schema Atlas Generator.
 
 Transforms the complete database schema, column glossary, and relational graph into
-a rich cognitive Behavioral Schema Atlas (config/behavioral_schema_atlas.json)
+a rich cognitive Behavioral Schema Atlas
 codifying sparse tables, type casting rules, polymorphic disambiguation, enum translations,
 and join warnings for all 64 tables.
 """
@@ -16,11 +16,13 @@ try:
 except ModuleNotFoundError:
     from _paths import REPO_ROOT
 
+from src.sql.knowledge.loaders import get_knowledge_path
+
 ROOT_DIR = REPO_ROOT
-SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
-GLOSSARY_PATH = ROOT_DIR / "config" / "sql_column_glossary.json"
-RELS_PATH = ROOT_DIR / "config" / "sql_relationships.json"
-OUTPUT_PATH = ROOT_DIR / "config" / "behavioral_schema_atlas.json"
+SCHEMA_PATH = get_knowledge_path("schema")
+GLOSSARY_PATH = get_knowledge_path("column_glossary")
+RELS_PATH = get_knowledge_path("relationships")
+OUTPUT_PATH = get_knowledge_path("behavioral_atlas")
 
 # Domain Knowledge & Deep Architectural Rules Repository
 TABLE_BEHAVIORAL_KNOWLEDGE = {
@@ -482,17 +484,15 @@ def main():
 
     schema = args.schema
     if schema is None:
-        target = ROOT_DIR / "databases" / args.db / "schema" / "schema.json"
-        schema = target if target.exists() else SCHEMA_PATH
+        schema = get_knowledge_path("schema", db_id=args.db)
 
     glossary = args.glossary
     if glossary is None:
-        target = ROOT_DIR / "databases" / args.db / "semantics" / "column_glossary.json"
-        glossary = target if target.exists() else GLOSSARY_PATH
+        glossary = get_knowledge_path("column_glossary", db_id=args.db)
 
     out = args.out
     if out is None:
-        out = ROOT_DIR / "databases" / args.db / "semantics" / "behavioral_atlas.json"
+        out = get_knowledge_path("behavioral_atlas", db_id=args.db)
 
     atlas = build_behavioral_atlas(schema_path=schema, glossary_path=glossary)
     out.parent.mkdir(parents=True, exist_ok=True)

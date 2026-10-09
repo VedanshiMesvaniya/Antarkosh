@@ -43,8 +43,10 @@ REPO = next((p for p in [HERE] + list(HERE.parents) if (p / "pyproject.toml").is
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
+from src.sql.knowledge.loaders import get_knowledge_path
+
 QUESTIONS = HERE / "questions.jsonl"
-SCHEMA = HERE / "Antarkosh_schema.json"
+SCHEMA = get_knowledge_path("schema")
 
 
 # ---------------------------------------------------------------------------

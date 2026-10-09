@@ -12,11 +12,12 @@ The SQLRetriever runs against a REAL temporary SQLite database; only the LLM
 
 import sqlite3
 from pathlib import Path
-
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
+
 from src.models.schemas import ChunkType
+from src.sql.knowledge.loaders import get_knowledge_path
 from src.stages.s12b_sql_retrieval import (
     SQLRetriever,
     _is_all_null,
@@ -55,6 +56,14 @@ def test_relationships_join_map_disambiguates_columns():
     assert "product_color_id" not in lines.get("product", "")
     # sales_order_products does, joining to product_color
     assert "product_color_id->product_color.id" in lines.get("sales_order_products", "")
+
+
+def test_relationships_knowledge_file_exists_and_loads():
+    """Relationships knowledge file must exist and load non-empty (no skip)."""
+    rel_path = get_knowledge_path("relationships")
+    assert rel_path.exists(), f"Relationships file missing at {rel_path}"
+    rel = _load_relationships()
+    assert rel, "_load_relationships() returned empty string"
 
 
 def test_relationships_injected_into_prompt():

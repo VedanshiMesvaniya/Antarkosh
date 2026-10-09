@@ -2,7 +2,7 @@
 """Option A: Behavioral Schema Atlas Generator.
 
 Reads the complete database schema and column metadata, prompts the LLM with deep
-architectural and behavioral instructions, and creates `config/behavioral_schema_atlas.json`.
+architectural and behavioral instructions, and creates the behavioral schema atlas.
 
 Usage:
     .venv/bin/python scripts/generate_behavioral_atlas.py
@@ -26,12 +26,14 @@ try:
 except ModuleNotFoundError:
     from _paths import REPO_ROOT
 
+from src.sql.knowledge.loaders import get_knowledge_path
+
 console = Console()
 
 ROOT_DIR = REPO_ROOT
-INPUT_SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
-INPUT_GLOSSARY_PATH = ROOT_DIR / "config" / "sql_column_glossary.json"
-OUTPUT_ATLAS_PATH = ROOT_DIR / "config" / "behavioral_schema_atlas.json"
+INPUT_SCHEMA_PATH = get_knowledge_path("schema")
+INPUT_GLOSSARY_PATH = get_knowledge_path("column_glossary")
+OUTPUT_ATLAS_PATH = get_knowledge_path("behavioral_atlas")
 
 MASTER_PROMPT_TEMPLATE = """You are a Senior Enterprise Database Architect and Data Ontologist. 
 Your task is to transform a database table schema and column glossary into a rich "Behavioral Schema Atlas" entry for MySQL.
@@ -173,17 +175,15 @@ async def main():
 
     schema_path = args.schema
     if schema_path is None:
-        target = ROOT_DIR / "databases" / args.db / "schema" / "schema.json"
-        schema_path = target if target.exists() else INPUT_SCHEMA_PATH
+        schema_path = get_knowledge_path("schema", db_id=args.db)
 
     glossary_path = args.glossary
     if glossary_path is None:
-        target = ROOT_DIR / "databases" / args.db / "semantics" / "column_glossary.json"
-        glossary_path = target if target.exists() else INPUT_GLOSSARY_PATH
+        glossary_path = get_knowledge_path("column_glossary", db_id=args.db)
 
     out_path = args.out
     if out_path is None:
-        out_path = ROOT_DIR / "databases" / args.db / "semantics" / "behavioral_atlas.json"
+        out_path = get_knowledge_path("behavioral_atlas", db_id=args.db)
 
     console.print("\n[bold cyan]🚀 Starting Behavioral Schema Atlas Generation...[/bold cyan]\n")
 

@@ -1,4 +1,4 @@
-"""Generate config/sql_relationships.json from a schema JSON.
+"""Generate relationships.json from a schema JSON.
 
 Many production databases (this one included) ship with NO explicit FOREIGN KEY
 constraints, so the Text-to-SQL layer's information_schema FK introspection comes
@@ -6,12 +6,12 @@ back empty and the model has to *guess* how tables join — which produces error
 like `Unknown column 'p.product_color_id' in 'on clause'`.
 
 This script extracts inferred relationships from a schema JSON (as produced by the
-schema reverse-engineering step) and writes them to config/sql_relationships.json,
+schema reverse-engineering step) and writes them to relationships.json,
 which SQLRetriever injects into the SQL-generation prompt as an explicit join map.
 
 Usage:
-    python scripts/build_sql_relationships.py evals/Antarkosh/Antarkosh_schema.json
-    python scripts/build_sql_relationships.py path/to/schema.json --out config/sql_relationships.json
+    python scripts/build_sql_relationships.py
+    python scripts/build_sql_relationships.py path/to/schema.json --out databases/<db>/schema/relationships.json
 """
 
 from __future__ import annotations
@@ -25,8 +25,10 @@ try:
 except ModuleNotFoundError:
     from _paths import REPO_ROOT
 
+from src.sql.knowledge.loaders import get_knowledge_path
+
 REPO = REPO_ROOT
-DEFAULT_OUT = REPO / "config" / "sql_relationships.json"
+DEFAULT_OUT = get_knowledge_path("relationships")
 
 
 def extract(schema: dict) -> list[dict]:
@@ -48,7 +50,7 @@ def extract(schema: dict) -> list[dict]:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Build sql_relationships.json from a schema JSON")
+    ap = argparse.ArgumentParser(description="Build relationships.json from a schema JSON")
     ap.add_argument("schema", type=Path, nargs="?", default=None, help="schema JSON with a 'relationships' array")
     ap.add_argument("--db", type=str, default="erp_main", help="Target database id (default: erp_main)")
     ap.add_argument("--out", type=Path, default=None, help="Output path (default: databases/<db>/schema/relationships.json)")
@@ -56,15 +58,11 @@ def main() -> int:
 
     schema_path = args.schema
     if schema_path is None:
-        target_schema = REPO / "databases" / args.db / "schema" / "schema.json"
-        if target_schema.exists():
-            schema_path = target_schema
-        else:
-            schema_path = REPO / "evals" / "Antarkosh" / "Antarkosh_schema.json"
+        schema_path = get_knowledge_path("schema", db_id=args.db)
 
     out_path = args.out
     if out_path is None:
-        out_path = REPO / "databases" / args.db / "schema" / "relationships.json"
+        out_path = get_knowledge_path("relationships", db_id=args.db)
 
     if not schema_path.exists():
         print(f"Schema file not found at {schema_path}.")

@@ -29,6 +29,7 @@ try:
 except ImportError:
     from src.pipeline.query import QueryPipeline
 
+from src.sql.knowledge.loaders import get_knowledge_path
 from src.core.sql_column_registry import ColumnRegistry
 from src.utils.sql_safety import (
     check_cartesian_explosion,
@@ -62,7 +63,7 @@ class LiveEvaluator:
         }
 
     def _load_schema_context(self) -> dict[str, list[str]]:
-        schema_path = REPO_ROOT / "evals" / "Antarkosh" / "Antarkosh_schema.json"
+        schema_path = get_knowledge_path("schema")
         if not schema_path.exists():
             return {}
         try:

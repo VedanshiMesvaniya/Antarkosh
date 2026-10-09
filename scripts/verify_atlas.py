@@ -23,9 +23,11 @@ console = Console()
 
 import argparse
 
+from src.sql.knowledge.loaders import get_knowledge_path
+
 ROOT_DIR = REPO_ROOT
-ATLAS_PATH = ROOT_DIR / "config" / "behavioral_schema_atlas.json"
-SCHEMA_PATH = ROOT_DIR / "evals" / "Antarkosh" / "Antarkosh_schema.json"
+ATLAS_PATH = get_knowledge_path("behavioral_atlas")
+SCHEMA_PATH = get_knowledge_path("schema")
 
 
 def run_verification(atlas_path: Path | None = None, schema_path: Path | None = None):
@@ -177,12 +179,10 @@ if __name__ == "__main__":
 
     atlas = args.atlas
     if atlas is None:
-        target = ROOT_DIR / "databases" / args.db / "semantics" / "behavioral_atlas.json"
-        atlas = target if target.exists() else ATLAS_PATH
+        atlas = get_knowledge_path("behavioral_atlas", db_id=args.db)
 
     schema = args.schema
     if schema is None:
-        target = ROOT_DIR / "databases" / args.db / "schema" / "schema.json"
-        schema = target if target.exists() else SCHEMA_PATH
+        schema = get_knowledge_path("schema", db_id=args.db)
 
     run_verification(atlas_path=atlas, schema_path=schema)

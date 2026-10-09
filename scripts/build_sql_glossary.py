@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Build a schema-aware column glossary for Text-to-SQL.
 
-Reads the existing config/sql_glossary.json (business terms) and
-evals/Antarkosh/Antarkosh_schema.json (schema), and produces a new
-config/sql_column_glossary.json mapping business terms to exact table.column paths.
+Reads the existing glossary.json (business terms) and
+schema.json (schema), and produces a
+column_glossary.json mapping business terms to exact table.column paths.
 """
 
 import json
@@ -14,11 +14,13 @@ try:
 except ModuleNotFoundError:
     from _paths import REPO_ROOT
 
+from src.sql.knowledge.loaders import get_knowledge_path
+
 HERE = Path(__file__).parent.resolve()
 REPO = REPO_ROOT
-SCHEMA_FILE = REPO / "evals" / "Antarkosh" / "Antarkosh_schema.json"
-OLD_GLOSSARY_FILE = REPO / "config" / "sql_glossary.json"
-OUT_FILE = REPO / "config" / "sql_column_glossary.json"
+SCHEMA_FILE = get_knowledge_path("schema")
+OLD_GLOSSARY_FILE = get_knowledge_path("glossary")
+OUT_FILE = get_knowledge_path("column_glossary")
 
 # Manual overrides for terms that need complex logic, CASTs, or business definitions.
 OVERRIDES = {
@@ -149,17 +151,15 @@ def main() -> None:
 
     schema = args.schema
     if schema is None:
-        target = REPO / "databases" / args.db / "schema" / "schema.json"
-        schema = target if target.exists() else SCHEMA_FILE
+        schema = get_knowledge_path("schema", db_id=args.db)
 
     base = args.base_glossary
     if base is None:
-        target = REPO / "databases" / args.db / "semantics" / "glossary.json"
-        base = target if target.exists() else OLD_GLOSSARY_FILE
+        base = get_knowledge_path("glossary", db_id=args.db)
 
     out = args.out
     if out is None:
-        out = REPO / "databases" / args.db / "semantics" / "column_glossary.json"
+        out = get_knowledge_path("column_glossary", db_id=args.db)
 
     build_glossary(schema_path=schema, base_glossary_path=base, out_path=out)
 
