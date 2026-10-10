@@ -279,3 +279,15 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I).
 - **Issues Found**: None new (Findings #11 and #12 timing jitter on full suite run remain documented).
 - **Next Step ID**: E6
+
+---
+
+## Step E6 Report: Database Access Control and Admin Endpoints
+- **Step ID**: E6
+- **Commits**: d9f6606
+- **Files Changed**: `src/sql/registry.py`, `src/sql/context.py`, `src/stages/s12b_sql_retrieval.py`, `src/pipeline/query.py`, `src/api/query.py`, `src/api/ui.py`, `tests/test_sql_database_access_control.py`.
+- **What Changed**: Enforced `allowed_users` access control from `databases/<id>/db.yaml` following the document-access pattern with admin account always allowed. Added `can_access_database`, `get_database_access`, `update_database_access`, and `atomic_write_yaml` in `src/sql/registry.py`. Added `allowed_users` and `can_access()` method to `DatabaseContext` in `src/sql/context.py`. Filtered `list_databases` so non-admin users cannot see databases they lack access to. Added access enforcement in `SQLRetriever.retrieve()` and `fetch_sqlite_foreign_keys()` so unauthorized databases return empty results. Added permission checks to `query_documents` (/api/query), `send_message`, and `send_message_stream` on explicit `db_id` (returning 403 Forbidden on unauthorized access). Added additive admin-only endpoints: `GET /databases` (user-filtered list), `GET /admin/databases` (admin list), `GET /databases/{id}` (single db), `GET /databases/{id}/access`, `POST /databases/{id}/access`, `POST /databases/{id}/test` (and connection/test), `POST /databases/{id}/connection` (and save). Added comprehensive tests in `tests/test_sql_database_access_control.py` mirroring `tests/test_alpha_auth_and_isolation.py`. Verified existing `tests/test_alpha_auth_and_isolation.py` and `tests/test_db_settings.py` pass completely unmodified.
+- **Checks a-g**: a-g all passed; pytest: 634 passed, 18 skipped, 8 deselected, 1 xfailed (+9 passed vs 625 baseline); zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I).
+- **Issues Found**: None new (Findings #11 and #12 timing jitter on full suite run remain documented).
+- **Next Step ID**: F1

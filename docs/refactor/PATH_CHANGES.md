@@ -240,3 +240,17 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | E5-5 | src/sql/connectors/ | src/sql/connectors/ | behavior | connectors accept connection config dictionary override in get_connector / run_readonly | a-g pass | 622dd28 |
 | E5-6 | tests/test_sql_retriever_multi_db_cache.py | tests/test_sql_retriever_multi_db_cache.py | test | updated test_selective_and_global_cache_clearing for per-db_id invalidation | a-g pass | 622dd28 |
 | E5-7 | (new) | tests/test_sql_db_connection_invalidation.py | test | tests verifying connection resolution by db_id, db A caches cleared and db B caches survive on connection change | a-g pass | 622dd28 |
+
+---
+
+## Step E6 — Database Access Control and Admin Endpoints
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| E6-1 | src/sql/registry.py | src/sql/registry.py | behavior | added can_access_database, get_database_access, update_database_access, atomic_write_yaml, and user filtering in list_databases | a-g pass | d9f6606 |
+| E6-2 | src/sql/context.py | src/sql/context.py | behavior | added allowed_users and can_access() to DatabaseContext; parsed in get_context | a-g pass | d9f6606 |
+| E6-3 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | behavior | SQLRetriever.retrieve and fetch_sqlite_foreign_keys enforce access control and hide unauthorized query results | a-g pass | d9f6606 |
+| E6-4 | src/pipeline/query.py | src/pipeline/query.py | wire | QueryPipeline threads user_id from filters to SQLRetriever.retrieve | a-g pass | d9f6606 |
+| E6-5 | src/api/query.py | src/api/query.py | api | query_documents enforces database access control when explicit db_id is provided (403 Forbidden) | a-g pass | d9f6606 |
+| E6-6 | src/api/ui.py | src/api/ui.py | api | added GET /databases, GET /databases/{id}, admin-only GET/POST access, test and save connection endpoints | a-g pass | d9f6606 |
+| E6-7 | (new) | tests/test_sql_database_access_control.py | test | tests mirroring test_alpha_auth_and_isolation.py for database resources, list filtering, query enforcement, admin connection test/save | a-g pass | d9f6606 |
