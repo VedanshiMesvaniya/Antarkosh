@@ -7,22 +7,27 @@ venv
 .pytest_cache
 *.bundle
 
-# Docs, dev scripts, and the test suite aren't needed in the runtime image.
+# Docs, dev scripts, evaluations, and the test suite aren't needed in the runtime image.
 docs/
 scripts/
 tests/
+evals/
+databases/*/evals/
 
 # Node/build tooling — the *built* output in frontend/ is what we ship, not the
 # React source or its 100s of MB of node_modules.
 Antarkosh_UI/node_modules
 node_modules
 
-# Runtime state — recreated on startup; never bake it into the image.
+# Runtime state and learned data — recreated on startup or volume-mounted; never bake into image.
+# Note: databases/ curated knowledge packs ARE shipped in the image.
 data/
+databases/*/learned/
+databases/*/learned/*
 
-# Local secrets — provided as environment variables on the host instead.
+# Local secrets and runtime connection credentials — provided as environment variables on the host instead.
 .env
 config/db_connection.json
 config/connections.json
 config/ingestion.json
-databases/*/learned/*
+
