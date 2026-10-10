@@ -1,7 +1,7 @@
 """Multi-database Schema RAG isolation and transition rule integration tests.
 
 Tests against local in-memory Qdrant with deterministic embeddings in the style
-of tests/test_local_qdrant_integration.py.
+of tests/rag/test_local_qdrant_integration.py.
 """
 
 from __future__ import annotations

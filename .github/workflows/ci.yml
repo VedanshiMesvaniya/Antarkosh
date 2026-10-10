@@ -148,7 +148,7 @@ jobs:
           pip install pytest pytest-asyncio
 
       - name: Run tests (excluding `live`)
-        run: pytest -v -m "not live" --ignore=tests/golden -ra
+        run: pytest -v -m "not live" --ignore=tests/golden --ignore=tests/rag/test_local_qdrant_integration.py -ra
 
   # ---------------------------------------------------------------------------
   # Same fake embeddings, but a REAL Qdrant server: collection schema, dense +
@@ -205,7 +205,7 @@ jobs:
           exit 1
 
       - name: Run Qdrant integration tests
-        run: pytest -v tests/test_local_qdrant_integration.py -ra
+        run: pytest -v tests/rag/test_local_qdrant_integration.py -ra
 
   # ---------------------------------------------------------------------------
   # React UI (Antarkosh_UI). The build output is committed to frontend/ and

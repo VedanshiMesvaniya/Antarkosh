@@ -1,6 +1,6 @@
 """Tests for Step E6: Database access control and admin endpoints.
 
-Mirrors tests/test_alpha_auth_and_isolation.py for database resources:
+Mirrors tests/api/test_alpha_auth_and_isolation.py for database resources:
 1. Enforce allowed_users from databases/<id>/db.yaml (admins always allowed).
 2. Hide databases the user cannot access from lists, routing, and query results.
 3. Admin-only endpoints:

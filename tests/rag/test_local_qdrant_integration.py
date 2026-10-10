@@ -3,7 +3,7 @@
 Skipped unless QDRANT_TEST_URL is set, e.g.
 
     docker compose -f docker-compose.local.yml up -d
-    QDRANT_TEST_URL=http://localhost:6333 pytest tests/test_local_qdrant_integration.py
+    QDRANT_TEST_URL=http://localhost:6333 pytest tests/rag/test_local_qdrant_integration.py
 
 It uses a throw-away collection and deletes it afterwards. Embeddings come from a
 fake BGE-M3 (deterministic bag-of-words vectors) so no model download is needed,

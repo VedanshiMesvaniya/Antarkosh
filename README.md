@@ -580,7 +580,12 @@ Antarkosh/
 │   ├── cli.py                   # Command-line interface
 │   └── main.py                  # FastAPI application entry point
 │
-└── tests/                       # Complete pytest suite (372 tests)
+└── tests/                       # Complete pytest suite (mirrors src: sql/, rag/, core/, api/)
+    ├── sql/                     # Dialects, connectors, schema RAG, AST safety, query generation
+    ├── rag/                     # Ingestion stages, vector store, hybrid retrieval, citations
+    ├── core/                    # Providers, rate limiters, security paths, telemetry, tooling
+    ├── api/                     # Route endpoints, auth, sessions, ACL isolation
+    └── golden/                  # Golden benchmark cases & fixtures
 ```
 
 ---
@@ -682,7 +687,7 @@ continue to be skipped.
 
 ```bash
 pytest
-QDRANT_TEST_URL=http://localhost:6333 pytest tests/test_local_qdrant_integration.py
+QDRANT_TEST_URL=http://localhost:6333 pytest tests/rag/test_local_qdrant_integration.py
 ```
 
 ---
@@ -758,16 +763,16 @@ The test suite contains **372 comprehensive unit and integration tests**:
 
 ```bash
 # Run the entire test suite
-pytest tests/ -v
+pytest -v
 
 # Run core latency acceleration tests
-pytest tests/test_semantic_cache.py tests/test_fast_path.py -v
+pytest tests/sql/test_semantic_cache.py tests/sql/test_fast_path.py -v
 
 # Run Text-to-SQL retrieval & AST validation tests
-pytest tests/test_sql_retrieval.py -v
+pytest tests/sql/test_sql_retrieval.py -v
 
 # Run provider routing & fallback tests
-pytest tests/test_provider_routing.py -v
+pytest tests/core/test_provider_routing.py -v
 ```
 
 ---

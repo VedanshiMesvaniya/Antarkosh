@@ -93,7 +93,12 @@ line-length = 100
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = [
+    "tests/sql",
+    "tests/rag",
+    "tests/core",
+    "tests/api",
+]
 markers = [
     "live: needs real services (the populated MySQL database, API keys or real model weights); excluded from CI",
 ]

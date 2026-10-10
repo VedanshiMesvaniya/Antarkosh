@@ -165,7 +165,7 @@ To prevent glossary mappings and relationship configs from drifting when the dat
 ### 2. Continuous Integration Gate (`.github/workflows/ci.yml`)
 Runs automatically on every Pull Request and Push:
 1. `python src/core/sql_drift_validator.py`
-2. `pytest -v tests/test_sql_*.py ...`
+2. `pytest -v tests/sql/test_sql_*.py ...`
 3. `python evals/Antarkosh/run_eval.py --offline`
 
 ---
@@ -174,7 +174,7 @@ Runs automatically on every Pull Request and Push:
 
 ### Test Suite Summary
 ```bash
-DB_ENGINE=sqlite .venv/bin/pytest -v tests/test_sql_retrieval.py tests/test_sql_column_validation.py tests/test_sql_dialects.py tests/test_query_pipeline.py tests/test_citations_and_routing.py
+DB_ENGINE=sqlite .venv/bin/pytest -v tests/sql/test_sql_retrieval.py tests/sql/test_sql_column_validation.py tests/sql/test_sql_dialects.py tests/rag/test_query_pipeline.py tests/rag/test_citations_and_routing.py
 ```
 - **Result**: **104 passed, 3 skipped** (100% pass rate across SQLite and MySQL profile paths).
 
