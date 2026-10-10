@@ -77,7 +77,7 @@ jobs:
         run: python src/core/sql_drift_validator.py
 
       - name: Offline eval dataset validator
-        run: python evals/Antarkosh/run_eval.py --offline
+        run: python evals/run_eval.py --offline
 
   # ---------------------------------------------------------------------------
   # Python lint. Only real-error rules block the build; the wider ruleset has a

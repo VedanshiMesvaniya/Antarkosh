@@ -5,7 +5,7 @@ Runs all 50 layman business questions through the Text-to-SQL pipeline:
 - Validates SQL generation.
 - Executes against the live MySQL database.
 - Checks for syntax errors, zero-result traps, and execution time.
-- Generates a full markdown report: evals/Antarkosh/eval_run_report.md.
+- Generates a full markdown report: databases/erp_main/evals/reports/eval_run_report.md.
 """
 
 import asyncio
@@ -29,8 +29,8 @@ if str(_repo_root) not in sys.path:
 from scripts._paths import REPO_ROOT
 
 console = Console()
-QUESTIONS_FILE = REPO_ROOT / "evals" / "Antarkosh" / "reports" / "layman_questions_50.md"
-REPORT_FILE = REPO_ROOT / "evals" / "Antarkosh" / "reports" / "eval_run_report.md"
+QUESTIONS_FILE = REPO_ROOT / "databases" / "erp_main" / "evals" / "reports" / "layman_questions_50.md"
+REPORT_FILE = REPO_ROOT / "databases" / "erp_main" / "evals" / "reports" / "eval_run_report.md"
 
 
 
