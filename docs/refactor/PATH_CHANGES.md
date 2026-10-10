@@ -497,6 +497,18 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | H2-4 | tests/test_*.py (5 API files) | tests/api/ | move | 5 API tests moved to tests/api/ | a-g pass | 00b4ddd |
 | H2-5 | pyproject.toml, CI, docs | pyproject.toml, CI, docs | config | Updated testpaths, CI pytest lines (--ignore=tests/golden, --ignore=tests/rag/test_local_qdrant_integration.py), README.md, docs | a-g pass | c42c3e3 |
 
+---
+
+## Step H3 — Evaluations Reorganization (databases/erp_main/evals, evals/ shared runners)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| H3-1 | evals/Antarkosh/* (questions, build_questions, README, reports, baseline_v2, run_eval, run_full_eval) | databases/erp_main/evals/ | move | Moved to databases/erp_main/evals/; removed obsolete .gitkeep | a-g pass | 8c869c7 |
+| H3-2 | (new / updated runners) | evals/run_eval.py, evals/run_full_eval.py, databases/erp_main/evals/run_eval.py, databases/erp_main/evals/baseline_v2/run_full_eval.py | code | Shared runner in evals/ supporting --db (default erp_main), updated parents traversal and fallback paths | a-g pass | 01ce81e |
+| H3-3 | scripts/eval/run_batch_eval.py, .github/workflows/ci.yml | scripts/eval/run_batch_eval.py, .github/workflows/ci.yml | wire | Updated QUESTIONS_FILE and REPORT_FILE paths to databases/erp_main/evals/; updated CI offline eval to python evals/run_eval.py --offline | a-g pass | 51bd408 |
+| H3-4 | databases/erp_main/evals/README.md, README.md, docs | databases/erp_main/evals/README.md, README.md, docs | docs | Updated evaluation commands and file references across READMEs and docs | a-g pass | (pending) |
+
+
 
 
 

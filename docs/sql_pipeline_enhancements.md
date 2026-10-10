@@ -166,7 +166,7 @@ To prevent glossary mappings and relationship configs from drifting when the dat
 Runs automatically on every Pull Request and Push:
 1. `python src/core/sql_drift_validator.py`
 2. `pytest -v tests/sql/test_sql_*.py ...`
-3. `python evals/Antarkosh/run_eval.py --offline`
+3. `python evals/run_eval.py --offline`
 
 ---
 
@@ -179,11 +179,11 @@ DB_ENGINE=sqlite .venv/bin/pytest -v tests/sql/test_sql_retrieval.py tests/sql/t
 - **Result**: **104 passed, 3 skipped** (100% pass rate across SQLite and MySQL profile paths).
 
 ### Multi-Table Join Reachability Benchmark
-- Tested across all 84 SQL/BOTH questions in `evals/Antarkosh/questions.jsonl`.
+- Tested across all 84 SQL/BOTH questions in `databases/erp_main/evals/questions.jsonl`.
 - **Result**: 1-hop graph expansion achieves **86.9% complete relational join reachability** (73/84 questions) from a single anchor table, ensuring line-item and entity tables are never omitted from prompts.
 
 ### Offline Question Bank Validation
 ```bash
-.venv/bin/python evals/Antarkosh/run_eval.py --offline
+.venv/bin/python evals/run_eval.py --offline
 ```
 - **Result**: Verified 93 questions across 70 tables with zero missing table references.

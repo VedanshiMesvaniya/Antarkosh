@@ -56,7 +56,9 @@ Each question record:
 ### 1. Offline — validate the dataset (no DB, no API keys)
 
 ```bash
-python evals/Antarkosh/run_eval.py --offline
+python evals/run_eval.py --offline
+# or database-specific runner:
+python databases/erp_main/evals/run_eval.py --offline
 ```
 
 Confirms every referenced table exists in the schema and prints coverage by
@@ -68,14 +70,14 @@ Needs the live DB (`data/live_data.db` or MySQL via env) and provider API keys,
 exactly like the app.
 
 ```bash
-# everything
-python evals/Antarkosh/run_eval.py --out evals/Antarkosh/results.json
+# everything (default targets erp_main)
+python evals/run_eval.py --out databases/erp_main/evals/results.json
 
 # just the hard ones
-python evals/Antarkosh/run_eval.py --difficulty hard_twisted
+python evals/run_eval.py --difficulty hard_twisted
 
 # a quick 10-question smoke test
-python evals/Antarkosh/run_eval.py --limit 10
+python evals/run_eval.py --limit 10
 ```
 
 For each question the runner:
@@ -106,6 +108,6 @@ Add questions in `build_questions.py` (`_curated()` for depth, `_TABLE_NOUNS`
 for per-table breadth), then:
 
 ```bash
-python evals/Antarkosh/build_questions.py     # regenerate questions.jsonl
-python evals/Antarkosh/run_eval.py --offline  # re-validate
+python databases/erp_main/evals/build_questions.py  # regenerate questions.jsonl
+python evals/run_eval.py --offline                  # re-validate
 ```

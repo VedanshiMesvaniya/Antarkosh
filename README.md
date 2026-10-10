@@ -302,15 +302,19 @@ The pool automatically rotates round-robin across keys upon encountering rate li
 
 ## 📊 Benchmark & Evaluation Suite
 
-Antarkosh includes an enterprise-grade evaluation suite grounded in a real **70-table ERP schema** with **163 complex real-world questions** (`evals/Antarkosh/questions.jsonl`):
+Antarkosh includes an enterprise-grade evaluation suite grounded in a real **70-table ERP schema** with **163 complex real-world questions** (`databases/erp_main/evals/questions.jsonl`):
 
 ```text
-evals/Antarkosh/
+databases/erp_main/evals/
 ├── questions.jsonl         # 163 canonical questions across 46 schema tables
 ├── build_questions.py      # Question generator and rubric synthesizer
-├── run_eval.py             # Offline validator and live LLM-as-judge runner
+├── run_eval.py             # Database-specific offline validator & live runner
 ├── Antarkosh_schema.json  # Complete 70-table physical schema definition
 └── reports/                # Coverage matrices, ROI benchmarks, and accuracy reports
+
+evals/
+├── run_eval.py             # Shared cross-database eval runner (--db erp_main)
+└── run_full_eval.py        # Shared baseline v2 benchmark runner
 ```
 
 ### Schema Traps Tested
@@ -339,7 +343,7 @@ evals/Antarkosh/
 
 To run the evaluation offline (no database or API keys required):
 ```bash
-python evals/Antarkosh/run_eval.py --offline
+python evals/run_eval.py --offline
 ```
 
 ---

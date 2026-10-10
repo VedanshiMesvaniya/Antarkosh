@@ -622,6 +622,6 @@ Analytical benchmarking requires running large test suites without crashing on f
 2. **AST-Level Token Sanitization**: Queries with multiple semicolons, stacked queries, or comment injection sequences (`--`, `/*`) are sanitized prior to execution.
 
 ### Continuous Automated Evaluation Suite:
-* **Benchmark Test Suite** ([`evals/Antarkosh/reports/layman_questions_50.md`](file:///data/shared/project/Antarkosh/evals/Antarkosh/reports/layman_questions_50.md)): 50 diverse questions covering all 10 enterprise domains.
-* **Batch Test Runner** ([`scripts/eval/run_batch_eval.py`](file:///data/shared/project/Antarkosh/scripts/eval/run_batch_eval.py)): Runs automated regression suites and outputs [`evals/Antarkosh/reports/eval_run_report.md`](file:///data/shared/project/Antarkosh/evals/Antarkosh/reports/eval_run_report.md).
+* **Benchmark Test Suite** ([`databases/erp_main/evals/reports/layman_questions_50.md`](file:///data/shared/project/Antarkosh/databases/erp_main/evals/reports/layman_questions_50.md)): 50 diverse questions covering all 10 enterprise domains.
+* **Batch Test Runner** ([`scripts/eval/run_batch_eval.py`](file:///data/shared/project/Antarkosh/scripts/eval/run_batch_eval.py)): Runs automated regression suites and outputs [`databases/erp_main/evals/reports/eval_run_report.md`](file:///data/shared/project/Antarkosh/databases/erp_main/evals/reports/eval_run_report.md).
 * **CLI Single-Question Inspector** ([`scripts/eval/test_question.py`](file:///data/shared/project/Antarkosh/scripts/eval/test_question.py)): For instant developer debugging.
