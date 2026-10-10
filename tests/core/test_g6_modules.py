@@ -214,3 +214,14 @@ def test_failure_capture_per_database_with_folder_creation(tmp_path, monkeypatch
     disk_rec = json.loads(content[0])
     assert disk_rec["query_id"] == "q-g6-test-01"
     assert disk_rec["db_id"] == db_id
+
+
+def test_get_learned_path_with_learned_data_dir_override(tmp_path, monkeypatch):
+    """get_learned_path respects LEARNED_DATA_DIR environment variable for persistent storage."""
+    persistent_root = tmp_path / "persistent_learned"
+    monkeypatch.setenv("LEARNED_DATA_DIR", str(persistent_root))
+
+    target = get_learned_path("patterns.jsonl", db_id="erp_main", create_dir=True)
+    assert target == persistent_root / "erp_main" / "patterns.jsonl"
+    assert (persistent_root / "erp_main").exists()
+

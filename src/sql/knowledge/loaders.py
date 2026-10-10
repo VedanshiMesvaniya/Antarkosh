@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -131,8 +132,14 @@ def get_learned_path(
     if rel_p.is_absolute() or ".." in rel_p.parts:
         raise ValueError(f"Invalid filename (traversal/absolute): {filename!r}")
 
-    base_dir = databases_dir or DATABASES_DIR
-    target_dir = base_dir / db_id / "learned"
+    learned_env = os.environ.get("LEARNED_DATA_DIR", "").strip()
+    if learned_env and databases_dir is None:
+        base_dir = Path(learned_env).expanduser()
+        target_dir = base_dir / db_id
+    else:
+        base_dir = databases_dir or DATABASES_DIR
+        target_dir = base_dir / db_id / "learned"
+
     try:
         target_dir.resolve().relative_to(base_dir.resolve())
     except ValueError:

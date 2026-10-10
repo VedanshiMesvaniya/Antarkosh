@@ -33,8 +33,11 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
     && pip install --no-cache-dir -e . \
     && pip install --no-cache-dir -r requirements.txt
 
-# Bring in the rest: the built frontend, provider config, etc.
+# Bring in the rest: the built frontend, provider config, databases packs, etc.
 COPY . .
+
+# Pre-create runtime directories for ephemeral container storage or persistent volume mounts
+RUN mkdir -p /app/data /app/config /app/databases
 
 ENV PYTHONUNBUFFERED=1
 
