@@ -297,6 +297,17 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | F4-3 | tests/test_schema_budget.py, tests/test_schema_compactor.py | tests/test_schema_budget.py, tests/test_schema_compactor.py | wire | Updated patch targets for is_feature_enabled and log_telemetry to src.sql.schema_retrieval where names are looked up | a-g pass | F4 |
 | F4-4 | (new) | tests/test_sql_schema_retrieval.py | test | Tests verifying object identity, DDL extraction, 1-hop graph expansion, scoped relationships, Qdrant fallback & db_id isolation, and golden fallback schema parity across 10 queries | a-g pass | F4 |
 
+---
+
+## Step F5 — Prompt Building and Knowledge Cache Loaders
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| F5-1 | src/stages/s12b_sql_retrieval.py | src/sql/prompt_builder.py | code | Extracted knowledge loaders (relationships, glossary, column glossary, behavioral atlas), glossary matching, scoped readability rules, and build_sql_prompt | a-g pass | F5 |
+| F5-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports all prompt builder functions, caches, and readability rules; delegates SQLRetriever._generate_sql to build_sql_prompt; clear_knowledge_caches invalidates prompt caches | a-g pass | F5 |
+| F5-3 | src/sql/schema_retrieval.py, src/sql/soft_delete.py | src/sql/schema_retrieval.py, src/sql/soft_delete.py | wire | Switched lazy imports of knowledge loaders and glossary builder to src.sql.prompt_builder | a-g pass | F5 |
+| F5-4 | (new) | tests/test_sql_prompt_builder.py | test | Tests verifying object identity for all public & underscore aliases, stem rules, glossary matching, scoped readability, prompt assembly, and cache isolation across databases | a-g pass | F5 |
+
 
 
 

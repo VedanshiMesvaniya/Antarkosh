@@ -69,9 +69,9 @@ def _get_tables_with_soft_delete(db_id: str = DEFAULT_DB_ID) -> set[str]:
         return _SOFT_DELETE_TABLES_CACHE[norm_id]
 
     try:
-        from src.stages.s12b_sql_retrieval import _get_raw_behavioral_atlas
+        from src.sql.prompt_builder import get_raw_behavioral_atlas
 
-        atlas_data = _get_raw_behavioral_atlas(norm_id)
+        atlas_data = get_raw_behavioral_atlas(norm_id)
     except (ImportError, AttributeError):
         from src.sql.knowledge.loaders import load_knowledge_json
 

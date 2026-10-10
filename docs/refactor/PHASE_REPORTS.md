@@ -341,5 +341,14 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: F5
 
+---
 
-
+## Step F5 Report: Prompt Building and Knowledge Cache Loaders
+- **Step ID**: F5
+- **Commits**: F5
+- **Files Changed**: `src/sql/prompt_builder.py`, `src/stages/s12b_sql_retrieval.py`, `src/sql/schema_retrieval.py`, `src/sql/soft_delete.py`, `tests/test_sql_prompt_builder.py`.
+- **What Changed**: Extracted prompt assembly and knowledge cache loaders from `s12b_sql_retrieval.py` into new module `src/sql/prompt_builder.py`. Moved `get_raw_relationships`, `load_relationships`, `load_glossary`, `get_raw_column_glossary`, `get_raw_behavioral_atlas`, per-db cache invalidation methods, and `clear_prompt_caches`. Moved glossary matching routines (`stem_word`, `matches_glossary_candidate`, `build_column_glossary_for_query`), behavioral atlas builder (`build_behavioral_atlas_for_query`), scoped readability rules (`get_scoped_readability_rules`, `OUTPUT_READABILITY_RULES`), and prompt assembly (`build_sql_prompt`). Re-exported all prompt builder functions, caches (both public and underscore names), and readability rules in `src/stages/s12b_sql_retrieval.py`, delegating `SQLRetriever._generate_sql` to `build_sql_prompt` and `SQLRetriever._get_scoped_readability_rules` to `get_scoped_readability_rules`. Updated `clear_knowledge_caches(db_id)` to call `clear_prompt_caches(db_id)`. Updated lazy imports in `schema_retrieval.py` and `soft_delete.py` to point directly to `src.sql.prompt_builder`. Added unit tests in `tests/test_sql_prompt_builder.py` covering re-export object identity, stemming rules, glossary candidate matching, scoped readability rules, prompt assembly, per-db cache isolation and clearing, and `s12b.clear_knowledge_caches` delegation.
+- **Checks a-g**: a-g all passed; pytest: 690 passed, 18 skipped, 8 deselected, 1 xfailed (+7 passed vs 683 baseline); ruff clean; compileall clean; import src.main ok; zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I); `src/stages/s12b_sql_retrieval.py` re-exporting soft-delete, intent, table_router, schema_retrieval, and prompt_builder symbols (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: F6

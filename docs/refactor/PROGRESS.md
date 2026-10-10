@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 683 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 690 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -29,7 +29,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | F2 | Extract intent | 4837b9b | 662 passed |
 | [x] | F3 | Extract table_router, routing_hints.json | ac1fa08 | 675 passed |
 | [x] | F4 | Extract schema_retrieval | F4 | 683 passed |
-| [ ] | F5 | Extract prompt_builder | | |
+| [x] | F5 | Extract prompt_builder | F5 | 690 passed |
 | [ ] | F6 | Extract generation | | |
 | [ ] | F7 | Thin SQLRetriever (pipeline.py), s12b is a shim | | |
 | [ ] | G1 | Move unused and single-importer modules | | |
@@ -54,6 +54,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 - `src/stages/s12b_sql_retrieval.py` re-exporting `extract_analytical_intent` from `src.sql.intent` (removed in Phase I)
 - `src/stages/s12b_sql_retrieval.py` re-exporting `load_routing_hints`, `route_tables_for_query`, `route_anchor_tables`, `_clear_routing_hints_cache`, `_ROUTING_HINTS_CACHE` from `src.sql.table_router` (removed in Phase I)
 - `src/stages/s12b_sql_retrieval.py` re-exporting `extract_schema_table_names`, `extract_table_ddl_map`, `get_1hop_neighbors`, `format_scoped_relationships`, `build_scoped_schema_fallback`, `retrieve_schema_from_qdrant` from `src.sql.schema_retrieval` (removed in Phase I)
+- `src/stages/s12b_sql_retrieval.py` re-exporting `get_raw_relationships`, `load_relationships`, `load_glossary`, `get_raw_column_glossary`, `get_raw_behavioral_atlas`, `stem_word`, `matches_glossary_candidate`, `build_column_glossary_for_query`, `build_behavioral_atlas_for_query`, `get_scoped_readability_rules`, `OUTPUT_READABILITY_RULES`, `build_sql_prompt`, and prompt caches from `src.sql.prompt_builder` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.

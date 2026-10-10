@@ -53,7 +53,7 @@ def get_1hop_neighbors(
     if rels is not None:
         raw_rels = rels
     else:
-        from src.stages.s12b_sql_retrieval import _get_raw_relationships
+        from src.sql.prompt_builder import get_raw_relationships as _get_raw_relationships
         raw_rels = _get_raw_relationships(db_id)
 
     neighbors: set[str] = set()
@@ -83,7 +83,7 @@ def format_scoped_relationships(
     if rels is not None:
         raw_rels = rels
     else:
-        from src.stages.s12b_sql_retrieval import _get_raw_relationships
+        from src.sql.prompt_builder import get_raw_relationships as _get_raw_relationships
         raw_rels = _get_raw_relationships(db_id)
 
     if not raw_rels:
@@ -129,9 +129,11 @@ def build_scoped_schema_fallback(
     query_lower = query.lower()
     candidate_tables: list[str] = []
 
-    from src.stages.s12b_sql_retrieval import _build_column_glossary_for_query
+    from src.sql.prompt_builder import (
+        build_column_glossary_for_query as _build_column_glossary_for_query,
+    )
 
-    glossary_text = _build_column_glossary_for_query(query)
+    glossary_text = _build_column_glossary_for_query(query, db_id=db_id)
     glossary_tables = set(re.findall(r"\b([a-zA-Z0-9_]+)\.[a-zA-Z0-9_]+", glossary_text))
     for t in glossary_tables:
         if t in full_ddls and t not in candidate_tables:
@@ -271,12 +273,14 @@ async def retrieve_schema_from_qdrant(
         retrieved_tables = extract_schema_table_names(retrieved_schema)
 
         # Seed anchor tables from matched glossary terms & domain concepts
-        from src.stages.s12b_sql_retrieval import (
-            _build_column_glossary_for_query,
-            _get_raw_relationships,
+        from src.sql.prompt_builder import (
+            build_column_glossary_for_query as _build_column_glossary_for_query,
+        )
+        from src.sql.prompt_builder import (
+            get_raw_relationships as _get_raw_relationships,
         )
 
-        glossary_text = _build_column_glossary_for_query(query)
+        glossary_text = _build_column_glossary_for_query(query, db_id=db_id)
         glossary_tables = set(re.findall(r"\b([a-zA-Z0-9_]+)\.[a-zA-Z0-9_]+", glossary_text))
 
         glossary_tables.update(route_anchor_tables(query, db_id=db_id))
