@@ -1,5 +1,5 @@
 {
-  "note": "Inferred join map for database 'Antarkosh'. The database has no explicit FOREIGN KEY constraints; these relationships are used to guide JOINs in generated SQL. Regenerate with scripts/build_sql_relationships.py.",
+  "note": "Inferred join map for database 'Antarkosh'. The database has no explicit FOREIGN KEY constraints; these relationships are used to guide JOINs in generated SQL. Regenerate with scripts/db/build_sql_relationships.py.",
   "relationships": [
     {
       "from_table": "actual_production",

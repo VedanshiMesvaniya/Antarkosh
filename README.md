@@ -296,7 +296,7 @@ The pool automatically rotates round-robin across keys upon encountering rate li
 | **Vector DB** | Qdrant Cloud (Free Tier) / In-Memory | — | — | — |
 
 - **In-App Soft Pinning:** Users can select a preferred model/provider in the UI (`Settings` or header dropdown). The chosen provider is soft-pinned at priority 0 while preserving the rest of the chain as a safety net.
-- **Provider Health Verification:** Run `python scripts/check_providers.py` to ping all configured endpoints and identify deprecated model slugs before running workloads.
+- **Provider Health Verification:** Run `python scripts/ops/check_providers.py` to ping all configured endpoints and identify deprecated model slugs before running workloads.
 
 ---
 
@@ -456,18 +456,19 @@ The `scripts/` directory contains operational and diagnostic utilities:
 
 | Script | Command | Purpose |
 |---|---|---|
-| **Provider Health** | `python scripts/check_providers.py` | Pings all configured models across providers; identifies deprecated slugs. |
-| **Production Smoke Test** | `python scripts/production_smoke_test.py` | Runs end-to-end canary verification on local or deployed instances. |
-| **Adversarial Smoke Test** | `python scripts/adversarial_smoke_test.py` | Executes SQL injection, table shadowing, and prompt injection probes. |
-| **DB Setup** | `python scripts/setup_db.py` | Creates the local SQLite demonstration database (`data/live_data.db`). |
-| **Load MySQL Dump** | `python scripts/load_mysql_dump.py` | Converts and loads standard SQL dumps into SQLite or MySQL test instances. |
-| **Build Behavioral Atlas** | `python scripts/build_behavioral_atlas.py` | Generates schema metadata and behavioral patterns for Text-to-SQL. |
-| **Build SQL Glossary** | `python scripts/build_sql_glossary.py` | Extracts business terms and synonym mappings to physical columns. |
-| **Build SQL Relationships**| `python scripts/build_sql_relationships.py`| Maps multi-table foreign-key relationships into `sql_relationships.json`. |
-| **Shadow Audit Runner** | `python scripts/run_shadow_audit.py` | Audits runtime guards in shadow mode to measure false-positive rates. |
-| **Batch Evaluation** | `python scripts/run_batch_eval.py` | Executes batch benchmark evaluation runs. |
-| **Verify Atlas** | `python scripts/verify_atlas.py` | Verifies behavioral schema atlas consistency against live database tables. |
-| **Verify Telemetry** | `python scripts/verify_telemetry.py` | Validates telemetry event serialization and event logging. |
+| **Provider Health** | `python scripts/ops/check_providers.py` | Pings all configured models across providers; identifies deprecated slugs. |
+| **Production Smoke Test** | `python scripts/eval/production_smoke_test.py` | Runs end-to-end canary verification on local or deployed instances. |
+| **Adversarial Smoke Test** | `python scripts/eval/adversarial_smoke_test.py` | Executes SQL injection, table shadowing, and prompt injection probes. |
+| **DB Setup** | `python scripts/db/setup_db.py` | Creates the local SQLite demonstration database (`data/live_data.db`). |
+| **Load MySQL Dump** | `python scripts/db/load_mysql_dump.py` | Converts and loads standard SQL dumps into SQLite or MySQL test instances. |
+| **Build Behavioral Atlas** | `python scripts/db/build_behavioral_atlas.py` | Generates schema metadata and behavioral patterns for Text-to-SQL. |
+| **Build SQL Glossary** | `python scripts/db/build_sql_glossary.py` | Extracts business terms and synonym mappings to physical columns. |
+| **Build SQL Relationships**| `python scripts/db/build_sql_relationships.py`| Maps multi-table foreign-key relationships into `sql_relationships.json`. |
+| **Shadow Audit Runner** | `python scripts/eval/run_shadow_audit.py` | Audits runtime guards in shadow mode to measure false-positive rates. |
+| **Batch Evaluation** | `python scripts/eval/run_batch_eval.py` | Executes batch benchmark evaluation runs. |
+| **Verify Atlas** | `python scripts/db/verify_atlas.py` | Verifies behavioral schema atlas consistency against live database tables. |
+| **Verify Telemetry** | `python scripts/ops/verify_telemetry.py` | Validates telemetry event serialization and event logging. |
+
 
 ---
 
@@ -526,6 +527,9 @@ Antarkosh/
 ├── frontend/                    # Compiled React UI static assets (served by FastAPI)
 │
 ├── scripts/                     # Operational, setup, and diagnostic scripts
+│   ├── db/                      # Schema harvesting, atlas builders, DB setup
+│   ├── eval/                    # Smoke tests, benchmark evaluation, shadow audit
+│   └── ops/                     # Provider health, telemetry verification, migrations
 │
 ├── src/                         # Core Python backend
 │   ├── api/                     # FastAPI route modules
@@ -648,7 +652,7 @@ The compiled files are automatically written to `frontend/`, which FastAPI serve
 ### 5. Initialize Demo Database (Optional)
 If querying the local demonstration database:
 ```bash
-python scripts/setup_db.py
+python scripts/db/setup_db.py
 ```
 
 ### 6. Launch the Web Application

@@ -130,7 +130,7 @@ To eliminate table dropping, the pipeline combines **Hybrid Dense/Sparse Vector 
 #### Graph Neighbor Selection Algorithm:
 Let $T_{\text{active}}$ be the set of retrieved and anchored tables. The connection score for candidate neighbor table $n \notin T_{\text{active}}$ is defined as:
 $$\text{Score}(n) = \sum_{t \in T_{\text{active}}} \mathbb{I}((t, n) \in E \lor (n, t) \in E)$$
-Where $E$ represents the set of 162 foreign-key relationships discovered by [`scripts/auto_harvest_metadata.py`](file:///data/shared/project/Antarkosh/scripts/auto_harvest_metadata.py). High-scoring bridges are injected into the prompt.
+Where $E$ represents the set of 162 foreign-key relationships discovered by [`scripts/db/auto_harvest_metadata.py`](file:///data/shared/project/Antarkosh/scripts/db/auto_harvest_metadata.py). High-scoring bridges are injected into the prompt.
 
 ---
 
@@ -623,5 +623,5 @@ Analytical benchmarking requires running large test suites without crashing on f
 
 ### Continuous Automated Evaluation Suite:
 * **Benchmark Test Suite** ([`evals/Antarkosh/reports/layman_questions_50.md`](file:///data/shared/project/Antarkosh/evals/Antarkosh/reports/layman_questions_50.md)): 50 diverse questions covering all 10 enterprise domains.
-* **Batch Test Runner** ([`scripts/run_batch_eval.py`](file:///data/shared/project/Antarkosh/scripts/run_batch_eval.py)): Runs automated regression suites and outputs [`evals/Antarkosh/reports/eval_run_report.md`](file:///data/shared/project/Antarkosh/evals/Antarkosh/reports/eval_run_report.md).
-* **CLI Single-Question Inspector** ([`scripts/test_question.py`](file:///data/shared/project/Antarkosh/scripts/test_question.py)): For instant developer debugging.
+* **Batch Test Runner** ([`scripts/eval/run_batch_eval.py`](file:///data/shared/project/Antarkosh/scripts/eval/run_batch_eval.py)): Runs automated regression suites and outputs [`evals/Antarkosh/reports/eval_run_report.md`](file:///data/shared/project/Antarkosh/evals/Antarkosh/reports/eval_run_report.md).
+* **CLI Single-Question Inspector** ([`scripts/eval/test_question.py`](file:///data/shared/project/Antarkosh/scripts/eval/test_question.py)): For instant developer debugging.

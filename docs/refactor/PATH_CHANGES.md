@@ -459,5 +459,31 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | G6-5 | src/sql/pipeline.py | src/sql/pipeline.py | code | Passed self.db_id to PatternLearner in SQLRetriever | a-g pass | a129765 |
 | G6-6 | (new) | tests/test_g6_modules.py | test | Tests verifying folder auto-creation on write, per-database routing, and fallback behavior | a-g pass | a129765 |
 
+---
+
+## Step H1 — Scripts Reorganization (scripts/db, scripts/eval, scripts/ops)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| H1-1 | scripts/build_sql_relationships.py | scripts/db/build_sql_relationships.py | move | Moved to scripts/db/, uses scripts/_paths.py | a-g pass | 59ab567 |
+| H1-2 | scripts/build_sql_glossary.py | scripts/db/build_sql_glossary.py | move | Moved to scripts/db/, uses scripts/_paths.py | a-g pass | 59ab567 |
+| H1-3 | scripts/build_behavioral_atlas.py | scripts/db/build_behavioral_atlas.py | move | Moved to scripts/db/, uses scripts/_paths.py | a-g pass | 59ab567 |
+| H1-4 | scripts/generate_behavioral_atlas.py | scripts/db/generate_behavioral_atlas.py | move | Moved to scripts/db/, uses scripts/_paths.py | a-g pass | 59ab567 |
+| H1-5 | scripts/auto_harvest_metadata.py | scripts/db/auto_harvest_metadata.py | move | Moved to scripts/db/, uses scripts/_paths.py | a-g pass | 59ab567 |
+| H1-6 | scripts/verify_atlas.py | scripts/db/verify_atlas.py | move | Moved to scripts/db/, uses scripts/_paths.py | a-g pass | 59ab567 |
+| H1-7 | scripts/load_mysql_dump.py | scripts/db/load_mysql_dump.py | move | Moved to scripts/db/, uses scripts/_paths.py | a-g pass | 59ab567 |
+| H1-8 | scripts/setup_db.py | scripts/db/setup_db.py | move | Moved to scripts/db/, uses scripts/_paths.py | a-g pass | 59ab567 |
+| H1-9 | scripts/run_batch_eval.py | scripts/eval/run_batch_eval.py | move | Moved to scripts/eval/, uses scripts/_paths.py | a-g pass | 0f9f882 |
+| H1-10 | scripts/test_question.py | scripts/eval/test_question.py | move | Moved to scripts/eval/, uses scripts/_paths.py | a-g pass | 0f9f882 |
+| H1-11 | scripts/sql_smoke_test.py | scripts/eval/sql_smoke_test.py | move | Moved to scripts/eval/, uses scripts/_paths.py | a-g pass | 0f9f882 |
+| H1-12 | scripts/adversarial_smoke_test.py | scripts/eval/adversarial_smoke_test.py | move | Moved to scripts/eval/, uses scripts/_paths.py | a-g pass | 0f9f882 |
+| H1-13 | scripts/production_smoke_test.py | scripts/eval/production_smoke_test.py | move | Moved to scripts/eval/, uses scripts/_paths.py | a-g pass | 0f9f882 |
+| H1-14 | scripts/run_shadow_audit.py | scripts/eval/run_shadow_audit.py | move | Moved to scripts/eval/, uses scripts/_paths.py | a-g pass | 0f9f882 |
+| H1-15 | scripts/generate_benchmark_fixtures.py | scripts/eval/generate_benchmark_fixtures.py | move | Moved to scripts/eval/, uses scripts/_paths.py | a-g pass | 0f9f882 |
+| H1-16 | scripts/check_providers.py | scripts/ops/check_providers.py | move | Moved to scripts/ops/, uses scripts/_paths.py | a-g pass | 4b7b818 |
+| H1-17 | scripts/verify_telemetry.py | scripts/ops/verify_telemetry.py | move | Moved to scripts/ops/, uses scripts/_paths.py | a-g pass | 4b7b818 |
+| H1-18 | scripts/migrate_existing_docs_to_system_user.py | scripts/ops/migrate_existing_docs_to_system_user.py | move | Moved to scripts/ops/, uses scripts/_paths.py | a-g pass | 4b7b818 |
+| H1-19 | (docs & configs) | README.md, docs, configs | docs | Updated script invocation paths across documentation and configs | a-g pass | sub-move 4 |
+
 
 
