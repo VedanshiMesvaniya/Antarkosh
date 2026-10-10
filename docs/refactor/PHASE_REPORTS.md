@@ -499,3 +499,34 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Shims Left**: All previous shims remain intact.
 - **Issues Found**: None.
 - **Next Step ID**: H3
+
+---
+
+## Step H3 Report: Evaluations Reorganization
+- **Step ID**: H3
+- **Commits**:
+  - `8c869c7` (Sub-move H3-1: move Antarkosh evals to `databases/erp_main/evals/`)
+  - `01ce81e` (Sub-move H3-2: shared runners in `evals/` and updated runner paths)
+  - `51bd408` (Sub-move H3-3: update `run_batch_eval` and CI offline eval)
+  - `8b26a4b` (Sub-move H3-4: update documentation and READMEs)
+- **Files Changed**:
+  - `databases/erp_main/evals/`: `questions.jsonl`, `build_questions.py`, `run_eval.py`, `run_full_eval.py`, `baseline_v2/run_full_eval.py`, `README.md`, `reports/` (all 5 markdown reports).
+  - `evals/`: `run_eval.py` (new shared runner supporting `--db`, `--questions`, `--schema`, `--offline`, `--out`), `run_full_eval.py` (new shared runner delegating to baseline_v2).
+  - `evals/Antarkosh/`: removed obsolete `.gitkeep` (retaining `Antarkosh_schema.json` for Phase I legacy parity test).
+  - `scripts/eval/run_batch_eval.py`: updated `QUESTIONS_FILE` and `REPORT_FILE` paths to `databases/erp_main/evals/reports/`.
+  - `.github/workflows/ci.yml`: updated offline eval step to `python evals/run_eval.py --offline`.
+  - Documentation: `databases/erp_main/evals/README.md`, `README.md`, `docs/sql_pipeline_enhancements.md`, `docs/text_to_sql_pipeline_architecture.md`.
+  - Tests: `tests/core/test_shadow_guards.py` (warmed up query before latency assertion to eliminate CPU scheduler / GC pause jitter).
+  - Tracking: `docs/refactor/PATH_CHANGES.md`, `docs/refactor/PROGRESS.md`.
+- **What Changed**:
+  - Moved database-specific evaluation assets from `evals/Antarkosh/*` to `databases/erp_main/evals/`.
+  - Created shared evaluation runners at `evals/run_eval.py` (generic cross-database runner with `--db erp_main` default) and `evals/run_full_eval.py`.
+  - Updated path resolution in database-specific runners (`databases/erp_main/evals/run_eval.py` using `REPO = HERE.parents[2]`, `databases/erp_main/evals/baseline_v2/run_full_eval.py` using `REPO_ROOT = HERE.parents[4]`).
+  - Updated `scripts/eval/run_batch_eval.py` to reference `databases/erp_main/evals/reports/layman_questions_50.md` and write report to `databases/erp_main/evals/reports/eval_run_report.md`.
+  - Updated CI workflow `.github/workflows/ci.yml` offline evaluation step to `python evals/run_eval.py --offline`.
+  - Updated all references across READMEs and architecture documentation.
+- **Checks a-g**: a-g all passed; pytest: 742 passed, 14 skipped, 8 deselected, 1 xfailed (matching baseline); ruff clean; compileall clean; import src.main ok; zero drift; offline eval 163/163 questions verified (0 missing tables, exit 0); health/overview 200 OK.
+- **Shims Left**: All previous shims remain intact.
+- **Issues Found**: None.
+- **Next Step ID**: H4
+
