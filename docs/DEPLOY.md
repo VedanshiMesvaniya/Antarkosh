@@ -51,10 +51,11 @@ Every push to `main` redeploys automatically (`autoDeploy: true`).
   When Qdrant isn't configured, the registry falls back to a local JSON file
   for development only. Existing installations migrate their old
   `data/ingested_files.json` into Qdrant automatically on first startup.
-- **Chat history is still local** (`data/`), which resets on redeploy/sleep on
-  the free tier. Uploaded files under `data/uploads/` are transient too — their
-  content already lives in Qdrant. For durable chat history, attach a
-  persistent disk (paid) mounted at `/app/data`, or move it to a DB later.
+- **Chat history and runtime state:** Chat history (`data/`), uploaded files (`data/uploads/`), and local SQLite databases live under `data/`. For durable runtime state across redeploys, attach a persistent disk (e.g. Render starter disk, Docker volume) mounted at `/app/data`.
+- **Multi-Database persistent storage (`databases/*/learned` and `connections.json`):**
+  - **Curated Knowledge Packs:** Committed files in `databases/<db_id>/` (schemas, relationships, glossaries, routing hints) are baked directly into the Docker image so all databases are ready immediately on boot.
+  - **Connection Credentials:** Runtime database connection parameters are never baked into images. They live in `config/connections.json` (or any path specified by the `CONNECTIONS_FILE` environment variable).
+  - **Learned Data:** Machine-generated assets (`patterns.jsonl`, `drift_log.jsonl`, `failed_queries.jsonl`) are automatically written to `databases/<db_id>/learned/`. In production containers with a persistent disk mounted at `/app/data`, set `LEARNED_DATA_DIR=/app/data/learned` and `CONNECTIONS_FILE=/app/data/connections.json` to persist all dynamic learning and connection configurations across deployments.
 - **Cold starts:** the free plan sleeps after ~15 min idle; the first request
   after that takes ~30s to wake.
 

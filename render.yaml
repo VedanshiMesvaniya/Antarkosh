@@ -33,3 +33,14 @@ services:
         value: openrouter
       - key: DB_ENGINE
         value: sqlite
+      # Optional persistence overrides (when attaching a persistent disk on paid tiers):
+      # - key: CONNECTIONS_FILE
+      #   value: /app/data/connections.json
+      # - key: LEARNED_DATA_DIR
+      #   value: /app/data/learned
+    # Persistent disk configuration (requires Render paid plan, e.g. starter):
+    # disk:
+    #   name: antarkosh-storage
+    #   mountPath: /app/data
+    #   sizeGB: 1
+
