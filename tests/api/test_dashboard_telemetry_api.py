@@ -13,12 +13,13 @@ Validates:
 from __future__ import annotations
 
 import time
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from src.main import app
 from src.utils.error_classification import FailureCategory
-from src.utils.trace_writer import InMemoryTelemetryAggregator, get_telemetry_aggregator
+from src.utils.trace_writer import get_telemetry_aggregator
 
 
 @pytest.fixture(autouse=True)
