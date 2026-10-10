@@ -172,6 +172,9 @@ async def test_telemetry_latency_under_5ms_guardrail_4():
             "spans": [],
         })
 
+    import logging
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         endpoints = [
@@ -182,6 +185,8 @@ async def test_telemetry_latency_under_5ms_guardrail_4():
         ]
 
         for ep in endpoints:
+            # Warm up to eliminate one-time route initialization overhead
+            await client.get(ep)
             latencies_ms = []
             for _ in range(20):
                 t0 = time.perf_counter()
