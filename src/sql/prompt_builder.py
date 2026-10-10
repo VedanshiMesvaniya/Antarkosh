@@ -30,6 +30,12 @@ _LOAD_GLOSSARY_CACHE: dict[str, str] = {}
 _RAW_COLUMN_GLOSSARY_CACHE: dict[str, dict] = {}
 _BEHAVIORAL_ATLAS_CACHE: dict[str, dict[str, Any]] = {}
 
+RAW_RELATIONSHIPS_CACHE = _RAW_RELATIONSHIPS_CACHE
+LOAD_RELATIONSHIPS_CACHE = _LOAD_RELATIONSHIPS_CACHE
+LOAD_GLOSSARY_CACHE = _LOAD_GLOSSARY_CACHE
+RAW_COLUMN_GLOSSARY_CACHE = _RAW_COLUMN_GLOSSARY_CACHE
+BEHAVIORAL_ATLAS_CACHE = _BEHAVIORAL_ATLAS_CACHE
+
 
 def get_raw_relationships(db_id: str = DEFAULT_DB_ID) -> list[dict[str, Any]]:
     """Load raw relationship list via knowledge loader for db_id."""

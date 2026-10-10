@@ -308,7 +308,13 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | F5-3 | src/sql/schema_retrieval.py, src/sql/soft_delete.py | src/sql/schema_retrieval.py, src/sql/soft_delete.py | wire | Switched lazy imports of knowledge loaders and glossary builder to src.sql.prompt_builder | a-g pass | F5 |
 | F5-4 | (new) | tests/test_sql_prompt_builder.py | test | Tests verifying object identity for all public & underscore aliases, stem rules, glossary matching, scoped readability, prompt assembly, and cache isolation across databases | a-g pass | F5 |
 
+---
 
+## Step F6 — SQL Generation, Execution Glue, and Repair Calls
 
-
-
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| F6-1 | src/stages/s12b_sql_retrieval.py | src/sql/generation.py | code | Extracted SQL generation (generate_sql), execution glue (execute_with_retry, execute_with_delta_repair), safety validation (is_safe_read_query, UnsafeQueryError, DANGEROUS_FUNCTIONS), formatting & unwrapping helpers (unwrap_sql, extract_cot_and_sql, format_schema_rows, format_fk_rows, format_rows_as_markdown, sanitize_rows, filter_display_rows, is_all_null, is_aggregate_over_zero_rows, extract_table_names), and fetch_sqlite_foreign_keys | a-g pass | F6 |
+| F6-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports all generation functions, execution helpers, safety checks, and formatting utilities; delegates SQLRetriever._generate_sql to generate_sql, _is_safe_read_query to is_safe_read_query, and execution loops to execute_with_retry / execute_with_delta_repair | a-g pass | F6 |
+| F6-3 | src/sql/prompt_builder.py | src/sql/prompt_builder.py | wire | Added public cache dict aliases without leading underscore (RAW_RELATIONSHIPS_CACHE etc.) | a-g pass | F6 |
+| F6-4 | (new) | tests/test_sql_generation.py | test | Tests verifying object identity for all public & underscore aliases, unwrapping & CoT parsing, schema/FK row formatting, display filtering & sanitation, AST safety checks, 0-row aggregate detection, generate_sql soft-delete enforcement, and abstention handling | a-g pass | F6 |

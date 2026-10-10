@@ -352,3 +352,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I); `src/stages/s12b_sql_retrieval.py` re-exporting soft-delete, intent, table_router, schema_retrieval, and prompt_builder symbols (Phase I).
 - **Issues Found**: None.
 - **Next Step ID**: F6
+
+---
+
+## Step F6 Report: SQL Generation, Execution Glue, and Repair Calls
+- **Step ID**: F6
+- **Commits**: F6
+- **Files Changed**: `src/sql/generation.py`, `src/stages/s12b_sql_retrieval.py`, `src/sql/prompt_builder.py`, `tests/test_sql_generation.py`.
+- **What Changed**: Extracted SQL generation, execution retry loops, and repair calls from `s12b_sql_retrieval.py` into new module `src/sql/generation.py`. Moved `generate_sql` (LLM prompt invocation, CoT separation, AST syntax validation, join complexity check, soft-delete enforcement, compressed prompt retry on budget limits), `execute_with_retry` (full retry loop with column/alias/semantic validation, execution, empty result retry, confidence scoring, pattern learning, markdown formatting), `execute_with_delta_repair` (targeted Delta Repair loop for AST safety, column, alias, semantic, empty result, and execution errors), AST safety verification (`is_safe_read_query`, `UnsafeQueryError`, `DANGEROUS_FUNCTIONS`), parsing/formatting helpers (`unwrap_sql`, `extract_cot_and_sql`, `format_schema_rows`, `format_fk_rows`, `format_rows_as_markdown`, `filter_display_rows`, `sanitize_rows`, `is_all_null`, `is_aggregate_over_zero_rows`, `extract_table_names`), and `fetch_sqlite_foreign_keys`. Re-exported all generation symbols, helpers, and caches in `s12b_sql_retrieval.py`, delegating `SQLRetriever._generate_sql` to `generate_sql`, `_is_safe_read_query` to `is_safe_read_query`, and execution handling to `execute_with_retry` and `execute_with_delta_repair`. Added 8 comprehensive unit tests in `tests/test_sql_generation.py`.
+- **Checks a-g**: a-g all passed; pytest: 698 passed, 18 skipped, 8 deselected, 1 xfailed (+8 passed vs 690 baseline); ruff clean; compileall clean; import src.main ok; zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I); `src/stages/s12b_sql_retrieval.py` re-exporting soft-delete, intent, table_router, schema_retrieval, prompt_builder, and generation symbols (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: F7
+
