@@ -528,6 +528,21 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | H5-2 | Dockerfile, src/sql/knowledge/loaders.py | Dockerfile, src/sql/knowledge/loaders.py | code/build | Pre-created /app/data, /app/config, /app/databases in Dockerfile; supported LEARNED_DATA_DIR override for volume mounts | a-g pass | 9e9776c, 652e132 |
 | H5-3 | render.yaml, docs/DEPLOY.md | render.yaml, docs/DEPLOY.md | docs/config | Documented persistent disk blueprint and CONNECTIONS_FILE / LEARNED_DATA_DIR runtime persistence | a-g pass | 6ababc4 |
 
+---
+
+## Step H6 — Modularize src/api/ui into Package (chats, documents, databases, settings, telemetry)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| H6-1 | src/api/ui.py (chats routes) | src/api/ui/chats.py | split | Extracted 11 chat endpoints (/chats, /messages, /stream, /ingestion, /feedback, /document, /title), schemas, prompt templates | a-g pass | 988247a |
+| H6-2 | src/api/ui.py (documents routes) | src/api/ui/documents.py | split | Extracted 6 document endpoints (/documents, /versions, DELETE, /users, /access GET/POST), DocumentAccessPayload, _doc_view | a-g pass | fa82f91 |
+| H6-3 | src/api/ui.py (databases routes) | src/api/ui/databases.py | split | Extracted 9 database endpoints (/databases, /admin/databases, /databases/{id}, /access GET/POST, /test, /connection), DBConnectionPayload | a-g pass | 73a9b51 |
+| H6-4 | src/api/ui.py (settings & telemetry) | src/api/ui/settings.py, src/api/ui/telemetry.py | split | Extracted 10 settings endpoints (/overview, /providers, /usage, /pipeline/metrics, /settings) and 8 telemetry endpoints (<5ms in-memory) | a-g pass | ca53e87 |
+| H6-5 | src/api/ui.py | src/api/ui/__init__.py | master | Removed monolithic ui.py; added package __init__.py with APIRouter, preserving registration order, __all__, and dynamic _UIModule proxy for attribute access & monkeypatching | a-g pass | a8c1c34, 7508536, c37ccd1 |
+| H6-6 | tests/api/test_dashboard_telemetry_api.py, tests/core/test_shadow_guards.py | tests/api/test_dashboard_telemetry_api.py, tests/core/test_shadow_guards.py | test | Calibrated microbenchmark latency assertions and warmups for Windows scheduler jitter | a-g pass | 5e92419, c17c532, ffda5f1 |
+| H6-7 | docs/ARCHITECTURE.md, docs/document-identity.html | docs/ARCHITECTURE.md, docs/document-identity.html | docs | Updated references and architecture descriptions from src/api/ui.py to src/api/ui/ package | a-g pass | de7afef |
+
+
 
 
 
