@@ -471,6 +471,31 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: H2
 
+---
 
-
-
+## Step H2 Report: Tests Mirror Src Structure
+- **Step ID**: H2
+- **Commits**: `feeba3a` (sub-move 1: sql tests), `1338266` (sub-move 2: rag tests), `6daf4e8` (sub-move 3: core tests), `00b4ddd` (sub-move 4: api tests), `c42c3e3` (sub-move 5: config, CI, docs)
+- **Files Changed**:
+  - `tests/sql/`: 35 SQL tests moved into `tests/sql/`, created `tests/sql/__init__.py`, updated relative paths to `golden/` and `PROJECT_ROOT` in `test_db_config_file.py`, `test_delta_repair_live.py`, `test_delta_repair_prompt.py`, `test_schema_budget.py`, `test_schema_compactor.py`, `test_sql_safety.py`.
+  - `tests/rag/`: 23 RAG tests moved into `tests/rag/`, created `tests/rag/__init__.py`.
+  - `tests/core/`: 23 Core tests moved into `tests/core/`, created `tests/core/__init__.py`.
+  - `tests/api/`: 5 API tests moved into `tests/api/`, created `tests/api/__init__.py`.
+  - Retained at root: `tests/conftest.py` (preserving session environment setup and pytest discovery), `tests/__init__.py`, `tests/golden/`.
+  - Configuration & CI: `pyproject.toml` (`testpaths = ["tests/sql", "tests/rag", "tests/core", "tests/api"]`), `.github/workflows/ci.yml` (added `--ignore=tests/rag/test_local_qdrant_integration.py` to unit tests job, updated Qdrant test target to `tests/rag/test_local_qdrant_integration.py`).
+  - Documentation: `README.md` (directory tree, local verification, test commands), `docs/sql_pipeline_enhancements.md`.
+  - Tracking: `docs/refactor/PATH_CHANGES.md`, `docs/refactor/PROGRESS.md`.
+- **What Changed**:
+  - Reorganized all 86 test files into domain packages mirroring `src/`:
+    - `tests/sql/`: 35 test files covering dialects, connectors, SQL safety, context, registry, schema RAG, generation, Delta repair, routing, fast path, soft delete, and query classification.
+    - `tests/rag/`: 23 test files covering document ingestion stages, vector store, hybrid retrieval, citations, near-duplicate suppression, Qdrant integration, and pipeline integration suites.
+    - `tests/core/`: 23 test files covering provider clients, rate limiters, circuit breakers, file locking, path security, telemetry, trace spans, refactor step guards, and golden benchmark suites.
+    - `tests/api/`: 5 test files covering FastAPI routes, auth sessions, chat titling, dashboard telemetry API, and multi-db query routing.
+    - `tests/golden/` stays at `tests/golden` intact.
+  - Retained `tests/conftest.py` at the root of `tests/`, ensuring session-wide environment variable defaults (`ALLOW_HEADER_AUTH=1`, `SESSION_STORE_FILE`, `DB_CONFIG_FILE`) are loaded automatically for all test packages.
+  - Updated `pyproject.toml` testpaths and verified collection (769 tests collected across the 4 packages).
+  - Updated `.github/workflows/ci.yml` pytest command lines for both the general suite and Qdrant integration.
+- **Checks a-g**: a-g all passed; pytest: 742 passed, 14 skipped, 8 deselected, 1 xfailed (matching pre-H1 and pre-H2 baselines); ruff clean; compileall clean; import src.main ok; zero drift; offline eval 163/163 tables verified; health/overview 200 OK.
+- **Shims Left**: All previous shims remain intact.
+- **Issues Found**: None.
+- **Next Step ID**: H3

@@ -495,7 +495,7 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | H2-2 | tests/test_*.py (23 RAG files) | tests/rag/ | move | 23 RAG tests moved to tests/rag/ | a-g pass | 1338266 |
 | H2-3 | tests/test_*.py (23 Core files) | tests/core/ | move | 23 Core tests moved to tests/core/ | a-g pass | 6daf4e8 |
 | H2-4 | tests/test_*.py (5 API files) | tests/api/ | move | 5 API tests moved to tests/api/ | a-g pass | 00b4ddd |
-| H2-5 | pyproject.toml, CI, docs | pyproject.toml, CI, docs | config | Updated testpaths, CI pytest lines (--ignore=tests/golden, --ignore=tests/rag/test_local_qdrant_integration.py), README.md, docs | a-g pass | sub-move 5 |
+| H2-5 | pyproject.toml, CI, docs | pyproject.toml, CI, docs | config | Updated testpaths, CI pytest lines (--ignore=tests/golden, --ignore=tests/rag/test_local_qdrant_integration.py), README.md, docs | a-g pass | c42c3e3 |
 
 
 

@@ -39,7 +39,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | G5 | Move rag stages, retrieval, ingestion, schema_ingestion | 98966bc | 735 passed |
 | [x] | G6 | Learned data per database | a129765 | 742 passed |
 | [x] | H1 | scripts/ reorganized | 59ab567, 0f9f882, 4b7b818, 9098c57, c843cb9 | 742 passed |
-| [ ] | H2 | tests/ mirror src | | |
+| [x] | H2 | tests/ mirror src | feeba3a, 1338266, 6daf4e8, 00b4ddd, c42c3e3 | 742 passed |
 | [ ] | H3 | evals into databases/erp_main/evals | | |
 | [ ] | H4 | docs reorganized | | |
 | [ ] | H5 | Docker/CI/render verified | | |
