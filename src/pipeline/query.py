@@ -28,7 +28,7 @@ from src.stages.s12_s13_s14_retrieval import (
 from src.sql.context import DEFAULT_DB_ID
 from src.sql.knowledge.loaders import validate_db_id
 from src.stages.s12b_sql_retrieval import SQLRetriever
-from src.utils.query_classifier import QueryType, classify_query
+from src.sql.query_classifier import QueryType, classify_query
 from src.sql.semantic_cache import get_semantic_cache
 from src.sql.safety.sql_privacy import sanitize_assistant_turn
 from src.utils.query_budget import get_or_create_budget_controller
@@ -813,7 +813,7 @@ def _is_document_listing_query(question: str) -> bool:
 
 def _build_document_list_answer(user_id: str | None = None) -> str:
     """Build a human-friendly answer from the ingestion registry."""
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
     import datetime
 
     registry = IngestionRegistry()
@@ -883,7 +883,7 @@ def _cache_acl_signature(user_id: str | None) -> str:
         return "noauth"
     if user_id in ("*", "all", "admin"):
         return "admin"
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
 
     ids = sorted(e["document_id"] for e in IngestionRegistry().get_active(user_id=user_id))
     return f"{user_id}:{hashlib.sha1(','.join(ids).encode()).hexdigest()[:12]}"

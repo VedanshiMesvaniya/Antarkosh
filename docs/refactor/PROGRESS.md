@@ -35,7 +35,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | G1 | Move unused and single-importer modules | G1 | 710 passed |
 | [x] | G2 | Move 3-4 importer modules | 01a7a7f | 714 passed |
 | [x] | G3 | Move 5 importer modules | 05e1792 | 720 passed |
-| [ ] | G4 | Move sql_safety, query_classifier, ingestion_registry | | |
+| [x] | G4 | Move sql_safety, query_classifier, ingestion_registry | 82cc769 | 727 passed |
 | [ ] | G5 | Move rag stages, retrieval, ingestion, schema_ingestion | | |
 | [ ] | G6 | Learned data per database | | |
 | [ ] | H1 | scripts/ reorganized | | |
@@ -78,6 +78,9 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 - `src/utils/schema_token_estimator.py` re-exporting `estimate_schema_tokens` from `src.sql.schema_token_estimator` (removed in Phase I)
 - `src/utils/failure_capture.py` re-exporting `DEFAULT_FAILURE_LOG_FILE`, `capture_sql_failure` from `src.sql.learning.failure_capture` (removed in Phase I)
 - `src/core/metadata_store.py` re-exporting `MetadataBackend`, `JsonMetadataBackend`, `QdrantMetadataBackend`, `create_metadata_backend`, `migrate_registry` from `src.rag.metadata_store` (removed in Phase I)
+- `src/utils/sql_safety.py` re-exporting `validate_sql_safety`, `is_destructive_sql`, `check_cartesian_explosion`, `check_dangerous_patterns`, `DANGEROUS_FUNCTIONS` from `src.sql.safety.sql_safety` (removed in Phase I)
+- `src/utils/query_classifier.py` re-exporting `QueryType`, `TTL_BY_QUERY_TYPE`, `classify_query`, `classify_query_intent` from `src.sql.query_classifier` (removed in Phase I)
+- `src/core/ingestion_registry.py` re-exporting `IngestionRegistry`, `RegistryStatus`, `RegistryCheckResult` from `src.rag.ingestion_registry` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.

@@ -43,7 +43,7 @@ from src.sql.learning.failure_capture import capture_sql_failure
 from src.utils.feature_flags import is_feature_enabled
 from src.utils.query_budget import QueryBudgetExceededError, get_or_create_budget_controller
 from src.utils.stream_token_counter import TokenBudgetExceededError
-from src.utils.sql_safety import (
+from src.sql.safety.sql_safety import (
     DANGEROUS_FUNCTIONS as _SHARED_DANGEROUS_FUNCTIONS,
     check_dangerous_patterns,
     has_dangerous_qualified_call,

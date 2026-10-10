@@ -395,3 +395,17 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | G3-10 | src/core/metadata_store.py | src/core/metadata_store.py | shim | Re-exports MetadataBackend, JsonMetadataBackend, QdrantMetadataBackend, create_metadata_backend, migrate_registry | a-g pass | 05e1792 |
 | G3-11 | (new) | tests/test_g3_modules.py | test | Tests verifying object identity for all 5 shims and smoke testing moved modules | a-g pass | 05e1792 |
 
+---
+
+## Step G4 — Core Safety, Query Classifier, and Ingestion Registry Moves (sql_safety, query_classifier, ingestion_registry)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| G4-1 | src/utils/sql_safety.py | src/sql/safety/sql_safety.py | move | Moved SQL safety layer and AST validation engine; organized per-engine dangerous functions | a-g pass | 82cc769 |
+| G4-2 | src/utils/sql_safety.py | src/utils/sql_safety.py | shim | Re-exports validate_sql_safety, is_destructive_sql, DANGEROUS_FUNCTIONS, etc. | a-g pass | 82cc769 |
+| G4-3 | src/utils/query_classifier.py | src/sql/query_classifier.py | move | Moved deterministic query classifier, QueryType enum, and legacy intent classifier | a-g pass | 82cc769 |
+| G4-4 | src/utils/query_classifier.py | src/utils/query_classifier.py | shim | Re-exports QueryType, TTL_BY_QUERY_TYPE, classify_query, classify_query_intent | a-g pass | 82cc769 |
+| G4-5 | src/core/ingestion_registry.py | src/rag/ingestion_registry.py | move | Moved document ingestion registry and content-addressed lineage tracker | a-g pass | 82cc769 |
+| G4-6 | src/core/ingestion_registry.py | src/core/ingestion_registry.py | shim | Re-exports IngestionRegistry, RegistryStatus, RegistryCheckResult | a-g pass | 82cc769 |
+| G4-7 | (new) | tests/test_g4_modules.py | test | Tests verifying object identity for all 3 shims and smoke testing moved modules | a-g pass | 82cc769 |
+

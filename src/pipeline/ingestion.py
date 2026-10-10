@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, AsyncGenerator
 
 from src.core.config import settings
-from src.core.ingestion_registry import IngestionRegistry, RegistryStatus
+from src.rag.ingestion_registry import IngestionRegistry, RegistryStatus
 from src.core.provider_client import ProviderRouter, build_ingestion_router
 from src.core.rate_limiter import get_shared_rate_limiter
 from src.models.schemas import Chunk, ParsedDocument

@@ -100,7 +100,7 @@ async def run_readonly_query(
         tree = sqlglot.parse_one(sql, read=profile.sqlglot_dialect)
 
         # Check Cartesian explosion risk (comma-joins without JOIN / CROSS JOIN)
-        from src.utils.sql_safety import check_cartesian_explosion
+        from src.sql.safety.sql_safety import check_cartesian_explosion
         is_cartesian, cart_reason = check_cartesian_explosion(sql, dialect=profile.sqlglot_dialect)
         effective_cap = min(row_cap, 100) if is_cartesian else row_cap
         if is_cartesian:

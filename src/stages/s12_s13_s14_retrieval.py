@@ -27,7 +27,7 @@ from src.sql.fast_path import (
     format_list_fast_path,
 )
 from src.utils.feature_flags import is_feature_enabled
-from src.utils.query_classifier import (
+from src.sql.query_classifier import (
     AGGREGATE_QUERY,
     EXPLANATION_QUERY,
     LIST_QUERY,
@@ -127,7 +127,7 @@ class Retriever:
             # chunks uploaded by other users stay visible to admin.
             effective_filters = {k: v for k, v in (filters or {}).items() if k != "user_id"}
         elif user_id and user_id not in ("*", "all"):
-            from src.core.ingestion_registry import IngestionRegistry
+            from src.rag.ingestion_registry import IngestionRegistry
             registry = IngestionRegistry()
             active_docs = registry.get_active()
             allowed_docs = [

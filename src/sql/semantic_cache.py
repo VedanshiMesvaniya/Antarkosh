@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass, field
 
 from src.models.schemas import QueryResult
-from src.utils.query_classifier import TTL_BY_QUERY_TYPE, QueryType
+from src.sql.query_classifier import TTL_BY_QUERY_TYPE, QueryType
 
 logger = logging.getLogger(__name__)
 

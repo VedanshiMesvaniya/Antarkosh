@@ -12,7 +12,7 @@ import os
 import re
 from typing import Any
 
-from src.utils.query_classifier import QueryType, classify_query
+from src.sql.query_classifier import QueryType, classify_query
 
 logger = logging.getLogger(__name__)
 

@@ -214,7 +214,7 @@ async def replace_document_stream(
     Streams the same per-stage progress as ``/upload/stream``; the version
     cutover (old → new) happens once the new content is fully indexed.
     """
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
 
     if IngestionRegistry().get_by_document_id(old_document_id) is None:
         raise HTTPException(status_code=404, detail="Document to replace not found")

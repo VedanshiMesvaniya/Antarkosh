@@ -409,6 +409,17 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **What Changed**: Moved 5 modules (5 importers) to their target subpackages: `schema_compactor` -> `src/sql/schema_compactor.py`, `schema_budget` -> `src/sql/schema_budget.py`, `schema_token_estimator` -> `src/sql/schema_token_estimator.py`, `failure_capture` -> `src/sql/learning/failure_capture.py`, `metadata_store` -> `src/rag/metadata_store.py`. Created package `src/rag`. Left complete backward-compatibility shims at all 5 original locations preserving public and underscore names. Added monkeypatch compatibility resolver for `DEFAULT_FAILURE_LOG_FILE`. Updated consumers to point to new canonical modules. Added 6 unit tests in `tests/test_g3_modules.py` covering object identity across all 5 shims and smoke checks for moved modules.
 - **Checks a-g**: a-g all passed; pytest: 720 passed, 18 skipped, 8 deselected, 1 xfailed (+6 passed vs 714 baseline); ruff clean; compileall clean; import src.main ok; zero drift (both old and new validator paths pass); offline eval 19/19 (100%) golden cases pass; health/overview 200 OK.
 - **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim (Phase I); `src/stages/s12b_sql_retrieval.py` re-export shim (Phase I); 9 G1 shims (Phase I); 7 G2 shims (Phase I); 5 G3 shims (`schema_compactor`, `schema_budget`, `schema_token_estimator`, `failure_capture`, `metadata_store`) (Phase I).
-- **Issues Found**: None.
 - **Next Step ID**: G4
+
+---
+
+## Step G4 Report: Core Safety, Query Classifier, and Ingestion Registry Moves
+- **Step ID**: G4
+- **Commits**: 82cc769
+- **Files Changed**: `src/sql/safety/sql_safety.py`, `src/sql/query_classifier.py`, `src/rag/ingestion_registry.py`, 3 shims (`src/utils/sql_safety.py`, `src/utils/query_classifier.py`, `src/core/ingestion_registry.py`), consumers (`src/core/db_client.py`, `src/sql/generation.py`, `src/sql/fast_path.py`, `src/sql/semantic_cache.py`, `src/pipeline/query.py`, `src/stages/s12_s13_s14_retrieval.py`, `src/pipeline/ingestion.py`, `src/api/upload.py`, `src/api/ui.py`, `src/utils/__init__.py`), `tests/test_g4_modules.py`.
+- **What Changed**: Moved 3 core modules to their domain subpackages: `sql_safety` -> `src/sql/safety/sql_safety.py` (organized dangerous function lists per engine: SQLite, MySQL, PostgreSQL, MSSQL, Oracle, with identical union `DANGEROUS_FUNCTIONS` and engine-specific dispatcher), `query_classifier` -> `src/sql/query_classifier.py`, `ingestion_registry` -> `src/rag/ingestion_registry.py`. Left complete backward-compatibility shims at all 3 original locations preserving public and underscore names. Updated consumers in `src/` to point to new canonical modules. Added 7 unit tests in `tests/test_g4_modules.py` covering object identity across all 3 shims and smoke checks for moved modules.
+- **Checks a-g**: a-g all passed; pytest: 727 passed, 18 skipped, 8 deselected, 1 xfailed (+7 passed vs 720 baseline); ruff clean; compileall clean; import src.main ok; zero drift (both old and new validator paths pass); offline eval 19/19 (100%) golden cases pass; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim (Phase I); `src/stages/s12b_sql_retrieval.py` re-export shim (Phase I); 9 G1 shims (Phase I); 7 G2 shims (Phase I); 5 G3 shims (Phase I); 3 G4 shims (`sql_safety`, `query_classifier`, `ingestion_registry`) (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: G5
 

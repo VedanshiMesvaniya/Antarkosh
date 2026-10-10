@@ -31,7 +31,7 @@ from src.utils.query_budget import (
     get_or_create_budget_controller,
     set_current_budget_controller,
 )
-from src.utils.query_classifier import (
+from src.sql.query_classifier import (
     AGGREGATE_QUERY,
     EXPLANATION_QUERY,
     LIST_QUERY,
@@ -41,7 +41,7 @@ from src.utils.retry_diagnostics import RetryDiagnostic
 from src.sql.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
 from src.sql.schema_compactor import AUDIT_COLUMNS, compact_ddl, extract_join_hints
 from src.sql.schema_token_estimator import estimate_schema_tokens
-from src.utils.sql_safety import (
+from src.sql.safety.sql_safety import (
     check_dangerous_patterns,
     is_destructive_sql,
     parse_sql,

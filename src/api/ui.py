@@ -659,7 +659,7 @@ async def get_documents(current_user: str = Depends(get_current_user)) -> list[d
     of each lineage is listed; superseded versions are hidden here but remain
     queryable via ``/documents/{id}/versions``.
     """
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
 
     registry = IngestionRegistry()
     all_entries = list(registry.get_all().values())
@@ -691,7 +691,7 @@ async def get_document_versions(
     current_user: str = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """Return the full version history of a document's lineage, oldest first."""
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
 
     registry = IngestionRegistry()
     entry = registry.get_by_document_id(document_id)
@@ -717,7 +717,7 @@ async def delete_document(
     current_user: str = Depends(require_admin),
 ) -> dict[str, Any]:
     """Delete a document version from both the vector store and the registry (admin only)."""
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
     from src.stages.s11_vector_store import QdrantStore
 
     registry = IngestionRegistry()
@@ -756,7 +756,7 @@ async def get_document_access(
     _admin: str = Depends(require_admin),
 ) -> dict[str, Any]:
     """Get the list of allowed users for a document (admin only)."""
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
 
     registry = IngestionRegistry()
     entry = registry.get_by_document_id(document_id)
@@ -775,7 +775,7 @@ async def update_document_access(
     _admin: str = Depends(require_admin),
 ) -> dict[str, Any]:
     """Update user access for a document (admin only)."""
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
 
     registry = IngestionRegistry()
     ok = registry.update_document_access(document_id, body.allowed_users)
