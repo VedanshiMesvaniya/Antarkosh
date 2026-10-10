@@ -120,7 +120,7 @@ class SQLRetriever:
         self._dialect = get_dialect_profile(engine)
         self._glossary = load_glossary(self.db_id)
         self._relationships = load_relationships(self.db_id)
-        self._pattern_learner = PatternLearner()
+        self._pattern_learner = PatternLearner(db_id=self.db_id)
         self._confidence_scorer = ConfidenceScorer()
         self._result_validator = ResultValidator(get_raw_behavioral_atlas(self.db_id) or {})
         self.last_infra_error: str | None = None

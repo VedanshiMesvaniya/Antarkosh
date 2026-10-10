@@ -446,4 +446,18 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | G5-29 | src/pipeline/query_pipeline.py | (deleted) | delete | Removed compatibility alias after updating sole importer in run_full_eval.py | a-g pass | 98966bc |
 | G5-30 | (new) | tests/test_g5_modules.py | test | Tests verifying object identity for all 14 shims, helpers, and alias removal | a-g pass | 98966bc |
 
+---
+
+## Step G6 — Learned Data Per Database (pattern_learner, schema_monitor, failure_capture)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| G6-1 | src/sql/knowledge/loaders.py | src/sql/knowledge/loaders.py | code | Added get_learned_path and resolve_learned_read_path helpers with folder auto-creation on write | a-g pass | a129765 |
+| G6-2 | src/sql/learning/pattern_learner.py | src/sql/learning/pattern_learner.py | code | Routed learned patterns and metrics writes to databases/<db_id>/learned/ with fallback to data/ | a-g pass | a129765 |
+| G6-3 | src/sql/learning/schema_monitor.py | src/sql/learning/schema_monitor.py | code | Routed drift log writes to databases/<db_id>/learned/ with fallback to data/ | a-g pass | a129765 |
+| G6-4 | src/sql/learning/failure_capture.py | src/sql/learning/failure_capture.py | code | Routed failure logs to databases/<db_id>/learned/ with fallback to data/ and folder auto-creation | a-g pass | a129765 |
+| G6-5 | src/sql/pipeline.py | src/sql/pipeline.py | code | Passed self.db_id to PatternLearner in SQLRetriever | a-g pass | a129765 |
+| G6-6 | (new) | tests/test_g6_modules.py | test | Tests verifying folder auto-creation on write, per-database routing, and fallback behavior | a-g pass | a129765 |
+
+
 

@@ -3,11 +3,18 @@ Dynamic Pattern Learning Engine
 Captures successful reflexion fixes, abstracts them into patterns, and merges with static library.
 """
 import json
-import os
 import logging
-from typing import Dict, List, Any, Optional
+import os
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from src.sql.knowledge.loaders import (
+    DEFAULT_DB_ID,
+    get_learned_path,
+    resolve_learned_read_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,50 +40,91 @@ class LearnedPattern:
 
 class PatternLearner:
     """Manages dynamic learning of SQL patterns from successful reflexion fixes."""
-    
-    def __init__(self, static_patterns_path: str = "config/sql_pattern_library.json"):
+
+    def __init__(
+        self,
+        static_patterns_path: str = "config/sql_pattern_library.json",
+        db_id: str = DEFAULT_DB_ID,
+        learned_patterns_path: str | Path | None = None,
+        metrics_path: str | Path | None = None,
+    ):
         self.static_patterns_path = static_patterns_path
+        self.db_id = db_id
+        self._custom_learned_patterns_path = Path(learned_patterns_path) if learned_patterns_path else None
+        self._custom_metrics_path = Path(metrics_path) if metrics_path else None
         self.learned_patterns: List[LearnedPattern] = []
         self.metrics = {
             "total_learned": 0,
             "total_promoted": 0,
             "success_rate": 0.0,
-            "last_updated": None
+            "last_updated": None,
         }
         self._load_learned_patterns()
         self._load_metrics()
-    
+
+    @property
+    def learned_patterns_read_path(self) -> Path:
+        if self._custom_learned_patterns_path:
+            return self._custom_learned_patterns_path
+        return resolve_learned_read_path("learned_patterns.jsonl", LEARNED_PATTERNS_PATH, db_id=self.db_id)
+
+    @property
+    def learned_patterns_write_path(self) -> Path:
+        if self._custom_learned_patterns_path:
+            return self._custom_learned_patterns_path
+        return get_learned_path("learned_patterns.jsonl", db_id=self.db_id, create_dir=True)
+
+    @property
+    def metrics_read_path(self) -> Path:
+        if self._custom_metrics_path:
+            return self._custom_metrics_path
+        return resolve_learned_read_path("learning_metrics.json", LEARNING_METRICS_PATH, db_id=self.db_id)
+
+    @property
+    def metrics_write_path(self) -> Path:
+        if self._custom_metrics_path:
+            return self._custom_metrics_path
+        return get_learned_path("learning_metrics.json", db_id=self.db_id, create_dir=True)
+
+
     def _load_learned_patterns(self):
         """Load learned patterns from JSONL file."""
-        if not os.path.exists(LEARNED_PATTERNS_PATH):
+        read_path = self.learned_patterns_read_path
+        if not read_path.exists():
             return
-        
+
         try:
-            with open(LEARNED_PATTERNS_PATH, 'r', encoding='utf-8') as f:
+            with open(read_path, "r", encoding="utf-8") as f:
                 for line in f:
                     if line.strip():
                         data = json.loads(line)
                         self.learned_patterns.append(LearnedPattern(**data))
-            logger.info(f"Loaded {len(self.learned_patterns)} learned patterns")
+            logger.info(f"Loaded {len(self.learned_patterns)} learned patterns from {read_path}")
         except Exception as e:
-            logger.error(f"Failed to load learned patterns: {e}")
-    
+            logger.error(f"Failed to load learned patterns from {read_path}: {e}")
+
     def _load_metrics(self):
         """Load learning metrics from JSON file."""
-        if not os.path.exists(LEARNING_METRICS_PATH):
+        read_path = self.metrics_read_path
+        if not read_path.exists():
             return
-        
+
         try:
-            with open(LEARNING_METRICS_PATH, 'r', encoding='utf-8') as f:
+            with open(read_path, "r", encoding="utf-8") as f:
                 self.metrics = json.load(f)
         except Exception as e:
-            logger.error(f"Failed to load learning metrics: {e}")
-    
-    def capture_success(self, user_question: str, original_cot: str, 
-                       failed_sql: str, error_message: str, 
-                       fixed_sql: str, revised_cot: str) -> Optional[LearnedPattern]:
+            logger.error(f"Failed to load learning metrics from {read_path}: {e}")
+
+    def capture_success(
+        self,
+        user_question: str,
+        original_cot: str,
+        failed_sql: str,
+        error_message: str,
+        fixed_sql: str,
+        revised_cot: str,
+    ) -> Optional[LearnedPattern]:
         """Capture a successful reflexion fix as a learnable pattern."""
-        
         # Extract the generalizable pattern from the specific fix
         pattern = self._abstract_pattern(
             user_question=user_question,
@@ -84,23 +132,24 @@ class PatternLearner:
             failed_sql=failed_sql,
             error_message=error_message,
             fixed_sql=fixed_sql,
-            revised_cot=revised_cot
+            revised_cot=revised_cot,
         )
-        
+
         if not pattern:
             return None
-        
+
         # Save the pattern
         self.learned_patterns.append(pattern)
-        self._append_to_jsonl(asdict(pattern), LEARNED_PATTERNS_PATH)
-        
+        self._append_to_jsonl(asdict(pattern), str(self.learned_patterns_write_path))
+
         # Update metrics
         self.metrics["total_learned"] += 1
         self.metrics["last_updated"] = datetime.now().isoformat()
         self._save_metrics()
-        
+
         logger.info(f"Captured new pattern: {pattern.pattern_id}")
         return pattern
+
     
     def _abstract_pattern(self, user_question: str, original_cot: str,
                          failed_sql: str, error_message: str,
@@ -208,9 +257,11 @@ class PatternLearner:
     
     def _save_metrics(self):
         """Save learning metrics to JSON file."""
-        os.makedirs(os.path.dirname(LEARNING_METRICS_PATH), exist_ok=True)
-        with open(LEARNING_METRICS_PATH, 'w', encoding='utf-8') as f:
+        write_path = self.metrics_write_path
+        write_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(write_path, "w", encoding="utf-8") as f:
             json.dump(self.metrics, f, indent=2)
+
     
     def get_patterns_for_query(self, user_question: str, top_k: int = 2) -> List[LearnedPattern]:
         """Retrieve relevant learned patterns for a query."""

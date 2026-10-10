@@ -435,4 +435,17 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: G6
 
+---
+
+## Step G6 Report: Learned Data Per Database
+- **Step ID**: G6
+- **Commits**: a129765
+- **Files Changed**: `src/sql/knowledge/loaders.py`, `src/sql/knowledge/__init__.py`, `src/sql/learning/pattern_learner.py`, `src/sql/learning/schema_monitor.py`, `src/sql/learning/failure_capture.py`, `src/sql/pipeline.py`, `tests/test_g6_modules.py`.
+- **What Changed**: Configured machine-learned data per database: `pattern_learner`, `schema_monitor`, and `failure_capture` now route output writes to `databases/<db_id>/learned/` through central helpers `get_learned_path(filename, db_id, create_dir=True)` and `resolve_learned_read_path(filename, fallback_path, db_id)` in `src/sql/knowledge/loaders.py`. Crucially, `get_learned_path` automatically creates `databases/<db_id>/learned/` on write (guaranteeing runtime safety in containers where `.dockerignore` excludes `databases/*/learned/*`). Preserved backward-compatible fallback reads from legacy global files in `data/` (`learned_patterns.jsonl`, `learning_metrics.json`, `schema_drift_log.jsonl`, `failed_queries.jsonl`). Ensured absent static files (`sql_pattern_library.json`, `schema_atlas.json`, `experiments.yaml`) are NOT created. Passed `db_id=self.db_id` from `SQLRetriever` to `PatternLearner`. Added 7 unit tests in `tests/test_g6_modules.py` covering directory auto-creation on write, input validation/traversal prevention, fallback resolution, per-database writes for all 3 learning engines, and object identity.
+- **Checks a-g**: a-g all passed; pytest: 742 passed, 14 skipped, 8 deselected, 1 xfailed (+7 passed vs 735 baseline); ruff clean; compileall clean; import src.main ok; zero drift (both old and new validator paths pass); offline eval 19/19 (100%) golden cases pass; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim (Phase I); `src/stages/s12b_sql_retrieval.py` re-export shim (Phase I); 9 G1 shims (Phase I); 7 G2 shims (Phase I); 5 G3 shims (Phase I); 3 G4 shims (Phase I); 14 G5 shims (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: H1
+
+
 

@@ -4,12 +4,17 @@ from src.sql.knowledge.loaders import (
     DEFAULT_DB_ID,
     get_database_knowledge_path,
     get_knowledge_path,
+    get_learned_path,
     load_knowledge_json,
+    resolve_learned_read_path,
 )
 
 __all__ = [
     "DEFAULT_DB_ID",
     "get_database_knowledge_path",
     "get_knowledge_path",
+    "get_learned_path",
     "load_knowledge_json",
+    "resolve_learned_read_path",
 ]
+

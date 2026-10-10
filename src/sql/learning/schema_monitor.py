@@ -3,11 +3,18 @@ Schema Drift Detection Engine
 Monitors database schema changes and auto-heals the schema atlas.
 """
 import json
-import os
 import logging
-from typing import Dict, List, Any, Optional, Tuple
-from datetime import datetime
+import os
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from src.sql.knowledge.loaders import (
+    DEFAULT_DB_ID,
+    get_learned_path,
+    resolve_learned_read_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +37,34 @@ class SchemaDrift:
 
 class SchemaMonitor:
     """Monitors database schema for drift and triggers auto-healing."""
-    
-    def __init__(self, db_client: Any, atlas_path: str = SCHEMA_ATLAS_PATH):
+
+    def __init__(
+        self,
+        db_client: Any,
+        atlas_path: str = SCHEMA_ATLAS_PATH,
+        db_id: str = DEFAULT_DB_ID,
+        drift_log_path: str | Path | None = None,
+    ):
         self.db_client = db_client
         self.atlas_path = atlas_path
+        self.db_id = db_id
+        self._custom_drift_log_path = Path(drift_log_path) if drift_log_path else None
         self.cached_atlas: Dict[str, Any] = {}
         self._load_cached_atlas()
+
+    @property
+    def drift_log_read_path(self) -> Path:
+        if self._custom_drift_log_path:
+            return self._custom_drift_log_path
+        return resolve_learned_read_path("schema_drift_log.jsonl", DRIFT_LOG_PATH, db_id=self.db_id)
+
+    @property
+    def drift_log_write_path(self) -> Path:
+        if self._custom_drift_log_path:
+            return self._custom_drift_log_path
+        return get_learned_path("schema_drift_log.jsonl", db_id=self.db_id, create_dir=True)
+
+
     
     def _load_cached_atlas(self):
         """Load the cached schema atlas."""
@@ -217,8 +246,9 @@ class SchemaMonitor:
     def _log_drift(self, drift: SchemaDrift):
         """Log drift to JSONL file."""
         try:
-            os.makedirs(os.path.dirname(DRIFT_LOG_PATH), exist_ok=True)
-            with open(DRIFT_LOG_PATH, 'a', encoding='utf-8') as f:
+            write_path = self.drift_log_write_path
+            write_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(write_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps({
                     "drift_id": drift.drift_id,
                     "drift_type": drift.drift_type,
@@ -230,6 +260,7 @@ class SchemaMonitor:
                 }) + '\n')
         except Exception as e:
             logger.error(f"Failed to log drift: {e}")
+
     
     async def _fetch_live_schema(self) -> Dict[str, Any]:
         """Fetch current schema from database."""

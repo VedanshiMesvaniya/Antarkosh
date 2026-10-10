@@ -113,3 +113,61 @@ def load_knowledge_json(kind: str, db_id: str = DEFAULT_DB_ID) -> Any:
     except (json.JSONDecodeError, OSError) as e:
         logger.warning("Failed to load knowledge JSON from %s: %s", path, e)
         return {}
+
+
+def get_learned_path(
+    filename: str,
+    db_id: str = DEFAULT_DB_ID,
+    create_dir: bool = True,
+    databases_dir: Path | None = None,
+) -> Path:
+    """Return Path to a learned file in databases/<db_id>/learned/<filename>.
+
+    If create_dir is True (default for write operations), the learned/
+    directory is created if it does not already exist.
+    """
+    validate_db_id(db_id)
+    rel_p = Path(filename)
+    if rel_p.is_absolute() or ".." in rel_p.parts:
+        raise ValueError(f"Invalid filename (traversal/absolute): {filename!r}")
+
+    base_dir = databases_dir or DATABASES_DIR
+    target_dir = base_dir / db_id / "learned"
+    try:
+        target_dir.resolve().relative_to(base_dir.resolve())
+    except ValueError:
+        raise ValueError(f"Path traversal outside base directory: {filename!r}")
+
+    if create_dir:
+        target_dir.mkdir(parents=True, exist_ok=True)
+    return target_dir / rel_p
+
+
+def resolve_learned_read_path(
+    filename: str,
+    fallback_path: Path | str,
+    db_id: str = DEFAULT_DB_ID,
+    databases_dir: Path | None = None,
+) -> Path:
+    """Resolve learned file path for reading: prefer databases/<db_id>/learned/<filename>,
+    falling back to fallback_path if the database-specific file does not exist.
+    """
+    target = get_learned_path(filename, db_id=db_id, create_dir=False, databases_dir=databases_dir)
+    if target.exists():
+        return target
+
+    aliases = {
+        "learned_patterns.jsonl": "patterns.jsonl",
+        "patterns.jsonl": "learned_patterns.jsonl",
+        "learning_metrics.json": "metrics.json",
+        "metrics.json": "learning_metrics.json",
+        "schema_drift_log.jsonl": "drift_log.jsonl",
+        "drift_log.jsonl": "schema_drift_log.jsonl",
+    }
+    if filename in aliases:
+        alias_target = get_learned_path(aliases[filename], db_id=db_id, create_dir=False, databases_dir=databases_dir)
+        if alias_target.exists():
+            return alias_target
+
+    return Path(fallback_path)
+

@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 735 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 742 passed, 14 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -37,7 +37,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | G3 | Move 5 importer modules | 05e1792 | 720 passed |
 | [x] | G4 | Move sql_safety, query_classifier, ingestion_registry | 82cc769 | 727 passed |
 | [x] | G5 | Move rag stages, retrieval, ingestion, schema_ingestion | 98966bc | 735 passed |
-| [ ] | G6 | Learned data per database | | |
+| [x] | G6 | Learned data per database | a129765 | 742 passed |
 | [ ] | H1 | scripts/ reorganized | | |
 | [ ] | H2 | tests/ mirror src | | |
 | [ ] | H3 | evals into databases/erp_main/evals | | |
