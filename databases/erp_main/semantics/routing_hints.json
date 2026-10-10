@@ -1,1 +1,122 @@
-{}
+{
+  "fallback_rules": [
+    {
+      "keywords": ["order", "sales", "bought", "buying", "spent", "spending", "buyer", "customer", "client", "revenue", "turnover"],
+      "tables": ["sales_order", "sales_order_products", "party", "product", "financial_year"]
+    },
+    {
+      "keywords": ["purchase", "supplier", "vendor", "procure", "inward", "raw material"],
+      "tables": ["purchase", "purchase_products", "party", "product", "financial_year"]
+    },
+    {
+      "keywords": ["stock", "inventory", "warehouse", "carton", "on hand"],
+      "tables": ["stock", "product", "product_color", "category"]
+    },
+    {
+      "keywords": ["production", "manufacture", "batch", "machine", "yield", "output", "plant", "floor", "apq"],
+      "tables": ["production", "actual_production", "machine", "product", "product_color"]
+    },
+    {
+      "keywords": ["lead", "inquiry", "inquiries", "prospect", "followup", "deal", "pipeline"],
+      "tables": ["lead", "lead_history", "users", "party"]
+    },
+    {
+      "keywords": ["proforma", "invoice", "bill", "gst", "tax", "quotation", "pi", "pi_no", "gt/"],
+      "tables": ["purchase", "party", "proforma", "quotation", "financial_year", "sales_order"]
+    },
+    {
+      "keywords": ["category", "categories"],
+      "tables": ["category", "product", "product_type"]
+    },
+    {
+      "keywords": ["po", "po_no", "po number", "po numbers"],
+      "tables": ["sales_order", "purchase", "party", "product", "financial_year"]
+    },
+    {
+      "keywords": ["balance", "account", "ledger", "credit", "debit", "opening balance", "payment", "receipt"],
+      "tables": ["party", "financial_year", "party_opening_balance", "sales_order", "receipt"]
+    }
+  ],
+  "anchor_rules": [
+    {
+      "keywords": ["order", "sales", "bought", "buying", "spent", "spending", "buyer", "customer", "client", "revenue", "turnover", "po number", "party po", "customer po", "po_no"],
+      "tables": ["sales_order", "sales_order_products", "party", "product", "financial_year"]
+    },
+    {
+      "keywords": ["purchase", "supplier", "vendor", "procure", "inward", "raw material"],
+      "tables": ["purchase", "purchase_products", "party", "product", "financial_year"]
+    },
+    {
+      "keywords": ["stock", "inventory", "warehouse", "carton", "on hand"],
+      "tables": ["stock", "product", "product_color", "category", "product_type", "sales_order", "party", "packagings", "warehouse"]
+    },
+    {
+      "keywords": ["location", "location_code", "stored", "storage", "where is", "bin", "rack"],
+      "tables": ["packagings", "warehouse", "product"]
+    },
+    {
+      "keywords": ["production", "manufacture", "batch", "machine", "yield", "output", "plant", "floor", "apq", "ppq"],
+      "tables": ["production", "actual_production", "product", "product_color", "category", "product_type", "financial_year", "machine"]
+    },
+    {
+      "keywords": ["color", "colour"],
+      "tables": ["product_color", "product", "production", "stock"]
+    },
+    {
+      "keywords": ["unit", "uom", "measurement", "unit of measure"],
+      "tables": ["unit", "product"]
+    },
+    {
+      "keywords": ["machine", "equipment"],
+      "tables": ["machine", "production", "product"]
+    },
+    {
+      "keywords": ["packaging", "packing", "carton verify"],
+      "tables": ["packagings", "production", "product", "product_color", "warehouse"]
+    },
+    {
+      "keywords": ["financial year", "fiscal year", "current financial", "fyear", "financial_year"],
+      "tables": ["financial_year"]
+    },
+    {
+      "keywords": ["finished good", "product type", "raw material"],
+      "tables": ["product_type", "product", "category"]
+    },
+    {
+      "keywords": ["lead", "inquiry", "inquiries", "prospect", "followup", "deal", "pipeline"],
+      "tables": ["lead", "lead_history", "users", "party"]
+    },
+    {
+      "keywords": ["dispatch", "delivery", "challan", "shipment", "transporter", "vehicle", "driver", "dc", "dc_no", "dc no", "dc number", "due date", "so_due_date"],
+      "tables": ["delivery_challan", "delivery_challan_products", "party", "sales_order", "financial_year"]
+    },
+    {
+      "keywords": ["invoice", "invoice count", "invoice_no", "invoices", "pi", "pi_no", "gt/"],
+      "tables": ["purchase", "party", "proforma", "financial_year", "sales_order", "stock"]
+    },
+    {
+      "keywords": ["category", "categories"],
+      "tables": ["category", "product", "product_type"]
+    },
+    {
+      "keywords": ["po", "po_no", "po number", "po numbers", "party po", "customer po"],
+      "tables": ["sales_order", "purchase", "party", "product", "financial_year"]
+    },
+    {
+      "keywords": ["proforma", "bill", "gst", "tax", "quotation"],
+      "tables": ["proforma", "quotation", "party", "financial_year"]
+    },
+    {
+      "keywords": ["balance", "account", "ledger", "credit", "debit", "opening balance", "payment", "receipt"],
+      "tables": ["party", "financial_year", "party_opening_balance", "sales_order", "receipt"]
+    },
+    {
+      "keywords": ["adjustment", "adjust", "stock-out", "stock out", "stockout", "stock-in", "stock in", "stockin"],
+      "tables": ["stock_adjustment", "product", "category", "product_color", "unit"],
+      "conditional": {
+        "keywords": ["year", "fiscal", "current", "fyear", "annual"],
+        "tables": ["financial_year"]
+      }
+    }
+  ]
+}

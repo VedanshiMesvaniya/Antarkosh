@@ -612,6 +612,7 @@ def clear_knowledge_caches(db_id: str | None = None) -> None:
     _get_raw_column_glossary.cache_clear(db_id)
     _get_raw_behavioral_atlas.cache_clear(db_id)
     _get_tables_with_soft_delete.cache_clear(db_id)
+    load_routing_hints.cache_clear(db_id)
     try:
         from src.sql.context import clear_context_cache
         clear_context_cache(db_id)
@@ -685,8 +686,17 @@ def _build_behavioral_atlas_for_query(schema_tables: set[str], query: str) -> st
 # Re-exported from src.sql.intent (extracted in Step F2)
 from src.sql.intent import extract_analytical_intent
 
+# Re-exported from src.sql.table_router (extracted in Step F3)
+from src.sql.table_router import (
+    _ROUTING_HINTS_CACHE,
+    _clear_routing_hints_cache,
+    load_routing_hints,
+    route_anchor_tables,
+    route_tables_for_query,
+)
 
-def _build_scoped_schema_fallback(full_schema: str, query: str) -> str:
+
+def _build_scoped_schema_fallback(full_schema: str, query: str, db_id: str = DEFAULT_DB_ID) -> str:
     """Build a concise, token-efficient subset of schema (max 6-8 tables) matching query intent."""
     if not full_schema:
         return ""
@@ -703,22 +713,10 @@ def _build_scoped_schema_fallback(full_schema: str, query: str) -> str:
         if t in full_ddls and t not in candidate_tables:
             candidate_tables.append(t)
     
-    domain_rules = [
-        (["order", "sales", "bought", "buying", "spent", "spending", "buyer", "customer", "client", "revenue", "turnover"], ["sales_order", "sales_order_products", "party", "product", "financial_year"]),
-        (["purchase", "supplier", "vendor", "procure", "inward", "raw material"], ["purchase", "purchase_products", "party", "product", "financial_year"]),
-        (["stock", "inventory", "warehouse", "carton", "on hand"], ["stock", "product", "product_color", "category"]),
-        (["production", "manufacture", "batch", "machine", "yield", "output", "plant", "floor", "apq"], ["production", "actual_production", "machine", "product", "product_color"]),
-        (["lead", "inquiry", "inquiries", "prospect", "followup", "deal", "pipeline"], ["lead", "lead_history", "users", "party"]),
-        (["proforma", "invoice", "bill", "gst", "tax", "quotation", "pi", "pi_no", "gt/"], ["purchase", "party", "proforma", "quotation", "financial_year", "sales_order"]),
-        (["category", "categories"], ["category", "product", "product_type"]),
-        (["po", "po_no", "po number", "po numbers"], ["sales_order", "purchase", "party", "product", "financial_year"]),
-        (["balance", "account", "ledger", "credit", "debit", "opening balance", "payment", "receipt"], ["party", "financial_year", "party_opening_balance", "sales_order", "receipt"]),
-    ]
-    for keywords, tbls in domain_rules:
-        if any(k in query_lower for k in keywords):
-            for t in tbls:
-                if t in full_ddls and t not in candidate_tables:
-                    candidate_tables.append(t)
+    domain_matched = route_tables_for_query(query_lower, db_id=db_id, section="fallback_rules")
+    for t in domain_matched:
+        if t in full_ddls and t not in candidate_tables:
+            candidate_tables.append(t)
 
     # Filter to candidate tables present in full_ddls
     valid_tables = [t for t in candidate_tables if t in full_ddls]
@@ -1675,47 +1673,7 @@ class SQLRetriever:
             glossary_text = _build_column_glossary_for_query(query)
             glossary_tables = set(re.findall(r'\b([a-zA-Z0-9_]+)\.[a-zA-Z0-9_]+', glossary_text))
 
-            query_lower = query.lower()
-            if any(k in query_lower for k in ["order", "sales", "bought", "buying", "spent", "spending", "buyer", "customer", "client", "revenue", "turnover", "po number", "party po", "customer po", "po_no"]):
-                glossary_tables.update(["sales_order", "sales_order_products", "party", "product", "financial_year"])
-            if any(k in query_lower for k in ["purchase", "supplier", "vendor", "procure", "inward", "raw material"]):
-                glossary_tables.update(["purchase", "purchase_products", "party", "product", "financial_year"])
-            if any(k in query_lower for k in ["stock", "inventory", "warehouse", "carton", "on hand"]):
-                glossary_tables.update(["stock", "product", "product_color", "category", "product_type", "sales_order", "party", "packagings", "warehouse"])
-            if any(k in query_lower for k in ["location", "location_code", "stored", "storage", "where is", "bin", "rack"]):
-                glossary_tables.update(["packagings", "warehouse", "product"])
-            if any(k in query_lower for k in ["production", "manufacture", "batch", "machine", "yield", "output", "plant", "floor", "apq", "ppq"]):
-                glossary_tables.update(["production", "actual_production", "product", "product_color", "category", "product_type", "financial_year", "machine"])
-            if any(k in query_lower for k in ["color", "colour"]):
-                glossary_tables.update(["product_color", "product", "production", "stock"])
-            if any(k in query_lower for k in ["unit", "uom", "measurement", "unit of measure"]):
-                glossary_tables.update(["unit", "product"])
-            if any(k in query_lower for k in ["machine", "equipment"]):
-                glossary_tables.update(["machine", "production", "product"])
-            if any(k in query_lower for k in ["packaging", "packing", "carton verify"]):
-                glossary_tables.update(["packagings", "production", "product", "product_color", "warehouse"])
-            if any(k in query_lower for k in ["financial year", "fiscal year", "current financial", "fyear", "financial_year"]):
-                glossary_tables.update(["financial_year"])
-            if any(k in query_lower for k in ["finished good", "product type", "raw material"]):
-                glossary_tables.update(["product_type", "product", "category"])
-            if any(k in query_lower for k in ["lead", "inquiry", "inquiries", "prospect", "followup", "deal", "pipeline"]):
-                glossary_tables.update(["lead", "lead_history", "users", "party"])
-            if any(k in query_lower for k in ["dispatch", "delivery", "challan", "shipment", "transporter", "vehicle", "driver", "dc", "dc_no", "dc no", "dc number", "due date", "so_due_date"]):
-                glossary_tables.update(["delivery_challan", "delivery_challan_products", "party", "sales_order", "financial_year"])
-            if any(k in query_lower for k in ["invoice", "invoice count", "invoice_no", "invoices", "pi", "pi_no", "gt/"]):
-                glossary_tables.update(["purchase", "party", "proforma", "financial_year", "sales_order", "stock"])
-            if any(k in query_lower for k in ["category", "categories"]):
-                glossary_tables.update(["category", "product", "product_type"])
-            if any(k in query_lower for k in ["po", "po_no", "po number", "po numbers", "party po", "customer po"]):
-                glossary_tables.update(["sales_order", "purchase", "party", "product", "financial_year"])
-            if any(k in query_lower for k in ["proforma", "bill", "gst", "tax", "quotation"]):
-                glossary_tables.update(["proforma", "quotation", "party", "financial_year"])
-            if any(k in query_lower for k in ["balance", "account", "ledger", "credit", "debit", "opening balance", "payment", "receipt"]):
-                glossary_tables.update(["party", "financial_year", "party_opening_balance", "sales_order", "receipt"])
-            if any(k in query_lower for k in ["adjustment", "adjust", "stock-out", "stock out", "stockout", "stock-in", "stock in", "stockin"]):
-                glossary_tables.update(["stock_adjustment", "product", "category", "product_color", "unit"])
-                if any(k in query_lower for k in ["year", "fiscal", "current", "fyear", "annual"]):
-                    glossary_tables.add("financial_year")
+            glossary_tables.update(route_anchor_tables(query, db_id=self.db_id))
 
             full_ddls = _extract_table_ddl_map(full_schema) if full_schema else {}
             candidate_list: list[dict[str, Any]] = []
