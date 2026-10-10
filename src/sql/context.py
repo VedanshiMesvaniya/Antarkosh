@@ -37,6 +37,15 @@ class DatabaseContext:
     atlas_path: Path
     soft_delete_column: str | None = None
     routing_hints_path: Path | None = None
+    allowed_users: tuple[str, ...] = ("admin",)
+
+    def can_access(self, user: str | None) -> bool:
+        """Check if user has access to this database context."""
+        if not user:
+            return False
+        if user in ("admin", "*", "all"):
+            return True
+        return user in self.allowed_users or "*" in self.allowed_users
 
     @property
     def behavioral_atlas_path(self) -> Path:
@@ -90,6 +99,14 @@ def get_context(db_id: str = DEFAULT_DB_ID) -> DatabaseContext:
     else:
         soft_delete_column = None
 
+    raw_allowed = data.get("allowed_users")
+    if isinstance(raw_allowed, list):
+        allowed_users = tuple(str(u).strip() for u in raw_allowed if str(u).strip())
+        if "admin" not in allowed_users:
+            allowed_users = ("admin",) + allowed_users
+    else:
+        allowed_users = ("admin",)
+
     schema_path = get_knowledge_path("schema", db_id=db_id)
     relationships_path = get_knowledge_path("relationships", db_id=db_id)
     glossary_path = get_knowledge_path("glossary", db_id=db_id)
@@ -113,10 +130,12 @@ def get_context(db_id: str = DEFAULT_DB_ID) -> DatabaseContext:
         atlas_path=atlas_path,
         soft_delete_column=soft_delete_column,
         routing_hints_path=routing_hints_path,
+        allowed_users=allowed_users,
     )
 
     _CONTEXT_CACHE[db_id] = context
     return context
+
 
 
 def clear_context_cache(db_id: str | None = None) -> None:

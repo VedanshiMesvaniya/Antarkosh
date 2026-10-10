@@ -303,11 +303,12 @@ class QueryPipeline:
                 effective_mode = _classify_auto_mode(search_query)
                 logger.info("Auto-classified query '%s' -> mode '%s'", search_query[:80], effective_mode)
 
+            user_id = filters.get("user_id") if filters else None
             doc_subquery = search_query
             if effective_mode == "sql":
                 logger.info("[Tokens: %d/%d] [Mode: SQL] Querying live database only", budget_ctrl.get_current_usage(), budget_ctrl.max_tokens)
                 with branch_context("sql_branch"):
-                    sql_chunks = await sql_retriever.retrieve(search_query)
+                    sql_chunks = await sql_retriever.retrieve(search_query, user_id=user_id)
                 vector_chunks = []
                 if not sql_chunks and mode == "auto":
                     logger.info("Auto mode SQL returned no rows; falling back to documents")
@@ -337,7 +338,8 @@ class QueryPipeline:
 
                 async def _run_sql():
                     with branch_context("sql_branch"):
-                        return await sql_retriever.retrieve(sql_subquery)
+                        return await sql_retriever.retrieve(sql_subquery, user_id=user_id)
+
 
                 async def _run_rag():
                     with branch_context("rag_branch"):

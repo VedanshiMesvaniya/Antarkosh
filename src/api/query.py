@@ -47,6 +47,11 @@ async def query_documents(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         target_db_id = request.db_id.strip()
+        from src.sql.registry import can_access_database
+
+        if not can_access_database(target_db_id, current_user):
+            raise HTTPException(status_code=403, detail="Access denied to this database")
+
 
     query_filters = dict(request.filters or {})
     # Identity and access scope are decided by the server, never by the client.

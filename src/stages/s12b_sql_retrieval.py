@@ -1135,10 +1135,22 @@ class SQLRetriever:
             for k in keys_to_remove:
                 cls._result_cache.pop(k, None)
 
-    async def retrieve(self, query: str) -> list[RetrievedChunk]:
+    async def retrieve(self, query: str, user_id: str | None = None) -> list[RetrievedChunk]:
         """Convert NL to SQL, execute, and return formatted results (with 1 retry)."""
+        if user_id and user_id not in ("admin", "*", "all"):
+            from src.sql.registry import can_access_database
+
+            if not can_access_database(self.db_id, user_id):
+                logger.info(
+                    "User %r has no access to database %r — returning empty SQL retrieval results",
+                    user_id,
+                    self.db_id,
+                )
+                return []
+
         from src.core.pipeline_metrics import CURRENT_DB_ID
         CURRENT_DB_ID.set(self.db_id)
+
 
         self.last_infra_error = None
         self.last_query_status = None
@@ -2654,8 +2666,13 @@ SELECT so.sales_order_no AS sales_order_number, so.sales_order_date AS order_dat
         return True
 
 
-async def fetch_sqlite_foreign_keys(db_id: str = DEFAULT_DB_ID) -> list[dict]:
+async def fetch_sqlite_foreign_keys(db_id: str = DEFAULT_DB_ID, user_id: str | None = None) -> list[dict]:
     """Fetch foreign key relationships from SQLite database."""
+    if user_id and user_id not in ("admin", "*", "all"):
+        from src.sql.registry import can_access_database
+
+        if not can_access_database(db_id, user_id):
+            return []
     tables = await run_readonly_query(
         "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence';",
         db_id=db_id,

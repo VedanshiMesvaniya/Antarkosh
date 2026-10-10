@@ -308,8 +308,119 @@ def get_database(
     return data
 
 
-def list_databases(databases_dir: Path | None = None) -> list[dict[str, Any]]:
-    """List all configured databases from DATABASES_DIR, validated with Engine."""
+def atomic_write_yaml(path: Path, data: dict[str, Any], mode: int = 0o644) -> None:
+    """Atomically write YAML data to path.
+
+    Uses tempfile.mkstemp in the same directory and atomic rename (os.replace).
+    Cleans up temp file on failure and preserves existing file.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix="." + path.stem + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
+        try:
+            os.chmod(tmp, mode)
+        except OSError:
+            pass
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def can_access_database(
+    db_id: str,
+    user: str | None,
+    databases_dir: Path | None = None,
+) -> bool:
+    """Check if user has permission to access the specified database.
+
+    Admins ('admin') and wildcard callers ('*', 'all') are always allowed.
+    Regular users must be listed in databases/<db_id>/db.yaml['allowed_users'].
+    """
+    if not user:
+        return False
+    if user in ("admin", "*", "all"):
+        return True
+
+    try:
+        db_meta = get_database(db_id, databases_dir=databases_dir)
+    except (FileNotFoundError, KeyError, ValueError, TypeError, OSError):
+        return False
+
+    allowed = db_meta.get("allowed_users") or []
+    if isinstance(allowed, list):
+        return user in allowed or "*" in allowed
+    return False
+
+
+def get_database_access(
+    db_id: str,
+    databases_dir: Path | None = None,
+) -> list[str]:
+    """Retrieve the list of allowed users for a database."""
+    validate_db_id(db_id)
+    db_meta = get_database(db_id, databases_dir=databases_dir)
+    allowed = db_meta.get("allowed_users")
+    if isinstance(allowed, list):
+        return list(allowed)
+    return ["admin"]
+
+
+def update_database_access(
+    db_id: str,
+    allowed_users: list[str],
+    databases_dir: Path | None = None,
+) -> bool:
+    """Update allowed_users in databases/<db_id>/db.yaml atomically.
+
+    Guarantees 'admin' is always included in allowed_users.
+    """
+    validate_db_id(db_id)
+    base_dir = databases_dir or DATABASES_DIR
+    yaml_path = base_dir / db_id / "db.yaml"
+    if not yaml_path.is_file():
+        return False
+
+    try:
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    except (yaml.YAMLError, OSError) as exc:
+        raise ValueError(f"Failed to read database configuration {yaml_path}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise TypeError(f"Database configuration {yaml_path} must be a mapping")
+
+    clean_users = sorted({str(u).strip() for u in allowed_users if str(u).strip()})
+    if "admin" not in clean_users:
+        clean_users.insert(0, "admin")
+
+    data["allowed_users"] = clean_users
+    atomic_write_yaml(yaml_path, data)
+
+    # Invalidate cached DatabaseContext for db_id
+    try:
+        from src.sql.context import clear_context_cache
+
+        clear_context_cache(db_id)
+    except (ImportError, OSError) as exc:
+        logger.debug("Failed to clear context cache for %s: %s", db_id, exc)
+
+    return True
+
+
+def list_databases(
+    databases_dir: Path | None = None,
+    user: str | None = None,
+) -> list[dict[str, Any]]:
+    """List all configured databases from DATABASES_DIR, validated with Engine.
+
+    If user is provided and not admin/wildcard, unauthorized databases are hidden.
+    """
     base_dir = databases_dir or DATABASES_DIR
     if not base_dir.is_dir():
         return []
@@ -323,6 +434,10 @@ def list_databases(databases_dir: Path | None = None) -> list[dict[str, Any]]:
             continue
         try:
             db_data = get_database(item.name, databases_dir=base_dir)
+            if user and user not in ("admin", "*", "all"):
+                allowed = db_data.get("allowed_users") or []
+                if not (user in allowed or "*" in allowed):
+                    continue
             databases.append(db_data)
         except (OSError, ValueError, TypeError) as exc:
             logger.warning("Skipping invalid database config in %s: %s", item.name, exc)
@@ -334,9 +449,14 @@ __all__ = [
     "KNOWN_CONNECTION_KEYS",
     "LEGACY_TO_CANONICAL_KEYS",
     "atomic_write_json",
+    "atomic_write_yaml",
+    "can_access_database",
     "connections_path",
     "get_connection",
     "get_database",
+    "get_database_access",
     "list_databases",
     "save_connection",
+    "update_database_access",
 ]
+
