@@ -530,3 +530,32 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: H4
 
+---
+
+## Step H4 Report: Documentation Reorganization and Cross-link Fixes
+- **Step ID**: H4
+- **Commits**:
+  - `44109f5` (Sub-move H4-1: move `docs/ODBC_DRIVER_SETUP.md` to `docs/databases/`)
+  - `2de3262` (Sub-move H4-2: move SQL docs to `docs/sql/`)
+  - `34e511c` (Sub-move H4-3: update documentation links and directory trees)
+- **Files Changed**:
+  - `docs/databases/ODBC_DRIVER_SETUP.md` (moved from `docs/ODBC_DRIVER_SETUP.md`)
+  - `docs/sql/sql_pipeline_enhancements.md` (moved from `docs/sql_pipeline_enhancements.md`)
+  - `docs/sql/text_to_sql_pipeline_architecture.md` (moved from `docs/text_to_sql_pipeline_architecture.md`)
+  - `.env.example`: updated line 46 link to `docs/databases/ODBC_DRIVER_SETUP.md`
+  - `README.md`: updated repository structure trees to show `docs/databases/`, `docs/sql/`, `databases/erp_main/`, and `evals/`
+  - `docs/ARCHITECTURE.md`: updated repository structure tree to reflect `databases/`, `docs/databases/`, `docs/sql/`, and `evals/`
+  - Tracking: `docs/refactor/PATH_CHANGES.md`, `docs/refactor/PROGRESS.md`
+- **What Changed**:
+  - Reorganized root-level documentation files into domain-specific subfolders:
+    - Moved `docs/ODBC_DRIVER_SETUP.md` to `docs/databases/ODBC_DRIVER_SETUP.md`.
+    - Moved SQL pipeline documentation (`docs/sql_pipeline_enhancements.md`, `docs/text_to_sql_pipeline_architecture.md`) to `docs/sql/`.
+    - Maintained root documentation files (`docs/ARCHITECTURE.md`, `docs/DEPLOY.md`, `docs/MULTI_DB_STRUCTURE.md`, `docs/V1_1_GUARD_CALIBRATION_PLAN.md`) at `docs/`.
+  - Updated all markdown cross-links, file links, and repository layout trees across `README.md`, `docs/ARCHITECTURE.md`, and `.env.example`.
+  - Verified CI workflow (`.github/workflows/ci.yml`), `Dockerfile`, and `render.yaml` contain no references to the moved doc files.
+- **Checks a-g**: a-g all passed; pytest: 742 passed, 14 skipped, 8 deselected, 1 xfailed (matching baseline); ruff clean; compileall clean; import src.main ok; zero drift; offline eval 163/163 questions verified; health/overview 200 OK.
+- **Shims Left**: All previous shims remain intact.
+- **Issues Found**: None.
+- **Next Step ID**: H5
+
+

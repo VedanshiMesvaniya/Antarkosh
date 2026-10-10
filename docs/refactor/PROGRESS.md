@@ -41,7 +41,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | H1 | scripts/ reorganized | 59ab567, 0f9f882, 4b7b818, 9098c57, c843cb9 | 742 passed |
 | [x] | H2 | tests/ mirror src | feeba3a, 1338266, 6daf4e8, 00b4ddd, c42c3e3 | 742 passed |
 | [x] | H3 | evals into databases/erp_main/evals | 8c869c7, 01ce81e, 51bd408, 8b26a4b | 742 passed |
-| [ ] | H4 | docs reorganized | | |
+| [x] | H4 | docs reorganized | 44109f5, 2de3262, 34e511c | 742 passed |
 | [ ] | H5 | Docker/CI/render verified | | |
 | [ ] | H6 | api/ui.py split | | |
 | [ ] | I | Cleanup (needs the word "approved") | | |

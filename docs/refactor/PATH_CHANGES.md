@@ -508,6 +508,17 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | H3-3 | scripts/eval/run_batch_eval.py, .github/workflows/ci.yml | scripts/eval/run_batch_eval.py, .github/workflows/ci.yml | wire | Updated QUESTIONS_FILE and REPORT_FILE paths to databases/erp_main/evals/; updated CI offline eval to python evals/run_eval.py --offline | a-g pass | 51bd408 |
 | H3-4 | databases/erp_main/evals/README.md, README.md, docs | databases/erp_main/evals/README.md, README.md, docs | docs | Updated evaluation commands and file references across READMEs and docs | a-g pass | 8b26a4b |
 
+---
+
+## Step H4 — Documentation Reorganization and Cross-link Fixes
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| H4-1 | docs/ODBC_DRIVER_SETUP.md | docs/databases/ODBC_DRIVER_SETUP.md | move | Moved ODBC driver setup to docs/databases/; updated .env.example:46 link | a-g pass | 44109f5 |
+| H4-2 | docs/sql_pipeline_enhancements.md, docs/text_to_sql_pipeline_architecture.md | docs/sql/sql_pipeline_enhancements.md, docs/sql/text_to_sql_pipeline_architecture.md | move | Moved SQL pipeline documentation to docs/sql/ | a-g pass | 2de3262 |
+| H4-3 | README.md, docs/ARCHITECTURE.md | README.md, docs/ARCHITECTURE.md | docs | Updated directory layout trees to reflect docs/databases/, docs/sql/, databases/erp_main/, and evals/ | a-g pass | 34e511c |
+
+
 
 
 
