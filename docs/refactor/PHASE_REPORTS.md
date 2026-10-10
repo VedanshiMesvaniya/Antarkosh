@@ -316,4 +316,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: F3
 
+---
+
+## Step F3 Report: Table Routing and Keyword Maps
+- **Step ID**: F3
+- **Commits**: ac1fa08
+- **Files Changed**: `databases/erp_main/semantics/routing_hints.json`, `src/sql/table_router.py`, `src/stages/s12b_sql_retrieval.py`, `tests/test_sql_table_router.py`.
+- **What Changed**: Moved hardcoded ERP table lists out of `src/stages/s12b_sql_retrieval.py` into `databases/erp_main/semantics/routing_hints.json` (`fallback_rules` with 9 domain mappings and `anchor_rules` with 19 keyword mappings). Extracted database-agnostic table routing into `src/sql/table_router.py` providing `load_routing_hints(db_id)`, `route_tables_for_query(query, db_id, section)`, `route_anchor_tables(query, db_id)`, and `_clear_routing_hints_cache(db_id)`. Verified zero domain table names exist in `src/sql/table_router.py`. Non-erp_main databases gracefully handle missing routing hints without crashing. Re-exported all routing functions and cache symbols in `src/stages/s12b_sql_retrieval.py`, and updated `clear_knowledge_caches(db_id)` to invalidate routing hints. Captured golden routing snapshot and created `tests/test_sql_table_router.py` validating golden parity across 10 representative user queries, asserting zero table name literals, testing cache invalidation, and verifying exact object identity on re-export.
+- **Checks a-g**: a-g all passed; pytest: 675 passed, 18 skipped, 8 deselected, 1 xfailed (+13 passed vs 662 baseline); zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I); `src/stages/s12b_sql_retrieval.py` re-exporting soft-delete, intent, and table_router symbols (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: F4
+
 

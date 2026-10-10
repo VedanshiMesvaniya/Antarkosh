@@ -275,4 +275,16 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | F2-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports extract_analytical_intent preserving signature and behavior for internal methods and external scripts | a-g pass | 4837b9b |
 | F2-3 | (new) | tests/test_sql_intent.py | test | Tests verifying object identity and golden snapshot parity across 8 representative user queries | a-g pass | 4837b9b |
 
+---
+
+## Step F3 — Table Routing and Keyword Maps
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| F3-1 | src/stages/s12b_sql_retrieval.py (hardcoded lists) | databases/erp_main/semantics/routing_hints.json | data | Moved hardcoded fallback domain rules and anchor seed rules into routing_hints.json | a-g pass | ac1fa08 |
+| F3-2 | src/stages/s12b_sql_retrieval.py | src/sql/table_router.py | code | Extracted database-agnostic table routing (load_routing_hints, route_tables_for_query, route_anchor_tables) with zero table names in code | a-g pass | ac1fa08 |
+| F3-3 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports load_routing_hints, route_tables_for_query, route_anchor_tables, and cache functions; clear_knowledge_caches invalidates routing hints | a-g pass | ac1fa08 |
+| F3-4 | (new) | tests/test_sql_table_router.py | test | Tests verifying object identity, zero hardcoded table names in router code, and golden routing snapshot parity across 10 queries | a-g pass | ac1fa08 |
+
+
 

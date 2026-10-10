@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 662 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 675 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -27,7 +27,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | E6 | Database access control and admin endpoints | d9f6606 | 634 passed |
 | [x] | F1 | Extract soft_delete | 816be00 | 652 passed |
 | [x] | F2 | Extract intent | 4837b9b | 662 passed |
-| [ ] | F3 | Extract table_router, routing_hints.json | | |
+| [x] | F3 | Extract table_router, routing_hints.json | ac1fa08 | 675 passed |
 | [ ] | F4 | Extract schema_retrieval | | |
 | [ ] | F5 | Extract prompt_builder | | |
 | [ ] | F6 | Extract generation | | |
@@ -52,6 +52,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 - `src/core/db_config_file.py` delegating `read`, `write`, `apply_to` to `src.sql.registry` for `erp_main` (removed in Phase I)
 - `src/stages/s12b_sql_retrieval.py` re-exporting `detect_soft_delete_intent`, `_get_tables_with_soft_delete`, `_clear_soft_delete_tables_cache`, `enforce_soft_delete_filter`, `_SOFT_DELETE_TABLES_CACHE`, `FALLBACK_SOFT_DELETE_TABLES` from `src.sql.soft_delete` (removed in Phase I)
 - `src/stages/s12b_sql_retrieval.py` re-exporting `extract_analytical_intent` from `src.sql.intent` (removed in Phase I)
+- `src/stages/s12b_sql_retrieval.py` re-exporting `load_routing_hints`, `route_tables_for_query`, `route_anchor_tables`, `_clear_routing_hints_cache`, `_ROUTING_HINTS_CACHE` from `src.sql.table_router` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.
