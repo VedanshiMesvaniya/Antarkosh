@@ -506,15 +506,25 @@ Antarkosh/
 ├── docs/                        # Architecture and deep technical specifications
 │   ├── ARCHITECTURE.md          # In-depth architectural context map
 │   ├── DEPLOY.md                # Cloud and container deployment guide
+│   ├── MULTI_DB_STRUCTURE.md    # Multi-database architecture specification
 │   ├── V1_1_GUARD_CALIBRATION_PLAN.md # Guard false-positive reduction plan
-│   └── text_to_sql_pipeline_architecture.md # Master 9-stage SQL architecture
+│   ├── databases/               # Database-specific setup & driver guides
+│   │   └── ODBC_DRIVER_SETUP.md # Enterprise Microsoft SQL Server ODBC driver guide
+│   └── sql/                     # Text-to-SQL architecture & pipeline specifications
+│       ├── text_to_sql_pipeline_architecture.md # Master 9-stage SQL architecture
+│       └── sql_pipeline_enhancements.md # Dynamic schema pruning & relational bridge
 │
-├── evals/                       # Evaluation datasets & benchmark runners
-│   └── Antarkosh/
-│       ├── questions.jsonl      # 163 enterprise evaluation questions
-│       ├── Antarkosh_schema.json # Physical schema blueprint
-│       ├── run_eval.py          # Benchmark runner (offline & live judge)
-│       └── reports/             # Coverage and performance reports
+├── databases/                   # Multi-database packs (schemas, semantics, learned, evals)
+│   ├── _template/               # Starter template for onboarding new databases
+│   └── erp_main/                # Default production ERP database pack
+│       ├── evals/               # Evaluation questions, runner, reports
+│       ├── schema/              # Physical schema and relationship definitions
+│       ├── semantics/           # Business glossary & routing hints
+│       └── learned/             # Dynamic patterns, metrics, drift logs
+│
+├── evals/                       # Shared cross-database benchmark runners
+│   ├── run_eval.py              # Shared cross-database eval runner (--db erp_main)
+│   └── run_full_eval.py         # Shared baseline v2 benchmark runner
 │
 ├── Antarkosh_UI/                # React single-page application source (Vite)
 │   ├── src/

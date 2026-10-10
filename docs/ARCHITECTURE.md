@@ -21,13 +21,15 @@ Data persistence completely avoids SQL databases for application state. UI state
 
 ```text
 Antarkosh/
-├── src/            # Python backend (FastAPI app + 14-stage RAG pipeline)
+├── src/            # Python backend (FastAPI app + 14-stage RAG & Text-to-SQL pipeline)
 ├── Antarkosh_UI/   # React frontend source (Vite)
 ├── frontend/       # Compiled UI, served directly by FastAPI (build output)
 ├── config/         # providers.yaml — LLM routing rules & fallback chains
-├── tests/          # pytest suite (unit + integration)
-├── scripts/        # Dev/ops scripts (setup_db.py, manual smoke checks)
-├── docs/           # Documentation (this file, DEPLOY.md, design-history/)
+├── databases/      # Multi-database packs (erp_main, _template: schemas, semantics, learned, evals)
+├── evals/          # Shared benchmark runners (run_eval.py, run_full_eval.py)
+├── tests/          # pytest suite mirroring src (sql/, rag/, core/, api/, golden/)
+├── scripts/        # Dev/ops scripts (db/, eval/, ops/, analytics/, golden/, rollout/)
+├── docs/           # Documentation (this file, DEPLOY.md, MULTI_DB_STRUCTURE.md, databases/, sql/)
 ├── data/           # Runtime state — chats, uploads, SQLite DB (gitignored)
 ├── Dockerfile      # Container image (API + bundled UI in one process)
 ├── render.yaml     # Render deploy blueprint
