@@ -20,7 +20,6 @@ from src.sql.learning.pattern_learner import PatternLearner
 from src.sql.learning.schema_monitor import SchemaDrift, SchemaMonitor
 
 
-
 def test_g6_shims_and_constants_identity():
     """Verify shims preserve object identity and path constants."""
     assert shim_pl.PatternLearner is learn_pl.PatternLearner
