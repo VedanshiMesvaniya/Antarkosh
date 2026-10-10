@@ -14,7 +14,7 @@ import pytest
 
 from src.core import db_config_file as cf
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture

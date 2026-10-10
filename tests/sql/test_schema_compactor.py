@@ -10,7 +10,7 @@ import pytest
 from src.utils.golden_models import GoldenCase
 from src.utils.schema_compactor import AUDIT_COLUMNS, compact_ddl, extract_join_hints
 
-GOLDEN_CASES_PATH = Path(__file__).resolve().parent / "golden" / "sql_repair" / "cases.json"
+GOLDEN_CASES_PATH = Path(__file__).resolve().parent.parent / "golden" / "sql_repair" / "cases.json"
 
 
 def test_basic_compaction_strips_audit_columns_and_keeps_pk_fk():

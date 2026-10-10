@@ -11,7 +11,7 @@ from src.core.provider_client import ProviderRouter
 from src.stages.sql_repair import attempt_delta_repair
 from src.utils.golden_models import GoldenCase
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_CASES_FILE = PROJECT_ROOT / "tests" / "golden" / "sql_repair" / "cases.json"
 
 HAS_API_KEY = bool(

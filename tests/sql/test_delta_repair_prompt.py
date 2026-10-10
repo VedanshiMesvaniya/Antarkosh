@@ -13,7 +13,7 @@ from src.prompts.delta_repair import (
 )
 from src.utils.golden_models import GoldenCase
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_CASES_FILE = PROJECT_ROOT / "tests" / "golden" / "sql_repair" / "cases.json"
 
 

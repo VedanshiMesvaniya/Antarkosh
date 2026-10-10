@@ -18,7 +18,7 @@ from src.utils.sql_safety import (
     validate_tables_and_columns,
 )
 
-GOLDEN_CASES_PATH = Path(__file__).resolve().parent / "golden" / "sql_repair" / "cases.json"
+GOLDEN_CASES_PATH = Path(__file__).resolve().parent.parent / "golden" / "sql_repair" / "cases.json"
 
 
 def test_destructive_sql_blocking():

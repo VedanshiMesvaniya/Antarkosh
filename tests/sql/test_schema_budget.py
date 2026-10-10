@@ -15,7 +15,7 @@ from src.utils.schema_budget import (
 )
 from src.utils.schema_token_estimator import estimate_schema_tokens
 
-GOLDEN_CASES_PATH = Path(__file__).resolve().parent / "golden" / "sql_repair" / "cases.json"
+GOLDEN_CASES_PATH = Path(__file__).resolve().parent.parent / "golden" / "sql_repair" / "cases.json"
 
 
 def test_estimate_schema_tokens_various_formats():
