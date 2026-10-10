@@ -12,15 +12,15 @@ import time
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 
-from src.core.confidence_scorer import ConfidenceBreakdown, ConfidenceScorer
 from src.core.config import settings
 from src.core.db_client import run_readonly_query
-from src.core.pattern_learner import PatternLearner
 from src.core.pipeline_metrics import CURRENT_DB_ID
 from src.core.provider_client import ProviderRouter
-from src.core.result_validator import ResultValidator
 from src.core.sql_column_registry import ColumnRegistry
 from src.core.sql_dialects import get_dialect_profile
+from src.sql.learning.pattern_learner import PatternLearner
+from src.sql.safety.confidence_scorer import ConfidenceBreakdown, ConfidenceScorer
+from src.sql.safety.result_validator import ResultValidator
 from src.guards.schema_guard import evaluate_schema_sufficiency
 from src.models.schemas import RetrievedChunk
 from src.sql.engine import Engine

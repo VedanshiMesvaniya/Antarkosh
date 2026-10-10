@@ -328,3 +328,29 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | F7-1 | src/stages/s12b_sql_retrieval.py | src/sql/pipeline.py | code | Extracted SQLRetriever class, clear_knowledge_caches, and query result cache lifecycle into thin src/sql/pipeline.py (< 300 lines) | a-g pass | F7 |
 | F7-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Converted s12b_sql_retrieval.py into a thin re-export compatibility shim (< 250 lines) re-exporting SQLRetriever and all F1–F6 extracted symbols | a-g pass | F7 |
 | F7-3 | (new) | tests/test_sql_pipeline.py | test | Tests verifying SQLRetriever object identity, initialization, result & schema cache per-db_id isolation, access control enforcement, and feature flag patching | a-g pass | F7 |
+
+---
+
+## Step G1 — Leaf Module Moves (join_graph, schema_monitor, ab_test_engine, context_gatekeeper, drift_validator, result_validator, confidence_scorer, pattern_learner, sql_privacy)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| G1-1 | src/core/join_graph.py | src/sql/safety/join_graph.py | move | Moved join path validator; internal relationships import re-pointed to src.sql.prompt_builder | a-g pass | G1 |
+| G1-2 | src/core/join_graph.py | src/core/join_graph.py | shim | Re-exports ForeignKey, JoinPath, JoinGraphBuilder | a-g pass | G1 |
+| G1-3 | src/core/schema_monitor.py | src/sql/learning/schema_monitor.py | move | Moved schema drift detector and auto-healer | a-g pass | G1 |
+| G1-4 | src/core/schema_monitor.py | src/core/schema_monitor.py | shim | Re-exports SchemaDrift, SchemaMonitor, path constants | a-g pass | G1 |
+| G1-5 | src/core/ab_test_engine.py | src/sql/learning/ab_test_engine.py | move | Moved prompt A/B testing engine and statistical analyzer | a-g pass | G1 |
+| G1-6 | src/core/ab_test_engine.py | src/core/ab_test_engine.py | shim | Re-exports ExperimentEvent, ABTestEngine, path constants | a-g pass | G1 |
+| G1-7 | src/core/context_gatekeeper.py | src/pipeline/context_gatekeeper.py | move | Moved multi-turn follow-up and reset gatekeeper | a-g pass | G1 |
+| G1-8 | src/core/context_gatekeeper.py | src/core/context_gatekeeper.py | shim | Re-exports ContextAction, ConversationState, ContextGatekeeper | a-g pass | G1 |
+| G1-9 | src/core/sql_drift_validator.py | src/sql/safety/drift_validator.py | move | Moved schema glossary and relationships drift validator; supports direct CLI invocation | a-g pass | G1 |
+| G1-10 | src/core/sql_drift_validator.py | src/core/sql_drift_validator.py | shim | Re-exports all validator functions and path constants; maintains CLI entrypoint | a-g pass | G1 |
+| G1-11 | src/core/result_validator.py | src/sql/safety/result_validator.py | move | Moved semantic result correctness validators; internal relationships import re-pointed to src.sql.prompt_builder | a-g pass | G1 |
+| G1-12 | src/core/result_validator.py | src/core/result_validator.py | shim | Re-exports all validator classes and enums | a-g pass | G1 |
+| G1-13 | src/core/confidence_scorer.py | src/sql/safety/confidence_scorer.py | move | Moved explainable confidence scoring engine | a-g pass | G1 |
+| G1-14 | src/core/confidence_scorer.py | src/core/confidence_scorer.py | shim | Re-exports ConfidenceBreakdown, ConfidenceScorer | a-g pass | G1 |
+| G1-15 | src/core/pattern_learner.py | src/sql/learning/pattern_learner.py | move | Moved dynamic reflexion pattern learning engine | a-g pass | G1 |
+| G1-16 | src/core/pattern_learner.py | src/core/pattern_learner.py | shim | Re-exports LearnedPattern, PatternLearner, path constants | a-g pass | G1 |
+| G1-17 | src/utils/sql_privacy.py | src/sql/safety/sql_privacy.py | move | Moved SQL privacy and result row sanitization engine | a-g pass | G1 |
+| G1-18 | src/utils/sql_privacy.py | src/utils/sql_privacy.py | shim | Re-exports sanitize_assistant_turn and privacy regexes | a-g pass | G1 |
+| G1-19 | (new) | tests/test_g1_modules.py | test | Tests verifying object identity for all 9 shims and functional sanity of moved modules | a-g pass | G1 |

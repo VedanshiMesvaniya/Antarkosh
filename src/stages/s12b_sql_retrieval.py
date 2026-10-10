@@ -200,9 +200,9 @@ from src.core.pipeline_metrics import CURRENT_DB_ID, log_event as _log_pipeline_
 from src.core.provider_client import ProviderRouter
 from src.core.sql_column_registry import ColumnRegistry
 from src.core.sql_dialects import SQLDialectProfile, get_dialect_profile
-from src.core.result_validator import ResultValidator, ValidationSeverity
-from src.core.pattern_learner import PatternLearner
-from src.core.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
+from src.sql.safety.result_validator import ResultValidator, ValidationSeverity
+from src.sql.learning.pattern_learner import PatternLearner
+from src.sql.safety.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
 from src.stages.s10_embeddings import EmbeddingService
 from src.sql.engine import Engine

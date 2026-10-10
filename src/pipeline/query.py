@@ -30,7 +30,7 @@ from src.sql.knowledge.loaders import validate_db_id
 from src.stages.s12b_sql_retrieval import SQLRetriever
 from src.utils.query_classifier import QueryType, classify_query
 from src.utils.semantic_cache import get_semantic_cache
-from src.utils.sql_privacy import sanitize_assistant_turn
+from src.sql.safety.sql_privacy import sanitize_assistant_turn
 from src.utils.query_budget import get_or_create_budget_controller
 from src.utils.telemetry import get_or_create_query_id, log_telemetry, set_current_query_id, timed_stage
 from src.utils.feature_flags import is_feature_enabled

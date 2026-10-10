@@ -377,3 +377,15 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: G1
 
+---
+
+## Step G1 Report: Leaf Module Moves to Subpackages
+- **Step ID**: G1
+- **Commits**: G1
+- **Files Changed**: `src/sql/safety/join_graph.py`, `src/sql/learning/schema_monitor.py`, `src/sql/learning/ab_test_engine.py`, `src/pipeline/context_gatekeeper.py`, `src/sql/safety/drift_validator.py`, `src/sql/safety/result_validator.py`, `src/sql/safety/confidence_scorer.py`, `src/sql/learning/pattern_learner.py`, `src/sql/safety/sql_privacy.py`, `src/sql/safety/__init__.py`, `src/sql/learning/__init__.py`, 9 shims under `src/core/` and `src/utils/`, consumers (`src/sql/generation.py`, `src/sql/pipeline.py`, `src/stages/s12b_sql_retrieval.py`, `src/pipeline/query.py`), `tests/test_g1_modules.py`.
+- **What Changed**: Moved 9 leaf modules (0-1 importers) to their target subpackages: `join_graph` -> `src/sql/safety/join_graph.py`, `schema_monitor` -> `src/sql/learning/schema_monitor.py`, `ab_test_engine` -> `src/sql/learning/ab_test_engine.py`, `context_gatekeeper` -> `src/pipeline/context_gatekeeper.py`, `sql_drift_validator` -> `src/sql/safety/drift_validator.py`, `result_validator` -> `src/sql/safety/result_validator.py`, `confidence_scorer` -> `src/sql/safety/confidence_scorer.py`, `pattern_learner` -> `src/sql/learning/pattern_learner.py`, `sql_privacy` -> `src/sql/safety/sql_privacy.py`. Created packages `src/sql/safety` and `src/sql/learning`. Left complete backward-compatibility shims at all 9 original locations preserving public and underscore names. Updated consumers to point to new canonical modules. Added 6 unit tests in `tests/test_g1_modules.py` covering object identity across all 9 shims and sanity checks for each module.
+- **Checks a-g**: a-g all passed; pytest: 710 passed, 18 skipped, 8 deselected, 1 xfailed (+6 passed vs 704 baseline); ruff clean; compileall clean; import src.main ok; zero drift (both old and new validator paths pass); health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim (Phase I); `src/stages/s12b_sql_retrieval.py` re-export shim (Phase I); 9 G1 shims (`join_graph`, `schema_monitor`, `ab_test_engine`, `context_gatekeeper`, `sql_drift_validator`, `result_validator`, `confidence_scorer`, `pattern_learner`, `sql_privacy`) (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: G2
+

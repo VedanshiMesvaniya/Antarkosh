@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 704 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 710 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -32,7 +32,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | F5 | Extract prompt_builder | F5 | 690 passed |
 | [x] | F6 | Extract generation | F6 | 698 passed |
 | [x] | F7 | Thin SQLRetriever (pipeline.py), s12b is a shim | F7 | 704 passed |
-| [ ] | G1 | Move unused and single-importer modules | | |
+| [x] | G1 | Move unused and single-importer modules | G1 | 710 passed |
 | [ ] | G2 | Move 3-4 importer modules | | |
 | [ ] | G3 | Move 5 importer modules | | |
 | [ ] | G4 | Move sql_safety, query_classifier, ingestion_registry | | |
@@ -57,6 +57,15 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 - `src/stages/s12b_sql_retrieval.py` re-exporting `get_raw_relationships`, `load_relationships`, `load_glossary`, `get_raw_column_glossary`, `get_raw_behavioral_atlas`, `stem_word`, `matches_glossary_candidate`, `build_column_glossary_for_query`, `build_behavioral_atlas_for_query`, `get_scoped_readability_rules`, `OUTPUT_READABILITY_RULES`, `build_sql_prompt`, and prompt caches from `src.sql.prompt_builder` (removed in Phase I)
 - `src/stages/s12b_sql_retrieval.py` re-exporting `generate_sql`, `execute_with_retry`, `execute_with_delta_repair`, `is_safe_read_query`, `UnsafeQueryError`, `DANGEROUS_FUNCTIONS`, `unwrap_sql`, `extract_cot_and_sql`, `format_schema_rows`, `format_fk_rows`, `format_rows_as_markdown`, `sanitize_rows`, `filter_display_rows`, `is_all_null`, `is_aggregate_over_zero_rows`, `extract_table_names`, and `fetch_sqlite_foreign_keys` from `src.sql.generation` (removed in Phase I)
 - `src/stages/s12b_sql_retrieval.py` re-exporting `SQLRetriever`, `clear_knowledge_caches`, and `MAX_RESULT_CACHE_ENTRIES` from `src.sql.pipeline` (removed in Phase I)
+- `src/core/join_graph.py` re-exporting `ForeignKey`, `JoinPath`, `JoinGraphBuilder` from `src.sql.safety.join_graph` (removed in Phase I)
+- `src/core/schema_monitor.py` re-exporting `SchemaDrift`, `SchemaMonitor`, path constants from `src.sql.learning.schema_monitor` (removed in Phase I)
+- `src/core/ab_test_engine.py` re-exporting `ExperimentEvent`, `ABTestEngine`, path constants from `src.sql.learning.ab_test_engine` (removed in Phase I)
+- `src/core/context_gatekeeper.py` re-exporting `ContextAction`, `ConversationState`, `ContextGatekeeper` from `src.pipeline.context_gatekeeper` (removed in Phase I)
+- `src/core/sql_drift_validator.py` re-exporting validator functions and path constants from `src.sql.safety.drift_validator` (removed in Phase I)
+- `src/core/result_validator.py` re-exporting validator classes and enums from `src.sql.safety.result_validator` (removed in Phase I)
+- `src/core/confidence_scorer.py` re-exporting `ConfidenceBreakdown`, `ConfidenceScorer` from `src.sql.safety.confidence_scorer` (removed in Phase I)
+- `src/core/pattern_learner.py` re-exporting `LearnedPattern`, `PatternLearner`, path constants from `src.sql.learning.pattern_learner` (removed in Phase I)
+- `src/utils/sql_privacy.py` re-exporting `sanitize_assistant_turn` and privacy regexes from `src.sql.safety.sql_privacy` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.

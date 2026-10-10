@@ -31,9 +31,9 @@ from src.core.pipeline_metrics import log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
 from src.core.sql_column_registry import ColumnRegistry
 from src.core.sql_dialects import SQLDialectProfile, get_dialect_profile
-from src.core.result_validator import ResultValidator, ValidationSeverity
-from src.core.pattern_learner import PatternLearner
-from src.core.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
+from src.sql.safety.result_validator import ResultValidator, ValidationSeverity
+from src.sql.learning.pattern_learner import PatternLearner
+from src.sql.safety.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
 from src.sql.prompt_builder import build_sql_prompt
 from src.sql.soft_delete import detect_soft_delete_intent, enforce_soft_delete_filter
