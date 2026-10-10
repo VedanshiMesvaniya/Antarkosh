@@ -291,3 +291,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I).
 - **Issues Found**: None new (Findings #11 and #12 timing jitter on full suite run remain documented).
 - **Next Step ID**: F1
+
+---
+
+## Step F1 Report: Soft-Delete Detection and Filter Extraction
+- **Step ID**: F1
+- **Commits**: 816be00
+- **Files Changed**: `src/sql/soft_delete.py`, `src/stages/s12b_sql_retrieval.py`, `tests/test_sql_soft_delete.py`.
+- **What Changed**: Extracted soft-delete concern into new module `src/sql/soft_delete.py`, including `FALLBACK_SOFT_DELETE_TABLES` (40 known tables with deleted_at), `detect_soft_delete_intent(query)`, `_get_tables_with_soft_delete(db_id)`, `_clear_soft_delete_tables_cache(db_id)`, and `enforce_soft_delete_filter(sql, intent, dialect, db_id)`. Re-exported all soft-delete functions and cache symbols in `src/stages/s12b_sql_retrieval.py` preserving exact signatures and attributes (`cache_clear`). Captured golden snapshot and created `tests/test_sql_soft_delete.py` validating golden outputs for 10 representative intent queries, fallback table resolution, and 6 SQL AST filter rewrites across both direct and re-exported APIs.
+- **Checks a-g**: a-g all passed; pytest: 652 passed, 18 skipped, 8 deselected, 1 xfailed (+18 passed vs 634 baseline); zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I); `src/stages/s12b_sql_retrieval.py` re-exporting soft-delete symbols from `src.sql.soft_delete` (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: F2
+

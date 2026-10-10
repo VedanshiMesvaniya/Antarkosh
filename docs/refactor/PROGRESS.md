@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 634 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 652 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -25,7 +25,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | E4 | db_settings into connectors/registry | cba67de | 621 passed |
 | [x] | E5 | Per-database connection, remove global cache wipe | 622dd28 | 625 passed |
 | [x] | E6 | Database access control and admin endpoints | d9f6606 | 634 passed |
-| [ ] | F1 | Extract soft_delete | | |
+| [x] | F1 | Extract soft_delete | 816be00 | 652 passed |
 | [ ] | F2 | Extract intent | | |
 | [ ] | F3 | Extract table_router, routing_hints.json | | |
 | [ ] | F4 | Extract schema_retrieval | | |
@@ -50,6 +50,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 - `src/sql/knowledge/loaders.py` legacy fallback to `config/` and `evals/Antarkosh/` (removed in Phase I)
 - `src/core/sql_dialects.py` re-exporting `DIALECTS`, `SQLDialectProfile`, `get_dialect_profile` from `src.sql.dialects` (removed in Phase I)
 - `src/core/db_config_file.py` delegating `read`, `write`, `apply_to` to `src.sql.registry` for `erp_main` (removed in Phase I)
+- `src/stages/s12b_sql_retrieval.py` re-exporting `detect_soft_delete_intent`, `_get_tables_with_soft_delete`, `_clear_soft_delete_tables_cache`, `enforce_soft_delete_filter`, `_SOFT_DELETE_TABLES_CACHE`, `FALLBACK_SOFT_DELETE_TABLES` from `src.sql.soft_delete` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.

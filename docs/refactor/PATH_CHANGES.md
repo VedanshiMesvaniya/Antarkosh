@@ -254,3 +254,14 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | E6-5 | src/api/query.py | src/api/query.py | api | query_documents enforces database access control when explicit db_id is provided (403 Forbidden) | a-g pass | d9f6606 |
 | E6-6 | src/api/ui.py | src/api/ui.py | api | added GET /databases, GET /databases/{id}, admin-only GET/POST access, test and save connection endpoints | a-g pass | d9f6606 |
 | E6-7 | (new) | tests/test_sql_database_access_control.py | test | tests mirroring test_alpha_auth_and_isolation.py for database resources, list filtering, query enforcement, admin connection test/save | a-g pass | d9f6606 |
+
+---
+
+## Step F1 — Soft-Delete Detection and Filter Extraction
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| F1-1 | src/stages/s12b_sql_retrieval.py | src/sql/soft_delete.py | code | Extracted detect_soft_delete_intent, _get_tables_with_soft_delete, _clear_soft_delete_tables_cache, enforce_soft_delete_filter, FALLBACK_SOFT_DELETE_TABLES | a-g pass | 816be00 |
+| F1-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports all soft-delete functions and caches preserving exact signatures and attributes | a-g pass | 816be00 |
+| F1-3 | (new) | tests/test_sql_soft_delete.py | test | Golden snapshot parity tests across direct and re-exported APIs for 10 representative intent queries and 6 SQL transformations | a-g pass | 816be00 |
+
