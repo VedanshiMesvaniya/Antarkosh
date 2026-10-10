@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 714 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 735 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -36,7 +36,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | G2 | Move 3-4 importer modules | 01a7a7f | 714 passed |
 | [x] | G3 | Move 5 importer modules | 05e1792 | 720 passed |
 | [x] | G4 | Move sql_safety, query_classifier, ingestion_registry | 82cc769 | 727 passed |
-| [ ] | G5 | Move rag stages, retrieval, ingestion, schema_ingestion | | |
+| [x] | G5 | Move rag stages, retrieval, ingestion, schema_ingestion | 98966bc | 735 passed |
 | [ ] | G6 | Learned data per database | | |
 | [ ] | H1 | scripts/ reorganized | | |
 | [ ] | H2 | tests/ mirror src | | |
@@ -81,6 +81,12 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 - `src/utils/sql_safety.py` re-exporting `validate_sql_safety`, `is_destructive_sql`, `check_cartesian_explosion`, `check_dangerous_patterns`, `DANGEROUS_FUNCTIONS` from `src.sql.safety.sql_safety` (removed in Phase I)
 - `src/utils/query_classifier.py` re-exporting `QueryType`, `TTL_BY_QUERY_TYPE`, `classify_query`, `classify_query_intent` from `src.sql.query_classifier` (removed in Phase I)
 - `src/core/ingestion_registry.py` re-exporting `IngestionRegistry`, `RegistryStatus`, `RegistryCheckResult` from `src.rag.ingestion_registry` (removed in Phase I)
+- `src/stages/s01_file_detection.py` through `s11_vector_store.py` (10 shims) re-exporting from `src.rag.stages` (removed in Phase I)
+- `src/stages/s12_s13_s14_retrieval.py` re-exporting from `src.rag.retrieval` with `_ShimModule` setattr mirroring (removed in Phase I)
+- `src/pipeline/ingestion.py` re-exporting from `src.rag.ingestion` with `_ShimModule` (removed in Phase I)
+- `src/pipeline/folder_ingestion.py` re-exporting from `src.rag.folder_ingestion` with `_ShimModule` (removed in Phase I)
+- `src/pipeline/schema_ingestion.py` re-exporting from `src.sql.schema_retrieval` with `_ShimModule` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.
+

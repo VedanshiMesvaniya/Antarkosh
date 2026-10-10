@@ -47,14 +47,14 @@ from src.sql.registry import get_connection, get_database
 from src.sql.schema_retrieval import retrieve_schema_from_qdrant
 from src.sql.soft_delete import _get_tables_with_soft_delete
 from src.sql.table_router import load_routing_hints
-from src.stages.s10_embeddings import EmbeddingService
+from src.rag.stages.s10_embeddings import EmbeddingService
 from src.utils.feature_flags import is_feature_enabled
 from src.utils.query_budget import get_or_create_budget_controller
 from src.utils.telemetry import get_or_create_query_id, log_telemetry, timed_stage
 from src.utils.trace_context import get_current_span
 
 if TYPE_CHECKING:
-    from src.stages.s11_vector_store import QdrantStore
+    from src.rag.stages.s11_vector_store import QdrantStore
 
 logger = logging.getLogger(__name__)
 

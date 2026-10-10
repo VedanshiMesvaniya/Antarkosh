@@ -65,7 +65,7 @@ def _print_usage() -> None:
 
 async def _ingest(path_str: str) -> None:
     """Ingest a file or directory."""
-    from src.pipeline.ingestion import IngestionPipeline
+    from src.rag.ingestion import IngestionPipeline
 
     settings.ensure_dirs()
     path = Path(path_str)

@@ -7,18 +7,27 @@ expansion, and scoped schema fallback.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
+import sys
+from pathlib import Path
 from typing import Any
 
-from src.models.schemas import ChunkType
-from src.sql.knowledge.loaders import DEFAULT_DB_ID
+from src.core.config import settings
+from src.core.db_client import run_readonly_query
+from src.core.sql_dialects import SQLDialectProfile, get_dialect_profile
+from src.models.schemas import Chunk, ChunkType, DocumentType
+from src.sql.engine import Engine
+from src.sql.knowledge.loaders import DEFAULT_DB_ID, get_knowledge_path, validate_db_id
 from src.sql.table_router import route_anchor_tables, route_tables_for_query
 from src.utils.feature_flags import is_feature_enabled
 from src.sql.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
 from src.sql.schema_compactor import compact_ddl, extract_join_hints
 from src.sql.schema_token_estimator import estimate_schema_tokens
 from src.utils.telemetry import log_telemetry
+from src.rag.stages.s10_embeddings import EmbeddingService
+from src.rag.stages.s11_vector_store import QdrantStore
 
 logger = logging.getLogger(__name__)
 
@@ -426,3 +435,230 @@ _get_1hop_neighbors = get_1hop_neighbors
 _format_scoped_relationships = format_scoped_relationships
 _build_scoped_schema_fallback = build_scoped_schema_fallback
 _retrieve_schema_from_qdrant = retrieve_schema_from_qdrant
+
+
+SCHEMA_DOCUMENT_ID = "live_db_schema"
+
+
+def get_schema_document_id(db_id: str) -> str:
+    """Return the canonical Qdrant document_id for a database's schema chunks."""
+    return f"schema:{db_id}"
+
+
+def _split_mysql_tables(rows: list[dict[str, Any]]) -> dict[str, str]:
+    """Group MySQL information_schema rows into per-table CREATE-TABLE-like text."""
+    tables: dict[str, list[str]] = {}
+    for i, row in enumerate(rows):
+        if row.get("sql"):
+            # Direct CREATE statement present
+            name = row.get("name") or row.get("table_name") or f"table_{i}"
+            tables[name] = [row["sql"]]
+            continue
+        tname = row.get("table_name") or row.get("TABLE_NAME") or row.get("name")
+        cname = row.get("column_name") or row.get("COLUMN_NAME", "")
+        ctype = row.get("data_type") or row.get("DATA_TYPE", "")
+        if not tname:
+            continue
+        comment = row.get("column_comment") or ""
+        suffix = f"  -- {comment}" if comment else ""
+        tables.setdefault(tname, []).append(
+            f"  {cname} {ctype}{suffix}".strip()
+        )
+    return {
+        name: cols[0] if (len(cols) == 1 and cols[0].startswith("CREATE TABLE")) else f"TABLE {name} (\n" + ",\n".join(cols) + "\n)"
+        for name, cols in tables.items()
+    }
+
+
+def _split_sqlite_tables(rows: list[dict[str, Any]]) -> dict[str, str]:
+    """Split SQLite sqlite_master rows into per-table CREATE statements."""
+    return {
+        row["name"]: row["sql"]
+        for row in rows
+        if row.get("name") != "sqlite_sequence" and row.get("sql")
+    }
+
+
+def _split_schema_by_table(
+    dialect: SQLDialectProfile, rows: list[dict[str, Any]]
+) -> dict[str, str]:
+    """Return {table_name: schema_text} for each table in the database."""
+    if dialect.key in (Engine.MYSQL, Engine.POSTGRESQL, Engine.MSSQL, Engine.ORACLE):
+        return _split_mysql_tables(rows)  # same one-row-per-column shape
+    if dialect.key == Engine.SQLITE:
+        return _split_sqlite_tables(rows)
+    raise ValueError(f"Unsupported dialect key {dialect.key!r}")
+
+
+def _load_table_metadata(db_id: str = DEFAULT_DB_ID) -> dict[str, dict[str, Any]]:
+    """Load table domain and metadata from schema knowledge pack if present."""
+    try:
+        schema_file = get_knowledge_path("schema", db_id=db_id)
+        if not schema_file.exists():
+            return {}
+        data = json.loads(schema_file.read_text(encoding="utf-8"))
+        tables = data.get("tables", [])
+        return {t["name"].lower(): t for t in tables if isinstance(t, dict) and "name" in t}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Could not load schema metadata for %s: %s", db_id, e)
+        return {}
+
+
+def _enrich_table_schema(
+    table_name: str,
+    schema_text: str,
+    table_meta: dict[str, Any] | None = None,
+    fk_lines: list[str] | None = None,
+) -> str:
+    """Format an enriched table chunk with domain header, primary key, and foreign keys."""
+    lines: list[str] = []
+
+    if table_meta:
+        domain = table_meta.get("domain")
+        pk = table_meta.get("primary_key")
+        parts = [f"-- Table: {table_name}"]
+        if domain:
+            parts.append(f"Domain: {domain}")
+        if pk:
+            pk_str = ", ".join(pk) if isinstance(pk, list) else str(pk)
+            parts.append(f"Primary Key: ({pk_str})")
+        lines.append(" | ".join(parts))
+
+    lines.append(schema_text)
+
+    if fk_lines:
+        lines.append("-- Relationships / Foreign Keys:")
+        lines.extend(fk_lines)
+
+    return "\n".join(lines)
+
+
+def _get_run_readonly_query():
+    """Resolve run_readonly_query, honoring any monkeypatches on src.pipeline.schema_ingestion."""
+    mod = sys.modules.get("src.pipeline.schema_ingestion")
+    if mod and hasattr(mod, "run_readonly_query"):
+        return mod.run_readonly_query
+    return run_readonly_query
+
+
+async def sync_live_schema(
+    embedding_service: EmbeddingService | None = None,
+    vector_store: QdrantStore | None = None,
+    db_id: str = DEFAULT_DB_ID,
+) -> dict[str, Any]:
+    """Fetch the live DB schema, chunk per table, embed, and upsert to Qdrant.
+
+    Returns a summary dict with table count and status.
+    """
+    validate_db_id(db_id)
+    embeddings = embedding_service or EmbeddingService()
+    store = vector_store or QdrantStore(embedding_service=embeddings)
+
+    dialect = get_dialect_profile(settings.db_engine)
+    _query_runner = _get_run_readonly_query()
+
+    # 1. Fetch schema rows from the live database
+    schema_rows = await _query_runner(dialect.schema_query, max_rows=20000)
+    if not schema_rows:
+        return {"status": "error", "message": "No schema rows returned from database"}
+
+    # 2. Split into per-table chunks
+    table_schemas = _split_schema_by_table(dialect, schema_rows)
+
+    # 3. Fetch FK info and attach to relevant tables
+    fk_map: dict[str, list[str]] = {}
+    try:
+        if dialect.fk_query:  # MySQL / PostgreSQL / SQL Server / Oracle: one query covers all FKs
+            fk_rows = await _query_runner(dialect.fk_query, max_rows=20000)
+        elif dialect.key == Engine.SQLITE:
+            from src.stages.s12b_sql_retrieval import fetch_sqlite_foreign_keys
+            fk_rows = await fetch_sqlite_foreign_keys()
+        else:
+            fk_rows = []
+
+        for fk_row in fk_rows:
+            from_table = fk_row.get("table_name") or fk_row.get("TABLE_NAME", "")
+            from_col = fk_row.get("column_name") or fk_row.get("COLUMN_NAME", "")
+            to_table = fk_row.get("referenced_table_name") or fk_row.get("REFERENCED_TABLE_NAME", "")
+            to_col = fk_row.get("referenced_column_name") or fk_row.get("REFERENCED_COLUMN_NAME", "")
+            if from_table and to_table:
+                fk_line = f"  FOREIGN KEY ({from_col}) REFERENCES {to_table}({to_col})"
+                fk_map.setdefault(from_table, []).append(fk_line)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Could not fetch FK info for schema sync: %s", e)
+
+    # If DB introspection gave no FKs (databases without formal FK constraints),
+    # fall back to inferred relationships from relationships knowledge pack
+    if not fk_map:
+        try:
+            rel_path = get_knowledge_path("relationships", db_id=db_id)
+            if rel_path.exists():
+                rel_data = json.loads(rel_path.read_text(encoding="utf-8"))
+                rels = rel_data.get("relationships") if isinstance(rel_data, dict) else rel_data
+                for r in rels or []:
+                    frm, fcol = r.get("from_table"), r.get("from_column")
+                    to, tcol = r.get("to_table"), r.get("to_column")
+                    if frm and fcol and to and tcol:
+                        fk_line = f"  FOREIGN KEY ({fcol}) REFERENCES {to}({tcol})"
+                        fk_map.setdefault(frm, []).append(fk_line)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not load fallback inferred relationships: %s", e)
+
+    # 4. Build Chunk objects — one per table, enriched with domain metadata and FKs
+    meta_map = _load_table_metadata(db_id=db_id)
+    chunks: list[Chunk] = []
+    doc_id = get_schema_document_id(db_id)
+    for table_name, schema_text in table_schemas.items():
+        enriched_content = _enrich_table_schema(
+            table_name=table_name,
+            schema_text=schema_text,
+            table_meta=meta_map.get(table_name.lower()),
+            fk_lines=fk_map.get(table_name),
+        )
+
+        chunk_id = f"{db_id}_schema_{table_name}"
+        chunks.append(
+            Chunk(
+                chunk_id=chunk_id,
+                document_id=doc_id,
+                chunk_type=ChunkType.SQL_SCHEMA,
+                content=enriched_content,
+                token_count=len(enriched_content) // 4,  # rough estimate
+                document_type=DocumentType.DATABASE,
+                source_file=f"database/{db_id}/{table_name}",
+                db_id=db_id,
+                metadata={"db_id": db_id},
+            )
+        )
+
+    if not chunks:
+        return {"status": "error", "message": "No tables found in schema"}
+
+    # 5. Embed all table chunks FIRST — if embedding fails/rate-limits, old schema remains safe
+    vectors, sparse_vectors = await embeddings.embed_chunks(chunks)
+
+    # 6. Upsert new chunks into Qdrant — with deterministic per-table IDs, existing chunks
+    # are atomically updated in place with zero downtime or empty-store window
+    await store.upsert(chunks, vectors, sparse_vectors)
+
+    # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
+    try:
+        from src.stages.s12b_sql_retrieval import SQLRetriever
+        SQLRetriever.clear_schema_cache(db_id=db_id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Could not clear SQLRetriever schema cache: %s", e)
+
+    logger.info(
+        "Schema sync complete: %d tables embedded and upserted to Qdrant for %s",
+        len(chunks),
+        db_id,
+    )
+
+    return {
+        "status": "ok",
+        "db_id": db_id,
+        "document_id": doc_id,
+        "tables_synced": len(chunks),
+        "table_names": sorted(table_schemas.keys()),
+    }
+

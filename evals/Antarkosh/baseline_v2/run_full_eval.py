@@ -24,10 +24,7 @@ REPO_ROOT = next((p for p in [Path(__file__).resolve()] + list(Path(__file__).re
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-try:
-    from src.pipeline.query_pipeline import QueryPipeline
-except ImportError:
-    from src.pipeline.query import QueryPipeline
+from src.pipeline.query import QueryPipeline
 
 from src.sql.knowledge.loaders import get_knowledge_path
 from src.core.sql_column_registry import ColumnRegistry

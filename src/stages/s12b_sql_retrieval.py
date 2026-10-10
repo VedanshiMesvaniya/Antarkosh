@@ -204,7 +204,7 @@ from src.sql.safety.result_validator import ResultValidator, ValidationSeverity
 from src.sql.learning.pattern_learner import PatternLearner
 from src.sql.safety.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
-from src.stages.s10_embeddings import EmbeddingService
+from src.rag.stages.s10_embeddings import EmbeddingService
 from src.sql.engine import Engine
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, get_knowledge_path
 from src.sql.safety.empty_result_classifier import classify_empty_result
@@ -227,7 +227,7 @@ from src.sql.repair.sql_repair import (
 )
 
 if TYPE_CHECKING:
-    from src.stages.s11_vector_store import QdrantStore
+    from src.rag.stages.s11_vector_store import QdrantStore
 
 logger = logging.getLogger(__name__)
 

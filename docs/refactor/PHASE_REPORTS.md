@@ -423,3 +423,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: G5
 
+---
+
+## Step G5 Report: RAG Stages and Ingestion Moves, Schema Ingestion Merge, and Query Pipeline Removal
+- **Step ID**: G5
+- **Commits**: 98966bc
+- **Files Changed**: `src/rag/stages/s01_file_detection.py` through `s11_vector_store.py` (10 stages), `src/rag/stages/__init__.py`, `src/rag/retrieval.py`, `src/rag/ingestion.py`, `src/rag/folder_ingestion.py`, `src/sql/schema_retrieval.py`, `src/pipeline/query_pipeline.py` (deleted), 14 shims (`src/stages/s01`..`s11`, `src/stages/s12_s13_s14_retrieval.py`, `src/pipeline/ingestion.py`, `src/pipeline/folder_ingestion.py`, `src/pipeline/schema_ingestion.py`), consumers (`src/api/ui.py`, `src/api/upload.py`, `src/cli.py`, `src/main.py`, `src/pipeline/query.py`, `src/sql/pipeline.py`, `src/stages/s12b_sql_retrieval.py`, `evals/Antarkosh/baseline_v2/run_full_eval.py`), `tests/test_g5_modules.py`.
+- **What Changed**: Moved 10 document ingestion stages `s01`–`s11` to `src/rag/stages/`. Moved `s12_s13_s14_retrieval.py` to `src/rag/retrieval.py`. Moved `src/pipeline/ingestion.py` and `src/pipeline/folder_ingestion.py` to `src/rag/`. Merged `src/pipeline/schema_ingestion.py` into `src/sql/schema_retrieval.py` with dynamic `_get_run_readonly_query()` resolver for monkeypatch compatibility. Deleted compatibility alias `src/pipeline/query_pipeline.py` after updating its only importer `evals/Antarkosh/baseline_v2/run_full_eval.py`. Left complete backward-compatibility shims at all 14 original locations with dynamic `_ShimModule` setattr mirroring to preserve mock/monkeypatch transparency across old module paths. Re-pointed all consumers in `src/`. Added 8 unit tests in `tests/test_g5_modules.py` covering object identity across all 14 shims, helper sanity checks, and alias deletion.
+- **Checks a-g**: a-g all passed; pytest: 735 passed, 18 skipped, 8 deselected, 1 xfailed (+8 passed vs 727 baseline); ruff clean; compileall clean; import src.main ok; zero drift (both old and new validator paths pass); offline eval 19/19 (100%) golden cases pass; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim (Phase I); `src/stages/s12b_sql_retrieval.py` re-export shim (Phase I); 9 G1 shims (Phase I); 7 G2 shims (Phase I); 5 G3 shims (Phase I); 3 G4 shims (Phase I); 14 G5 shims (`s01`..`s11`, `s12_s13_s14_retrieval`, `ingestion`, `folder_ingestion`, `schema_ingestion`) (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: G6
+
+

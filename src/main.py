@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
 
     if settings.qdrant_configured:
         try:
-            from src.pipeline.ingestion import reconcile_active_flags
+            from src.rag.ingestion import reconcile_active_flags
 
             summary = await reconcile_active_flags()
             logger.info("Startup reconcile: %s", summary)
@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
 
     if settings.auto_ingest_on_startup:
         try:
-            from src.pipeline.folder_ingestion import scan_and_ingest
+            from src.rag.folder_ingestion import scan_and_ingest
 
             result = await scan_and_ingest()
             logger.info("Startup folder scan: %s", result.message)
@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
 
     scan_task = None
     if settings.auto_ingest_interval_seconds > 0:
-        from src.pipeline.folder_ingestion import run_periodic_scan
+        from src.rag.folder_ingestion import run_periodic_scan
 
         scan_task = asyncio.create_task(
             run_periodic_scan(settings.auto_ingest_interval_seconds)

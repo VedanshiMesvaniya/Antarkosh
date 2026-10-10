@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from src.api.auth import require_admin
 from src.core.config import settings
 from src.core.paths import safe_basename, unique_upload_dest
-from src.pipeline.ingestion import IngestionPipeline
+from src.rag.ingestion import IngestionPipeline
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -158,7 +158,7 @@ async def scan_ingest_folder(
     short, ready-to-display status (covers the empty-folder and nothing-new
     cases) that the UI surfaces as a popup.
     """
-    from src.pipeline.folder_ingestion import scan_and_ingest
+    from src.rag.folder_ingestion import scan_and_ingest
 
     try:
         result = await scan_and_ingest()

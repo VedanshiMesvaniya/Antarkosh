@@ -15,9 +15,9 @@ from src.sql.learning.pipeline_metrics import log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
 from src.core.rate_limiter import get_shared_rate_limiter
 from src.models.schemas import QueryResult, RetrievedChunk, ThinkingStep
-from src.stages.s10_embeddings import EmbeddingService
-from src.stages.s11_vector_store import QdrantStore
-from src.stages.s12_s13_s14_retrieval import (
+from src.rag.stages.s10_embeddings import EmbeddingService
+from src.rag.stages.s11_vector_store import QdrantStore
+from src.rag.retrieval import (
     Generator,
     Reranker,
     Retriever,

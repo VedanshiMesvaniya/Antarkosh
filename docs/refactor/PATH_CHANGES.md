@@ -409,3 +409,41 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | G4-6 | src/core/ingestion_registry.py | src/core/ingestion_registry.py | shim | Re-exports IngestionRegistry, RegistryStatus, RegistryCheckResult | a-g pass | 82cc769 |
 | G4-7 | (new) | tests/test_g4_modules.py | test | Tests verifying object identity for all 3 shims and smoke testing moved modules | a-g pass | 82cc769 |
 
+---
+
+## Step G5 — RAG Stages and Ingestion Moves, Schema Ingestion Merge, and Query Pipeline Removal (s01-s11, s12_s13_s14_retrieval, ingestion, folder_ingestion, schema_ingestion, query_pipeline)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| G5-1 | src/stages/s01_file_detection.py | src/rag/stages/s01_file_detection.py | move | Moved Stage 1 MIME detection and file category validation | a-g pass | 98966bc |
+| G5-2 | src/stages/s01_file_detection.py | src/stages/s01_file_detection.py | shim | Re-exports detect_file, is_supported_file, FileCategory | a-g pass | 98966bc |
+| G5-3 | src/stages/s02_classification.py | src/rag/stages/s02_classification.py | move | Moved Stage 2 document structure and semantic classification | a-g pass | 98966bc |
+| G5-4 | src/stages/s02_classification.py | src/stages/s02_classification.py | shim | Re-exports classify_semantic, classify_structure | a-g pass | 98966bc |
+| G5-5 | src/stages/s03_parsing.py | src/rag/stages/s03_parsing.py | move | Moved Stage 3 document parsers (PDF, DOCX, XLSX, TXT, CSV) | a-g pass | 98966bc |
+| G5-6 | src/stages/s03_parsing.py | src/stages/s03_parsing.py | shim | Re-exports parse_document, extract_text | a-g pass | 98966bc |
+| G5-7 | src/stages/s04_ocr.py | src/rag/stages/s04_ocr.py | move | Moved Stage 4 OCR engine and fallback parsers | a-g pass | 98966bc |
+| G5-8 | src/stages/s04_ocr.py | src/stages/s04_ocr.py | shim | Re-exports run_ocr, is_scanned_page | a-g pass | 98966bc |
+| G5-9 | src/stages/s05_layout.py | src/rag/stages/s05_layout.py | move | Moved Stage 5 layout analysis and reading order detector | a-g pass | 98966bc |
+| G5-10 | src/stages/s05_layout.py | src/stages/s05_layout.py | shim | Re-exports analyze_layout, extract_reading_order | a-g pass | 98966bc |
+| G5-11 | src/stages/s06_tables.py | src/rag/stages/s06_tables.py | move | Moved Stage 6 tabular extraction and markdown converter | a-g pass | 98966bc |
+| G5-12 | src/stages/s06_tables.py | src/stages/s06_tables.py | shim | Re-exports extract_tables, format_markdown_table | a-g pass | 98966bc |
+| G5-13 | src/stages/s07_s08_visuals.py | src/rag/stages/s07_s08_visuals.py | move | Moved Stages 7-8 visual element extractor and diagram parser | a-g pass | 98966bc |
+| G5-14 | src/stages/s07_s08_visuals.py | src/stages/s07_s08_visuals.py | shim | Re-exports analyze_visuals, extract_images | a-g pass | 98966bc |
+| G5-15 | src/stages/s09_chunking.py | src/rag/stages/s09_chunking.py | move | Moved Stage 9 semantic document chunking engine | a-g pass | 98966bc |
+| G5-16 | src/stages/s09_chunking.py | src/stages/s09_chunking.py | shim | Re-exports chunk_document, estimate_chunk_tokens | a-g pass | 98966bc |
+| G5-17 | src/stages/s10_embeddings.py | src/rag/stages/s10_embeddings.py | move | Moved Stage 10 BGE-M3 dense/sparse embedding generator | a-g pass | 98966bc |
+| G5-18 | src/stages/s10_embeddings.py | src/stages/s10_embeddings.py | shim | Re-exports EmbeddingService, SparseVector | a-g pass | 98966bc |
+| G5-19 | src/stages/s11_vector_store.py | src/rag/stages/s11_vector_store.py | move | Moved Stage 11 QdrantStore collection manager and upsert engine | a-g pass | 98966bc |
+| G5-20 | src/stages/s11_vector_store.py | src/stages/s11_vector_store.py | shim | Re-exports QdrantStore, CollectionConfig | a-g pass | 98966bc |
+| G5-21 | src/stages/s12_s13_s14_retrieval.py | src/rag/retrieval.py | move | Moved Stages 12-14 Retriever, Reranker, Generator pipeline | a-g pass | 98966bc |
+| G5-22 | src/stages/s12_s13_s14_retrieval.py | src/stages/s12_s13_s14_retrieval.py | shim | Re-exports Retriever, Reranker, Generator with _ShimModule setattr mirror | a-g pass | 98966bc |
+| G5-23 | src/pipeline/ingestion.py | src/rag/ingestion.py | move | Moved multi-stage IngestionPipeline with SHA-256 deduplication and locks | a-g pass | 98966bc |
+| G5-24 | src/pipeline/ingestion.py | src/pipeline/ingestion.py | shim | Re-exports IngestionPipeline, IngestionResult, _INGEST_LOCKS with _ShimModule | a-g pass | 98966bc |
+| G5-25 | src/pipeline/folder_ingestion.py | src/rag/folder_ingestion.py | move | Moved drop-folder auto-ingestion service and periodic scanner | a-g pass | 98966bc |
+| G5-26 | src/pipeline/folder_ingestion.py | src/pipeline/folder_ingestion.py | shim | Re-exports scan_and_ingest, run_periodic_scan with _ShimModule | a-g pass | 98966bc |
+| G5-27 | src/pipeline/schema_ingestion.py | src/sql/schema_retrieval.py | merge | Merged live DB schema introspection and Qdrant chunk upsert into schema_retrieval | a-g pass | 98966bc |
+| G5-28 | src/pipeline/schema_ingestion.py | src/pipeline/schema_ingestion.py | shim | Re-exports sync_live_schema, SCHEMA_DOCUMENT_ID with _ShimModule | a-g pass | 98966bc |
+| G5-29 | src/pipeline/query_pipeline.py | (deleted) | delete | Removed compatibility alias after updating sole importer in run_full_eval.py | a-g pass | 98966bc |
+| G5-30 | (new) | tests/test_g5_modules.py | test | Tests verifying object identity for all 14 shims, helpers, and alias removal | a-g pass | 98966bc |
+
+

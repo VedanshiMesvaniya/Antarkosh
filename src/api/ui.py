@@ -718,7 +718,7 @@ async def delete_document(
 ) -> dict[str, Any]:
     """Delete a document version from both the vector store and the registry (admin only)."""
     from src.rag.ingestion_registry import IngestionRegistry
-    from src.stages.s11_vector_store import QdrantStore
+    from src.rag.stages.s11_vector_store import QdrantStore
 
     registry = IngestionRegistry()
     entry = registry.get_by_document_id(document_id)
@@ -909,7 +909,7 @@ async def sync_schema(
     CREATE TABLE statement as a separate chunk, and upserts them into
     Qdrant under document_id="schema:<db_id>" with payload db_id.
     """
-    from src.pipeline.schema_ingestion import sync_live_schema
+    from src.sql.schema_retrieval import sync_live_schema
     from src.sql.knowledge.loaders import validate_db_id
 
     try:
