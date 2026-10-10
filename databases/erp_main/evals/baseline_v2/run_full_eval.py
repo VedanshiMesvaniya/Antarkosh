@@ -20,7 +20,7 @@ import sys
 import time
 from typing import Any
 
-REPO_ROOT = next((p for p in [Path(__file__).resolve()] + list(Path(__file__).resolve().parents) if (p / "pyproject.toml").is_file()), Path(__file__).resolve().parents[3])
+REPO_ROOT = next((p for p in [Path(__file__).resolve()] + list(Path(__file__).resolve().parents) if (p / "pyproject.toml").is_file()), Path(__file__).resolve().parents[4])
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -358,7 +358,7 @@ class LiveEvaluator:
         """Run evaluation on all questions maintaining a persistent async event loop"""
         asyncio.run(self._run_full_evaluation_async(questions, max_workers=max_workers, delay=delay))
 
-    def generate_report(self, output_dir: str = "evals/Antarkosh/results") -> None:
+    def generate_report(self, output_dir: str = "databases/erp_main/evals/results") -> None:
         """Generate comprehensive JSON and CSV reports"""
         out_path = Path(output_dir)
         if not out_path.is_absolute():
@@ -456,7 +456,7 @@ def main() -> None:
     parser.add_argument(
         "--questions",
         type=str,
-        default="evals/Antarkosh/questions.jsonl",
+        default="databases/erp_main/evals/questions.jsonl",
         help="Path to questions file",
     )
     parser.add_argument("--db", type=str, default="Antarkosh.db", help="Path to SQLite database")
@@ -494,7 +494,7 @@ def main() -> None:
     evaluator.run_full_evaluation(questions, max_workers=args.max_workers, delay=args.delay)
     evaluator.generate_report()
 
-    print("\n✅ Evaluation Complete! Check 'evals/Antarkosh/results/' for reports.")
+    print("\n✅ Evaluation Complete! Check 'databases/erp_main/evals/results/' for reports.")
 
 
 if __name__ == "__main__":

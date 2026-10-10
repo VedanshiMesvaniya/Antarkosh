@@ -23,7 +23,7 @@ decision the pipeline makes:
   DOC     -> answerable only from uploaded documents / policy text
   ABSTAIN -> out of scope for this system; should not fabricate
 
-Run:  python evals/Antarkosh/build_questions.py
+Run:  python databases/erp_main/evals/build_questions.py
 """
 
 from __future__ import annotations

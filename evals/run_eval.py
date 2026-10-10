@@ -1,4 +1,6 @@
-"""Run the Antarkosh Text-to-SQL evaluation.
+"""Run the Antarkosh Text-to-SQL evaluation across databases.
+
+Shared evaluation runner for multi-database benchmarks.
 
 Two modes:
 
@@ -12,20 +14,10 @@ Two modes:
               or MySQL) and provider API keys, exactly like the app.
 
 Examples:
-  python evals/Antarkosh/run_eval.py --offline
-  python evals/Antarkosh/run_eval.py --limit 10 --difficulty hard_twisted
-  python evals/Antarkosh/run_eval.py --out evals/Antarkosh/results.json
-
-The judge is a strict rubric grader. It returns, per question:
-  score          0.0–1.0   how well the answer satisfies the rubric
-  route_ok       bool      did the pipeline route (SQL / DOC / BOTH / ABSTAIN)
-                           match the expected route
-  reasoning      short justification
-
-Design: the judge sees the system's final answer, the generated SQL (extracted
-from the answer's "SQL Query Executed:" line when present), the rubric, and the
-twist — so it grades whether the schema trap was actually handled, not just
-whether the prose sounds plausible.
+  python evals/run_eval.py --offline
+  python evals/run_eval.py --db erp_main --offline
+  python evals/run_eval.py --limit 10 --difficulty hard_twisted
+  python evals/run_eval.py --out databases/erp_main/evals/results.json
 """
 
 from __future__ import annotations
@@ -39,33 +31,30 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REPO = next((p for p in [HERE] + list(HERE.parents) if (p / "pyproject.toml").is_file()), HERE.parents[2])
+REPO = HERE.parent
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from src.sql.knowledge.loaders import get_knowledge_path
-
-QUESTIONS = HERE / "questions.jsonl"
-SCHEMA = get_knowledge_path("schema")
+from src.sql.knowledge.loaders import get_knowledge_path, DEFAULT_DB_ID
 
 
 # ---------------------------------------------------------------------------
 # Dataset loading + offline validation
 # ---------------------------------------------------------------------------
 
-def load_questions() -> list[dict]:
-    with QUESTIONS.open(encoding="utf-8") as fh:
+def load_questions(questions_path: Path) -> list[dict]:
+    with questions_path.open(encoding="utf-8") as fh:
         return [json.loads(line) for line in fh if line.strip()]
 
 
-def schema_table_names() -> set[str]:
-    data = json.loads(SCHEMA.read_text(encoding="utf-8"))
+def schema_table_names(schema_path: Path) -> set[str]:
+    data = json.loads(schema_path.read_text(encoding="utf-8"))
     return {t["name"] for t in data["tables"]}
 
 
-def offline_validate(questions: list[dict]) -> int:
+def offline_validate(questions: list[dict], schema_path: Path) -> int:
     """Check every referenced table exists; print coverage. Returns exit code."""
-    tables = schema_table_names()
+    tables = schema_table_names(schema_path)
     problems: list[str] = []
     referenced: set[str] = set()
 
@@ -123,25 +112,27 @@ def observed_route(answer: str, model_used: str) -> str:
 
 
 def route_matches(expected: str, observed: str) -> bool:
-    """Grade the routing decision with sensible tolerance.
-
-    BOTH is satisfied by SQL or BOTH (the SQL half fired); a question that may
-    legitimately be answered from either side isn't marked wrong for picking one.
-    """
     if expected == observed:
         return True
-    if expected == "BOTH" and observed in ("SQL", "BOTH"):
-        return True
-    if expected == "DOC" and observed in ("DOC", "ABSTAIN"):
+    if expected == "SQL" and observed == "BOTH":
         return True
     return False
 
 
-_JUDGE_SYSTEM = """You are a strict evaluator for a Text-to-SQL assistant that answers questions about a manufacturing/trading ERP database.
+_JUDGE_SYSTEM = """You are an exacting evaluation judge for a enterprise Text-to-SQL system.
+You will be given:
+- the user's natural-language question
+- the known schema trap or "twist" the question was designed to probe
+- the grading rubric
+- the generated SQL query (if one was run)
+- the final answer presented to the user
 
-You are given: the user QUESTION, the KNOWN TWIST (a schema trap the answer must handle), the RUBRIC (what a correct answer must do), the assistant's generated SQL (if any), and the assistant's ANSWER.
-
-Grade ONLY against the rubric and twist. Reward answers that handle the twist correctly; penalize fabricated columns/values, ignored soft-deletes, or confidently wrong numbers. For out-of-scope/abstain questions, a correct answer REFUSES or asks to clarify rather than inventing data.
+Score the answer on a strict 0.0 to 1.0 scale:
+  1.0 = Correct number/result, handled the twist cleanly, rubric fully satisfied.
+  0.5 = Mostly correct, but stumbled on a secondary detail (e.g. wrong sort order,
+        forgot a soft-delete filter, but got the core aggregate right).
+  0.0 = Factually wrong number, query failed, wrong tables, hallucinated answer,
+        or fell into the trap described in the twist.
 
 Reply with STRICT JSON, no prose:
 {"score": <float 0..1>, "handled_twist": <true|false>, "reasoning": "<=200 chars"}"""
@@ -157,12 +148,10 @@ def _judge_user(q: dict, generated_sql: str, answer: str) -> str:
     )
 
 
-async def run_live(questions: list[dict], judge_task: str, out_path: Path | None) -> int:
+async def run_live(questions: list[dict], judge_task: str, out_path: Path | None, db_id: str = DEFAULT_DB_ID) -> int:
     from src.pipeline.query import QueryPipeline
 
     pipeline = QueryPipeline()
-    # A second router purely for judging keeps grading independent of the
-    # provider that produced the answer.
     from src.core.provider_client import ProviderRouter
     judge = ProviderRouter()
 
@@ -171,7 +160,7 @@ async def run_live(questions: list[dict], judge_task: str, out_path: Path | None
         rec = {"id": q["id"], "difficulty": q["difficulty"], "domain": q["domain"],
                "expected_route": q["route"], "question": q["question"]}
         try:
-            res = await pipeline.query(q["question"])
+            res = await pipeline.query(q["question"], db_id=db_id)
             answer = res.answer or ""
             model_used = res.model_used or ""
             sql_match = _SQL_LINE.search(answer)
@@ -183,7 +172,7 @@ async def run_live(questions: list[dict], judge_task: str, out_path: Path | None
 
             verdict = await _grade(judge, judge_task, q, generated_sql, answer)
             rec.update(verdict)
-        except Exception as e:  # keep the eval going; record the failure
+        except Exception as e:
             rec.update({"observed_route": "ERROR", "route_ok": False,
                         "score": 0.0, "handled_twist": False,
                         "reasoning": f"pipeline error: {e}"})
@@ -257,7 +246,13 @@ def _summarize(results: list[dict]) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Antarkosh Text-to-SQL eval")
+    ap = argparse.ArgumentParser(description="Antarkosh Text-to-SQL eval runner")
+    ap.add_argument("--db", default=DEFAULT_DB_ID,
+                    help=f"Database ID to evaluate (default: {DEFAULT_DB_ID})")
+    ap.add_argument("--questions", type=Path, default=None,
+                    help="Path to questions.jsonl file (default: databases/<db>/evals/questions.jsonl)")
+    ap.add_argument("--schema", type=Path, default=None,
+                    help="Path to schema.json file (default: resolved via get_knowledge_path)")
     ap.add_argument("--offline", action="store_true",
                     help="validate the dataset against the schema; no DB/keys needed")
     ap.add_argument("--limit", type=int, default=None, help="run only the first N questions")
@@ -268,7 +263,17 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=None, help="write detailed JSON results here")
     args = ap.parse_args()
 
-    questions = load_questions()
+    questions_path = args.questions or (REPO / "databases" / args.db / "evals" / "questions.jsonl")
+    schema_path = args.schema or get_knowledge_path("schema", db_id=args.db)
+
+    if not questions_path.is_file():
+        print(f"Error: Questions file not found at {questions_path}", file=sys.stderr)
+        return 1
+    if not schema_path.is_file():
+        print(f"Error: Schema file not found at {schema_path}", file=sys.stderr)
+        return 1
+
+    questions = load_questions(questions_path)
     if args.difficulty:
         questions = [q for q in questions if q["difficulty"] == args.difficulty]
     if args.domain:
@@ -281,9 +286,9 @@ def main() -> int:
         return 1
 
     if args.offline:
-        return offline_validate(questions)
+        return offline_validate(questions, schema_path)
 
-    return asyncio.run(run_live(questions, args.judge_task, args.out))
+    return asyncio.run(run_live(questions, args.judge_task, args.out, db_id=args.db))
 
 
 if __name__ == "__main__":
