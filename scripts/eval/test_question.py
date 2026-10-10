@@ -2,20 +2,29 @@
 """Interactive/CLI tool to test natural language questions against the live database.
 
 Usage:
-    .venv/bin/python scripts/test_question.py "Who bought the most goods from us this year?"
-    .venv/bin/python scripts/test_question.py "How many active customers do we have?"
-    .venv/bin/python scripts/test_question.py --sql "SELECT name, status FROM party LIMIT 5;"
+    .venv/bin/python scripts/eval/test_question.py "Who bought the most goods from us this year?"
+    .venv/bin/python scripts/eval/test_question.py "How many active customers do we have?"
+    .venv/bin/python scripts/eval/test_question.py --sql "SELECT name, status FROM party LIMIT 5;"
 """
 
 import argparse
 import asyncio
 import sys
+from pathlib import Path
+
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
+
 from rich.console import Console
 from rich.table import Table
 
 from src.core.provider_client import ProviderRouter
 from src.core.db_client import run_readonly_query
 from src.stages.s12b_sql_retrieval import SQLRetriever, extract_analytical_intent
+
 
 console = Console()
 

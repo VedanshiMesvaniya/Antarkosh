@@ -20,9 +20,18 @@ from src.stages.s10_embeddings import EmbeddingService
 from src.stages.s11_vector_store import QdrantStore
 from src.stages.s12b_sql_retrieval import SQLRetriever
 
+import sys
+
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
+
 console = Console()
-QUESTIONS_FILE = Path("evals/Antarkosh/reports/layman_questions_50.md")
-REPORT_FILE = Path("evals/Antarkosh/reports/eval_run_report.md")
+QUESTIONS_FILE = REPO_ROOT / "evals" / "Antarkosh" / "reports" / "layman_questions_50.md"
+REPORT_FILE = REPO_ROOT / "evals" / "Antarkosh" / "reports" / "eval_run_report.md"
+
 
 
 def extract_questions_from_md(md_path: Path) -> list[tuple[int, str, str]]:

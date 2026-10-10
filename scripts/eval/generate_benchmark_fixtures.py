@@ -7,9 +7,15 @@ allowing the entire 52-case benchmark to execute in CI in < 2 seconds.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
 from scripts._paths import REPO_ROOT
+
 
 BENCHMARK_FILE = REPO_ROOT / "tests" / "golden" / "v1_benchmark.json"
 FIXTURES_DIR = REPO_ROOT / "tests" / "golden" / "fixtures"

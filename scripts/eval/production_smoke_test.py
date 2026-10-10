@@ -7,8 +7,8 @@ Executes a 4-probe canary test against a live deployment:
 4. Live Dashboard Telemetry Verification (< 5ms response check)
 
 Usage:
-    python scripts/production_smoke_test.py --base-url http://localhost:8000
-    python scripts/production_smoke_test.py --base-url https://your-render-app.onrender.com
+    python scripts/eval/production_smoke_test.py --base-url http://localhost:8000
+    python scripts/eval/production_smoke_test.py --base-url https://your-render-app.onrender.com
 """
 
 from __future__ import annotations
@@ -17,9 +17,17 @@ import argparse
 import json
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
+
 import httpx
+
 
 
 def log_step(name: str, status: str, detail: str = "") -> None:

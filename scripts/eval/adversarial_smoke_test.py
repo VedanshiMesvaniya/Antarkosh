@@ -1,8 +1,18 @@
 import asyncio
+import sys
+from pathlib import Path
+
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
+
 from src.pipeline.query import QueryPipeline
 from src.stages.s12b_sql_retrieval import SQLRetriever
 from src.core.db_client import run_readonly_query
 from src.core.provider_client import ProviderRouter
+
 
 async def run_adversarial_tests():
     print("\n=======================================================")

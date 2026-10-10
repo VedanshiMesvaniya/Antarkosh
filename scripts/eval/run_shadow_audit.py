@@ -22,7 +22,14 @@ from src.guards.schema_guard import evaluate_schema_sufficiency
 from src.guards.temporal_guard import evaluate_temporal_filter
 from src.stages.s12b_sql_retrieval import _extract_table_names
 
+import sys
+
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
 from scripts._paths import REPO_ROOT
+
 
 BENCHMARK_FILE = REPO_ROOT / "tests" / "golden" / "v1_benchmark.json"
 FIXTURES_DIR = REPO_ROOT / "tests" / "golden" / "fixtures"
