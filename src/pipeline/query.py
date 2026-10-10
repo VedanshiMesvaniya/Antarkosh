@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 from src.core.config import settings
-from src.core.pipeline_metrics import log_event as _log_pipeline_event
+from src.sql.learning.pipeline_metrics import log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
 from src.core.rate_limiter import get_shared_rate_limiter
 from src.models.schemas import QueryResult, RetrievedChunk, ThinkingStep
@@ -29,7 +29,7 @@ from src.sql.context import DEFAULT_DB_ID
 from src.sql.knowledge.loaders import validate_db_id
 from src.stages.s12b_sql_retrieval import SQLRetriever
 from src.utils.query_classifier import QueryType, classify_query
-from src.utils.semantic_cache import get_semantic_cache
+from src.sql.semantic_cache import get_semantic_cache
 from src.sql.safety.sql_privacy import sanitize_assistant_turn
 from src.utils.query_budget import get_or_create_budget_controller
 from src.utils.telemetry import get_or_create_query_id, log_telemetry, set_current_query_id, timed_stage
@@ -242,7 +242,7 @@ class QueryPipeline:
             or self.db_id
         )
         validate_db_id(target_db_id)
-        from src.core.pipeline_metrics import CURRENT_DB_ID
+        from src.sql.learning.pipeline_metrics import CURRENT_DB_ID
         CURRENT_DB_ID.set(target_db_id)
         sql_retriever = self._get_sql_retriever(target_db_id)
 

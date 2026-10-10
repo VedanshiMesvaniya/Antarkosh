@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 710 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 714 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -33,7 +33,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | F6 | Extract generation | F6 | 698 passed |
 | [x] | F7 | Thin SQLRetriever (pipeline.py), s12b is a shim | F7 | 704 passed |
 | [x] | G1 | Move unused and single-importer modules | G1 | 710 passed |
-| [ ] | G2 | Move 3-4 importer modules | | |
+| [x] | G2 | Move 3-4 importer modules | 01a7a7f | 714 passed |
 | [ ] | G3 | Move 5 importer modules | | |
 | [ ] | G4 | Move sql_safety, query_classifier, ingestion_registry | | |
 | [ ] | G5 | Move rag stages, retrieval, ingestion, schema_ingestion | | |
@@ -66,6 +66,13 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 - `src/core/confidence_scorer.py` re-exporting `ConfidenceBreakdown`, `ConfidenceScorer` from `src.sql.safety.confidence_scorer` (removed in Phase I)
 - `src/core/pattern_learner.py` re-exporting `LearnedPattern`, `PatternLearner`, path constants from `src.sql.learning.pattern_learner` (removed in Phase I)
 - `src/utils/sql_privacy.py` re-exporting `sanitize_assistant_turn` and privacy regexes from `src.sql.safety.sql_privacy` (removed in Phase I)
+- `src/core/pipeline_metrics.py` re-exporting `CURRENT_DB_ID`, `METRICS_FILE`, `PipelineEvent`, `log_event`, `get_score_summary`, `get_recent_events` from `src.sql.learning.pipeline_metrics` (removed in Phase I)
+- `src/core/sql_column_registry.py` re-exporting `ColumnRegistry`, `COLUMN_GLOSSARY_PATH`, `GLOSSARY_PATH` from `src.sql.safety.column_registry` (removed in Phase I)
+- `src/utils/fast_path.py` re-exporting `DISABLED_TEMPLATES`, `fast_path_format`, `format_aggregate_fast_path`, `format_list_fast_path` from `src.sql.fast_path` (removed in Phase I)
+- `src/utils/semantic_cache.py` re-exporting `SemanticCache`, `get_semantic_cache`, `CachedEntry` from `src.sql.semantic_cache` (removed in Phase I)
+- `src/utils/empty_result_classifier.py` re-exporting `classify_empty_result`, `VALID_EMPTY`, `SUSPICIOUS_EMPTY` from `src.sql.safety.empty_result_classifier` (removed in Phase I)
+- `src/stages/sql_repair.py` re-exporting `MAX_DELTA_REPAIR_ATTEMPTS`, `attempt_delta_repair`, `extract_schema_context_from_ddl`, `extract_sql_from_response` from `src.sql.repair.sql_repair` (removed in Phase I)
+- `src/prompts/delta_repair.py` re-exporting `build_delta_repair_payload`, `count_tokens`, `format_compact_schema`, `DELTA_REPAIR_SYSTEM_PROMPT` from `src.sql.repair.delta_repair` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.

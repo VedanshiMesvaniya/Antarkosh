@@ -354,3 +354,26 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | G1-17 | src/utils/sql_privacy.py | src/sql/safety/sql_privacy.py | move | Moved SQL privacy and result row sanitization engine | a-g pass | G1 |
 | G1-18 | src/utils/sql_privacy.py | src/utils/sql_privacy.py | shim | Re-exports sanitize_assistant_turn and privacy regexes | a-g pass | G1 |
 | G1-19 | (new) | tests/test_g1_modules.py | test | Tests verifying object identity for all 9 shims and functional sanity of moved modules | a-g pass | G1 |
+
+---
+
+## Step G2 — Core, Utils, and Stages Moves (pipeline_metrics, column_registry, fast_path, semantic_cache, empty_result_classifier, sql_repair, delta_repair)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| G2-1 | src/core/pipeline_metrics.py | src/sql/learning/pipeline_metrics.py | move | Moved pipeline event metrics logger and scorer; added _get_metrics_file() monkeypatch resolver | a-g pass | 01a7a7f |
+| G2-2 | src/core/pipeline_metrics.py | src/core/pipeline_metrics.py | shim | Re-exports CURRENT_DB_ID, METRICS_FILE, PipelineEvent, log_event, get_score_summary, get_recent_events | a-g pass | 01a7a7f |
+| G2-3 | src/core/sql_column_registry.py | src/sql/safety/column_registry.py | move | Moved column schema registry and validation; aliased at src/sql/safety/sql_column_registry.py | a-g pass | 01a7a7f |
+| G2-4 | src/core/sql_column_registry.py | src/core/sql_column_registry.py | shim | Re-exports ColumnRegistry, COLUMN_GLOSSARY_PATH, GLOSSARY_PATH | a-g pass | 01a7a7f |
+| G2-5 | src/utils/fast_path.py | src/sql/fast_path.py | move | Moved deterministic template fast path and synthesis bypass | a-g pass | 01a7a7f |
+| G2-6 | src/utils/fast_path.py | src/utils/fast_path.py | shim | Re-exports DISABLED_TEMPLATES, fast_path_format, format_aggregate_fast_path, format_list_fast_path | a-g pass | 01a7a7f |
+| G2-7 | src/utils/semantic_cache.py | src/sql/semantic_cache.py | move | Moved semantic vector cosine cache with TTL and LRU eviction | a-g pass | 01a7a7f |
+| G2-8 | src/utils/semantic_cache.py | src/utils/semantic_cache.py | shim | Re-exports SemanticCache, get_semantic_cache, CachedEntry | a-g pass | 01a7a7f |
+| G2-9 | src/utils/empty_result_classifier.py | src/sql/safety/empty_result_classifier.py | move | Moved 0-row classification engine (valid_empty vs suspicious_empty) | a-g pass | 01a7a7f |
+| G2-10 | src/utils/empty_result_classifier.py | src/utils/empty_result_classifier.py | shim | Re-exports classify_empty_result, VALID_EMPTY, SUSPICIOUS_EMPTY | a-g pass | 01a7a7f |
+| G2-11 | src/stages/sql_repair.py | src/sql/repair/sql_repair.py | move | Moved Delta Repair executor and DDL schema context extractor | a-g pass | 01a7a7f |
+| G2-12 | src/stages/sql_repair.py | src/stages/sql_repair.py | shim | Re-exports MAX_DELTA_REPAIR_ATTEMPTS, attempt_delta_repair, extract_schema_context_from_ddl, extract_sql_from_response | a-g pass | 01a7a7f |
+| G2-13 | src/prompts/delta_repair.py | src/sql/repair/delta_repair.py | move | Moved delta repair prompt builder and token estimator | a-g pass | 01a7a7f |
+| G2-14 | src/prompts/delta_repair.py | src/prompts/delta_repair.py | shim | Re-exports build_delta_repair_payload, count_tokens, format_compact_schema, DELTA_REPAIR_SYSTEM_PROMPT | a-g pass | 01a7a7f |
+| G2-15 | (new) | tests/test_g2_modules.py | test | Tests verifying object identity for all 7 shims and smoke testing moved modules | a-g pass | 01a7a7f |
+

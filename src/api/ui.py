@@ -19,7 +19,7 @@ from src.core import db_settings
 from src.core.config import settings
 from src.core.provider_client import ProviderRouter
 from src.core.state import state_manager
-from src.core.pipeline_metrics import get_score_summary, log_event as _log_pipeline_event
+from src.sql.learning.pipeline_metrics import get_score_summary, log_event as _log_pipeline_event
 from src.models.schemas import ThinkingStep
 from src.pipeline.query import QueryPipeline
 from src.sql.context import DEFAULT_DB_ID

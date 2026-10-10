@@ -196,9 +196,9 @@ _route_tables_for_query = route_tables_for_query
 # Common pipeline & core imports preserved for monkeypatching / test compatibility
 from src.core.config import CONFIG_DIR, settings
 from src.core.db_client import run_readonly_query
-from src.core.pipeline_metrics import CURRENT_DB_ID, log_event as _log_pipeline_event
+from src.sql.learning.pipeline_metrics import CURRENT_DB_ID, log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
-from src.core.sql_column_registry import ColumnRegistry
+from src.sql.safety.column_registry import ColumnRegistry
 from src.core.sql_dialects import SQLDialectProfile, get_dialect_profile
 from src.sql.safety.result_validator import ResultValidator, ValidationSeverity
 from src.sql.learning.pattern_learner import PatternLearner
@@ -207,7 +207,7 @@ from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
 from src.stages.s10_embeddings import EmbeddingService
 from src.sql.engine import Engine
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, get_knowledge_path
-from src.utils.empty_result_classifier import classify_empty_result
+from src.sql.safety.empty_result_classifier import classify_empty_result
 from src.utils.failure_capture import capture_sql_failure
 from src.utils.feature_flags import is_feature_enabled
 from src.utils.query_budget import QueryBudgetExceededError, get_or_create_budget_controller
@@ -220,7 +220,7 @@ from src.guards.schema_guard import evaluate_schema_sufficiency
 from src.guards.temporal_guard import evaluate_temporal_filter
 from src.models.trace import GuardResult
 from src.utils.trace_context import get_current_span
-from src.stages.sql_repair import (
+from src.sql.repair.sql_repair import (
     MAX_DELTA_REPAIR_ATTEMPTS,
     attempt_delta_repair,
     extract_schema_context_from_ddl,

@@ -27,9 +27,9 @@ from src.core.config import settings
 from src.sql.engine import Engine
 from src.sql.knowledge.loaders import DEFAULT_DB_ID
 from src.core.db_client import run_readonly_query
-from src.core.pipeline_metrics import log_event as _log_pipeline_event
+from src.sql.learning.pipeline_metrics import log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
-from src.core.sql_column_registry import ColumnRegistry
+from src.sql.safety.column_registry import ColumnRegistry
 from src.core.sql_dialects import SQLDialectProfile, get_dialect_profile
 from src.sql.safety.result_validator import ResultValidator, ValidationSeverity
 from src.sql.learning.pattern_learner import PatternLearner
@@ -37,7 +37,7 @@ from src.sql.safety.confidence_scorer import ConfidenceScorer, ConfidenceBreakdo
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
 from src.sql.prompt_builder import build_sql_prompt
 from src.sql.soft_delete import detect_soft_delete_intent, enforce_soft_delete_filter
-from src.utils.empty_result_classifier import classify_empty_result
+from src.sql.safety.empty_result_classifier import classify_empty_result
 from src.utils.error_classification import classify_error
 from src.utils.failure_capture import capture_sql_failure
 from src.utils.feature_flags import is_feature_enabled
@@ -54,7 +54,7 @@ from src.utils.telemetry import timed_stage
 from src.guards.temporal_guard import evaluate_temporal_filter
 from src.models.trace import GuardResult
 from src.utils.trace_context import get_current_span
-from src.stages.sql_repair import (
+from src.sql.repair.sql_repair import (
     MAX_DELTA_REPAIR_ATTEMPTS,
     attempt_delta_repair,
     extract_schema_context_from_ddl,

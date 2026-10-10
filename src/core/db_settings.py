@@ -150,8 +150,12 @@ def _apply_runtime(cfg: dict[str, Any], db_id: str = DEFAULT_DB_ID) -> None:
                 settings.db_odbc_driver = cfg["odbc_driver"]
 
     # Invalidate ONLY this db_id's schema, column registry, result, semantic and knowledge caches
+    import sys
     from src.stages.s12b_sql_retrieval import SQLRetriever
-    from src.utils.semantic_cache import SemanticCache
+    if "src.utils.semantic_cache" in sys.modules and hasattr(sys.modules["src.utils.semantic_cache"], "SemanticCache"):
+        SemanticCache = sys.modules["src.utils.semantic_cache"].SemanticCache
+    else:
+        from src.sql.semantic_cache import SemanticCache
 
     try:
         SQLRetriever.clear_schema_cache(target_db_id)

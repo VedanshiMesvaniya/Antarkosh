@@ -6,7 +6,7 @@ from src.utils.circuit_breaker import (
     get_shared_circuit_breaker,
     is_severe_provider_failure,
 )
-from src.utils.empty_result_classifier import (
+from src.sql.safety.empty_result_classifier import (
     SUSPICIOUS_EMPTY,
     VALID_EMPTY,
     classify_empty_result,
@@ -18,7 +18,7 @@ from src.utils.error_classification import (
     normalize_error,
 )
 from src.utils.failure_capture import capture_sql_failure
-from src.utils.fast_path import (
+from src.sql.fast_path import (
     build_aggregate_micro_prompt,
     format_aggregate_fast_path,
     format_list_fast_path,

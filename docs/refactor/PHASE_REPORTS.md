@@ -389,3 +389,15 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: G2
 
+---
+
+## Step G2 Report: Core, Utils, and Stages Moves to Subpackages
+- **Step ID**: G2
+- **Commits**: 01a7a7f
+- **Files Changed**: `src/sql/learning/pipeline_metrics.py`, `src/sql/safety/column_registry.py`, `src/sql/fast_path.py`, `src/sql/semantic_cache.py`, `src/sql/safety/empty_result_classifier.py`, `src/sql/repair/sql_repair.py`, `src/sql/repair/delta_repair.py`, `src/sql/repair/__init__.py`, `src/sql/caches.py`, `src/sql/safety/sql_column_registry.py`, 7 shims under `src/core/`, `src/utils/`, `src/stages/`, and `src/prompts/`, consumers (`src/sql/generation.py`, `src/sql/pipeline.py`, `src/stages/s12_s13_s14_retrieval.py`, `src/stages/s12b_sql_retrieval.py`, `src/pipeline/query.py`, `src/api/ui.py`, `src/core/db_settings.py`, `src/utils/__init__.py`, `src/prompts/__init__.py`), `tests/test_g2_modules.py`.
+- **What Changed**: Moved 7 modules (3-4 importers) to their target subpackages: `pipeline_metrics` -> `src/sql/learning/pipeline_metrics.py`, `sql_column_registry` -> `src/sql/safety/column_registry.py`, `fast_path` -> `src/sql/fast_path.py`, `semantic_cache` -> `src/sql/semantic_cache.py`, `empty_result_classifier` -> `src/sql/safety/empty_result_classifier.py`, `sql_repair` -> `src/sql/repair/sql_repair.py`, `delta_repair` -> `src/sql/repair/delta_repair.py`. Created package `src/sql/repair`. Left complete backward-compatibility shims at all 7 original locations preserving public and underscore names. Added monkeypatch compatibility helpers for `METRICS_FILE` and `DISABLED_TEMPLATES`. Updated consumers to point to new canonical modules. Added 4 unit tests in `tests/test_g2_modules.py` covering object identity across all 7 shims and smoke checks for moved modules.
+- **Checks a-g**: a-g all passed; pytest: 714 passed, 18 skipped, 8 deselected, 1 xfailed (+4 passed vs 710 baseline); ruff clean; compileall clean; import src.main ok; zero drift (both old and new validator paths pass); offline eval 19/19 (100%) golden cases pass; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim (Phase I); `src/stages/s12b_sql_retrieval.py` re-export shim (Phase I); 9 G1 shims (`join_graph`, `schema_monitor`, `ab_test_engine`, `context_gatekeeper`, `sql_drift_validator`, `result_validator`, `confidence_scorer`, `pattern_learner`, `sql_privacy`) (Phase I); 7 G2 shims (`pipeline_metrics`, `sql_column_registry`, `fast_path`, `semantic_cache`, `empty_result_classifier`, `sql_repair`, `delta_repair`) (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: G3
+

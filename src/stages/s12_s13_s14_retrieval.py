@@ -20,7 +20,7 @@ from src.core.provider_client import ProviderRouter
 from src.models.schemas import Citation, Chunk, ChunkType, QueryResult, RetrievedChunk
 from src.stages.s10_embeddings import EmbeddingService
 from src.stages.s11_vector_store import QdrantStore
-from src.utils.fast_path import (
+from src.sql.fast_path import (
     build_aggregate_micro_prompt,
     fast_path_format,
     format_aggregate_fast_path,
