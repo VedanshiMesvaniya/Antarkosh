@@ -7,17 +7,19 @@ column_glossary.json mapping business terms to exact table.column paths.
 """
 
 import json
+import sys
 from pathlib import Path
 
-try:
-    from scripts._paths import REPO_ROOT
-except ModuleNotFoundError:
-    from _paths import REPO_ROOT
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
 
 from src.sql.knowledge.loaders import get_knowledge_path
 
-HERE = Path(__file__).parent.resolve()
 REPO = REPO_ROOT
+
 SCHEMA_FILE = get_knowledge_path("schema")
 OLD_GLOSSARY_FILE = get_knowledge_path("glossary")
 OUT_FILE = get_knowledge_path("column_glossary")

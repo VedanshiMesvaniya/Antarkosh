@@ -1,10 +1,15 @@
 import sqlite3
-import pandas as pd
+import sys
 from pathlib import Path
 
-# Paths — this script lives in scripts/, so the repo root is one level up.
-# Both the source CSV and the generated SQLite DB live under data/ (gitignored
+import pandas as pd
+
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
 from scripts._paths import REPO_ROOT
+
 
 repo_root = REPO_ROOT
 csv_path = repo_root / "data" / "nvidia_gpu_sales_synthetic_2026.csv"

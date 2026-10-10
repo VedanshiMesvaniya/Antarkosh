@@ -1,7 +1,7 @@
 """Load a phpMyAdmin / MariaDB SQL dump into data/live_data.db (SQLite).
 
 Usage:
-    python scripts/load_mysql_dump.py path/to/dump.sql
+    python scripts/db/load_mysql_dump.py path/to/dump.sql
 
 Key design decisions:
   - Quote-aware semicolon splitter: never splits inside a string literal,
@@ -20,7 +20,12 @@ from pathlib import Path
 
 import sqlglot
 
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
 from scripts._paths import REPO_ROOT
+
 
 DB_PATH = REPO_ROOT / "data" / "live_data.db"
 
@@ -233,8 +238,9 @@ def load(dump_path: Path) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python scripts/load_mysql_dump.py path/to/dump.sql")
+        print("Usage: python scripts/db/load_mysql_dump.py path/to/dump.sql")
         sys.exit(1)
+
     dump_path = Path(sys.argv[1])
     if not dump_path.exists():
         print(f"File not found: {dump_path}")

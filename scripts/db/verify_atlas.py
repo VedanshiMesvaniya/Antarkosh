@@ -14,10 +14,12 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-try:
-    from scripts._paths import REPO_ROOT
-except ModuleNotFoundError:
-    from _paths import REPO_ROOT
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
+
 
 console = Console()
 

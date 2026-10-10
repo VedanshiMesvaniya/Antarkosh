@@ -14,13 +14,16 @@ import json
 from pathlib import Path
 from rich.console import Console
 
-from src.core.db_client import run_readonly_query
-try:
-    from scripts._paths import REPO_ROOT
-except ModuleNotFoundError:
-    from _paths import REPO_ROOT
+import sys
+
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
 
 from src.sql.knowledge.loaders import get_knowledge_path
+
 
 console = Console()
 GLOSSARY_PATH = get_knowledge_path("column_glossary")

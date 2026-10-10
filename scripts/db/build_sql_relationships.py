@@ -10,8 +10,8 @@ schema reverse-engineering step) and writes them to relationships.json,
 which SQLRetriever injects into the SQL-generation prompt as an explicit join map.
 
 Usage:
-    python scripts/build_sql_relationships.py
-    python scripts/build_sql_relationships.py path/to/schema.json --out databases/<db>/schema/relationships.json
+    python scripts/db/build_sql_relationships.py
+    python scripts/db/build_sql_relationships.py path/to/schema.json --out databases/<db>/schema/relationships.json
 """
 
 from __future__ import annotations
@@ -20,10 +20,14 @@ import argparse
 import json
 from pathlib import Path
 
-try:
-    from scripts._paths import REPO_ROOT
-except ModuleNotFoundError:
-    from _paths import REPO_ROOT
+import sys
+
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
+
 
 from src.sql.knowledge.loaders import get_knowledge_path
 
@@ -79,7 +83,7 @@ def main() -> int:
             f"Inferred join map for database '{schema.get('database', '?')}'. "
             "The database has no explicit FOREIGN KEY constraints; these relationships "
             "are used to guide JOINs in generated SQL. Regenerate with "
-            "scripts/build_sql_relationships.py."
+            "scripts/db/build_sql_relationships.py."
         ),
         "relationships": rels,
     }

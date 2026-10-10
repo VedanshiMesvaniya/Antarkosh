@@ -9,14 +9,17 @@ and join warnings for all 64 tables.
 
 import json
 from pathlib import Path
+import sys
 from typing import Any, Dict, List
 
-try:
-    from scripts._paths import REPO_ROOT
-except ModuleNotFoundError:
-    from _paths import REPO_ROOT
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
 
 from src.sql.knowledge.loaders import get_knowledge_path
+
 
 ROOT_DIR = REPO_ROOT
 SCHEMA_PATH = get_knowledge_path("schema")
