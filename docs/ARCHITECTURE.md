@@ -101,13 +101,13 @@ Read-only Text-to-SQL execution engine. `db_client.py` handles connection manage
 
 ## 3. The API Layer (`src/api/`)
 
-### `src/api/ui.py` (UI Backend — The Largest API File)
-This is the primary API surface for the React frontend (~505 lines). It handles:
-- **Chat CRUD**: `POST /api/chats` (create), `GET /api/chats` (list), `PATCH /api/chats/{id}` (rename), `DELETE /api/chats/{id}` (delete).
-- **Message Streaming**: `POST /api/chats/{id}/messages/stream` — accepts a user message, runs the full QueryPipeline, and yields SSE events (`thinking`, `chunk`, `done`) back to the UI.
-- **Provider Listing**: `GET /api/providers` — returns available providers with human-readable labels and availability status for the UI provider picker.
-- **Settings**: `GET /api/settings`, `PUT /api/settings` — persists UI preferences (theme, default provider).
-- **Document Export**: `POST /api/chats/{id}/export/document` — feeds the conversation to an LLM with a structured prompt to produce a polished professional report in Markdown, including auto-generated Mermaid charts where data warrants them.
+### `src/api/ui/` (UI Backend Routers Package)
+This is the primary modular API surface for the React frontend, structured across domain routers:
+- **`chats.py`**: Chat CRUD (`POST /api/chats`, `GET /api/chats`, `DELETE /api/chats/{id}`), SSE streaming (`POST /api/chats/{id}/messages/stream`), feedback, titling, and document export.
+- **`documents.py`**: Document listings (`GET /api/documents`), version history, deletion, and document access ACLs.
+- **`databases.py`**: Multi-database metadata, connection test/save endpoints, and per-database access control.
+- **`settings.py`**: System settings, schema synchronization, and provider listing/usage (`GET /api/providers`, `GET /api/overview`).
+- **`telemetry.py`**: High-performance local telemetry dashboard endpoints (< 5ms response time via in-memory aggregator).
 
 ### `src/api/upload.py`
 Handles document ingestion via two endpoints:
