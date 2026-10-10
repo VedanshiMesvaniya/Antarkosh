@@ -163,8 +163,8 @@ async def test_shadow_mode_and_feature_flag_integration():
     """
 
     # 1. Feature Flag = False (Shadow Mode)
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", return_value=False):
-        with patch("src.stages.s12b_sql_retrieval.log_telemetry") as mock_log:
+    with patch("src.sql.schema_retrieval.is_feature_enabled", return_value=False):
+        with patch("src.sql.schema_retrieval.log_telemetry") as mock_log:
             schema_out = _build_scoped_schema_fallback(full_schema, "Show sales orders and customer names")
             assert "sales_order" in schema_out
             assert mock_log.called
@@ -175,11 +175,12 @@ async def test_shadow_mode_and_feature_flag_integration():
             assert "budgeted_table_count" in call_kwargs["extra"]
 
     # 2. Feature Flag = True (Cutover)
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=lambda f: f == "token_budget_enabled"):
-        with patch("src.stages.s12b_sql_retrieval.log_telemetry") as mock_log:
+    with patch("src.sql.schema_retrieval.is_feature_enabled", side_effect=lambda f: f == "token_budget_enabled"):
+        with patch("src.sql.schema_retrieval.log_telemetry") as mock_log:
             schema_out = _build_scoped_schema_fallback(full_schema, "Show sales orders and customer names")
             assert "sales_order" in schema_out
             assert mock_log.called
             call_kwargs = mock_log.call_args.kwargs
             assert call_kwargs["stage"] == "schema_budget_applied"
             assert call_kwargs["extra"]["token_budget_enabled"] is True
+

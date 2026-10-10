@@ -286,5 +286,18 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | F3-3 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports load_routing_hints, route_tables_for_query, route_anchor_tables, and cache functions; clear_knowledge_caches invalidates routing hints | a-g pass | ac1fa08 |
 | F3-4 | (new) | tests/test_sql_table_router.py | test | Tests verifying object identity, zero hardcoded table names in router code, and golden routing snapshot parity across 10 queries | a-g pass | ac1fa08 |
 
+---
+
+## Step F4 — Schema Retrieval from Qdrant
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| F4-1 | src/stages/s12b_sql_retrieval.py | src/sql/schema_retrieval.py | code | Extracted extract_schema_table_names, extract_table_ddl_map, get_1hop_neighbors, format_scoped_relationships, build_scoped_schema_fallback, retrieve_schema_from_qdrant | a-g pass | F4 |
+| F4-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports all schema helpers, fallback generator, and Qdrant retrieval; delegates SQLRetriever._get_schema to retrieve_schema_from_qdrant | a-g pass | F4 |
+| F4-3 | tests/test_schema_budget.py, tests/test_schema_compactor.py | tests/test_schema_budget.py, tests/test_schema_compactor.py | wire | Updated patch targets for is_feature_enabled and log_telemetry to src.sql.schema_retrieval where names are looked up | a-g pass | F4 |
+| F4-4 | (new) | tests/test_sql_schema_retrieval.py | test | Tests verifying object identity, DDL extraction, 1-hop graph expansion, scoped relationships, Qdrant fallback & db_id isolation, and golden fallback schema parity across 10 queries | a-g pass | F4 |
+
+
+
 
 

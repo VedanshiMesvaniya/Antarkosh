@@ -167,7 +167,7 @@ async def test_schema_compaction_feature_flag_pipeline_integration():
     """
 
     # 1. Feature Flag = False (Raw DDL used)
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=lambda flag: False):
+    with patch("src.sql.schema_retrieval.is_feature_enabled", side_effect=lambda flag: False):
         schema_raw = _build_scoped_schema_fallback(full_schema, "Show sales orders")
         assert "CREATE TABLE sales_order" in schema_raw
         assert "created_at" in schema_raw
@@ -180,9 +180,10 @@ async def test_schema_compaction_feature_flag_pipeline_integration():
             return True
         return False
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=flag_override):
-        with patch("src.stages.s12b_sql_retrieval.log_telemetry") as mock_log:
+    with patch("src.sql.schema_retrieval.is_feature_enabled", side_effect=flag_override):
+        with patch("src.sql.schema_retrieval.log_telemetry") as mock_log:
             schema_compacted = _build_scoped_schema_fallback(full_schema, "Show sales orders")
+
             assert "sales_order: id(int, PK)" in schema_compacted or "sales_order:" in schema_compacted
             assert "CREATE TABLE" not in schema_compacted
             assert "created_at" not in schema_compacted.lower()
