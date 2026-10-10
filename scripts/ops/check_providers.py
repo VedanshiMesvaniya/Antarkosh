@@ -9,9 +9,9 @@ Needs the same API keys the app uses (read from the environment / .env). Makes
 one small call per model, so it consumes a little quota.
 
 Usage:
-    python scripts/check_providers.py
-    python scripts/check_providers.py --task reasoning     # only models for one task
-    python scripts/check_providers.py --json out.json      # machine-readable output
+    python scripts/ops/check_providers.py
+    python scripts/ops/check_providers.py --task reasoning     # only models for one task
+    python scripts/ops/check_providers.py --json out.json      # machine-readable output
 
 Status meanings:
     ALIVE     - the model answered; safe to route to
@@ -31,7 +31,12 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
 from scripts._paths import REPO_ROOT
+
 
 REPO = REPO_ROOT
 

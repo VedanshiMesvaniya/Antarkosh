@@ -5,9 +5,9 @@ remain accessible and queryable by all users under the new multi-tenant isolatio
 while newly ingested documents are isolated to their specific uploaders.
 
 Usage:
-    python scripts/migrate_existing_docs_to_system_user.py
-    python scripts/migrate_existing_docs_to_system_user.py --collection Antarkosh --dry-run
-    python scripts/migrate_existing_docs_to_system_user.py --include-metadata-store
+    python scripts/ops/migrate_existing_docs_to_system_user.py
+    python scripts/ops/migrate_existing_docs_to_system_user.py --collection Antarkosh --dry-run
+    python scripts/ops/migrate_existing_docs_to_system_user.py --include-metadata-store
 """
 
 from __future__ import annotations
@@ -19,10 +19,17 @@ import sys
 from pathlib import Path
 from typing import Any
 
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointIdsList
 
 from src.core.config import DATA_DIR, settings
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)

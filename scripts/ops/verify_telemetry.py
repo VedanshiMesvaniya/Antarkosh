@@ -1,7 +1,15 @@
-"""Standalone script to verify Phase 1 Minimal Telemetry implementation."""
-
 import asyncio
+import sys
+from pathlib import Path
+
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
+
+from scripts._paths import REPO_ROOT
+
 from src.utils.error_classification import classify_error
+
 from src.utils.feature_flags import is_feature_enabled
 from src.utils.telemetry import (
     capture_telemetry,
