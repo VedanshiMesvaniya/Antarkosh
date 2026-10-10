@@ -265,3 +265,14 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | F1-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports all soft-delete functions and caches preserving exact signatures and attributes | a-g pass | 816be00 |
 | F1-3 | (new) | tests/test_sql_soft_delete.py | test | Golden snapshot parity tests across direct and re-exported APIs for 10 representative intent queries and 6 SQL transformations | a-g pass | 816be00 |
 
+---
+
+## Step F2 — Analytical Intent Extraction
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| F2-1 | src/stages/s12b_sql_retrieval.py | src/sql/intent.py | code | Extracted extract_analytical_intent parsing metrics, dimensions, filters, time periods, temporal scope, limits, and soft-delete intent | a-g pass | 4837b9b |
+| F2-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports extract_analytical_intent preserving signature and behavior for internal methods and external scripts | a-g pass | 4837b9b |
+| F2-3 | (new) | tests/test_sql_intent.py | test | Tests verifying object identity and golden snapshot parity across 8 representative user queries | a-g pass | 4837b9b |
+
+

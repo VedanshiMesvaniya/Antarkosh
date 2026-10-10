@@ -304,3 +304,16 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: F2
 
+---
+
+## Step F2 Report: Analytical Intent Extraction
+- **Step ID**: F2
+- **Commits**: 4837b9b
+- **Files Changed**: `src/sql/intent.py`, `src/stages/s12b_sql_retrieval.py`, `tests/test_sql_intent.py`.
+- **What Changed**: Extracted analytical intent extraction into new module `src/sql/intent.py`, providing `extract_analytical_intent(query)`. Parsed metrics, dimensions, filters, relative time periods, aggregations, limits/orderings, temporal scope, and soft-delete intent. Re-exported `extract_analytical_intent` in `src/stages/s12b_sql_retrieval.py` preserving exact signature and behavior for internal methods and external scripts (`scripts/test_question.py`). Captured golden snapshot and created `tests/test_sql_intent.py` validating golden outputs across 8 representative queries and asserting exact object identity on re-export.
+- **Checks a-g**: a-g all passed; pytest: 662 passed, 18 skipped, 8 deselected, 1 xfailed (+10 passed vs 652 baseline); zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I); `src/stages/s12b_sql_retrieval.py` re-exporting soft-delete and intent symbols (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: F3
+
+
