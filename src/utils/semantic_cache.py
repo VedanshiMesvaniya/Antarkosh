@@ -70,6 +70,25 @@ class SemanticCache:
         """Reset the singleton instance (primarily for tests)."""
         cls._instance = None
 
+    def clear(self, db_id: str | None = None) -> None:
+        """Clear cached entries across all scopes or for a specific db_id."""
+        if db_id is None:
+            self._scopes.clear()
+        else:
+            clean_db = db_id.strip()
+            keys_to_remove = [
+                k for k in self._scopes
+                if k == clean_db or k.startswith((f"{clean_db}:", f"{clean_db}|"))
+            ]
+            for k in keys_to_remove:
+                self._scopes.pop(k, None)
+
+    @classmethod
+    def clear_cache(cls, db_id: str | None = None) -> None:
+        """Clear cache entries across all scopes or for a specific db_id."""
+        if cls._instance is not None:
+            cls._instance.clear(db_id=db_id)
+
     @staticmethod
     def build_scope_key(scope_key: str, db_id: str | None = None) -> str:
         """Construct scope key incorporating optional db_id."""

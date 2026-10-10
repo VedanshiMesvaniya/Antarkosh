@@ -18,15 +18,23 @@ DB_PATH = DATA_DIR / "live_data.db"
 class SQLiteConnector:
     """Read-only SQLite database connector."""
 
-    def __init__(self, db_path: Path | str | None = None) -> None:
+    def __init__(
+        self,
+        db_path: Path | str | None = None,
+        cfg: dict[str, Any] | None = None,
+    ) -> None:
         self._db_path = Path(db_path) if db_path else None
+        self._cfg = cfg or {}
 
     def _resolve_path(self, cfg: dict[str, Any] | None = None) -> Path:
-        if cfg:
-            if "path" in cfg and cfg["path"]:
-                return Path(cfg["path"])
-            if "database" in cfg and cfg["database"]:
-                return Path(cfg["database"])
+        c = cfg if cfg is not None else self._cfg
+        if c:
+            if c.get("path"):
+                return Path(c["path"])
+            if c.get("database"):
+                db_val = str(c["database"])
+                if db_val.endswith(".db") or Path(db_val).exists():
+                    return Path(db_val)
         if self._db_path:
             return self._db_path
         try:

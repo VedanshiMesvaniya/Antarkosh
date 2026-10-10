@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 class PostgreSQLConnector:
     """Read-only PostgreSQL database connector."""
 
+    def __init__(self, cfg: dict[str, Any] | None = None) -> None:
+        self._cfg = cfg or {}
+
     async def test(self, cfg: dict[str, Any] | None = None) -> None:
         """Test PostgreSQL connection."""
         try:
@@ -23,7 +26,7 @@ class PostgreSQLConnector:
                 "The PostgreSQL driver is not installed on the server. Run: uv add asyncpg"
             ) from None
 
-        c = cfg or {}
+        c = cfg if cfg is not None else self._cfg
         host = c.get("host") or settings.db_host
         port = int(c.get("port") or settings.db_port)
         user = c.get("username") or settings.db_readonly_user
@@ -63,12 +66,19 @@ class PostgreSQLConnector:
         args = tuple(params) if params else ()
 
         timeout_seconds = settings.db_query_timeout_seconds
+        c = self._cfg or {}
+        host = c.get("host") or settings.db_host
+        port = int(c.get("port") or settings.db_port)
+        user = c.get("username") or settings.db_readonly_user
+        password = c.get("password") or settings.db_readonly_password
+        database = c.get("database") or settings.db_name
+
         conn = await asyncpg.connect(
-            host=settings.db_host,
-            port=settings.db_port,
-            user=settings.db_readonly_user,
-            password=settings.db_readonly_password,
-            database=settings.db_name,
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=database,
             timeout=10,
             server_settings={
                 "application_name": "antarkosh",

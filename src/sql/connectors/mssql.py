@@ -14,8 +14,11 @@ logger = logging.getLogger(__name__)
 class MSSQLConnector:
     """Read-only MSSQL database connector."""
 
+    def __init__(self, cfg: dict[str, Any] | None = None) -> None:
+        self._cfg = cfg or {}
+
     def _build_conn_str(self, cfg: dict[str, Any] | None = None) -> str:
-        c = cfg or {}
+        c = cfg if cfg is not None else self._cfg
         driver = c.get("odbc_driver") or settings.db_odbc_driver or "ODBC Driver 18 for SQL Server"
         host = c.get("host") or settings.db_host
         port = c.get("port") or settings.db_port

@@ -111,8 +111,16 @@ def test_selective_and_global_cache_clearing():
     SQLRetriever._result_cache[("erp_main", "q1")] = (time.monotonic(), [])
     SQLRetriever._full_schema_cache["erp_main"] = "schema1"
 
-    # Global wipe (e.g. from db_settings._apply_runtime)
-    _apply_runtime({"engine": "sqlite"})
+    # E5 per-database invalidation via _apply_runtime
+    _apply_runtime({"engine": "sqlite"}, db_id="erp_main")
+    assert ("erp_main", "q1") not in SQLRetriever._result_cache
+    assert ("other_db", "q1") in SQLRetriever._result_cache
+    assert "erp_main" not in SQLRetriever._full_schema_cache
+    assert "other_db" in SQLRetriever._full_schema_cache
+
+    # Global wipe clears all
+    SQLRetriever.clear_result_cache()
+    SQLRetriever.clear_schema_cache()
     assert len(SQLRetriever._result_cache) == 0
     assert len(SQLRetriever._full_schema_cache) == 0
     assert len(SQLRetriever._column_registry) == 0

@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 class OracleConnector:
     """Read-only Oracle database connector."""
 
+    def __init__(self, cfg: dict[str, Any] | None = None) -> None:
+        self._cfg = cfg or {}
+
     async def test(self, cfg: dict[str, Any] | None = None) -> None:
         """Test Oracle connection."""
         try:
@@ -23,7 +26,7 @@ class OracleConnector:
                 "The oracledb driver is not installed on the server. Run: uv add oracledb"
             ) from None
 
-        c = cfg or {}
+        c = cfg if cfg is not None else self._cfg
         user = c.get("username") or settings.db_readonly_user
         password = c.get("password") or settings.db_readonly_password
         host = c.get("host") or settings.db_host
@@ -53,11 +56,12 @@ class OracleConnector:
         """Execute read-only query against Oracle, lower-casing column names."""
         import oracledb
 
-        user = settings.db_readonly_user
-        password = settings.db_readonly_password
-        host = settings.db_host
-        port = settings.db_port
-        svc = settings.db_name
+        c = self._cfg or {}
+        user = c.get("username") or settings.db_readonly_user
+        password = c.get("password") or settings.db_readonly_password
+        host = c.get("host") or settings.db_host
+        port = int(c.get("port") or settings.db_port)
+        svc = c.get("service_name") or c.get("database") or settings.db_name
         timeout = int(settings.db_query_timeout_seconds)
 
         def _run_oracle() -> list[dict[str, Any]]:

@@ -8,7 +8,9 @@ import re
 from pathlib import Path
 from typing import Any
 
-from src.core.config import CONFIG_DIR, DATABASES_DIR, PROJECT_ROOT
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+CONFIG_DIR = PROJECT_ROOT / "config"
+DATABASES_DIR = PROJECT_ROOT / "databases"
 
 logger = logging.getLogger(__name__)
 

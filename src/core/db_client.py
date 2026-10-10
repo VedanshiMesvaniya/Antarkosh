@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 
 import aiosqlite
@@ -28,14 +29,22 @@ QUERY_TIMEOUT_SECONDS = settings.db_query_timeout_seconds
 MAX_ROWS = 500
 
 
+from src.sql.knowledge.loaders import DEFAULT_DB_ID
+
+
 async def run_readonly_query(
-    sql: str, params: dict | None = None, max_rows: int | None = None
+    sql: str,
+    params: dict | None = None,
+    max_rows: int | None = None,
+    db_id: str = DEFAULT_DB_ID,
 ) -> list[dict[str, Any]]:
     """Execute a read-only SQL query with hard timeouts and row caps.
 
     Args:
         sql: The SQL SELECT statement.
         params: Optional dictionary/tuple of parameters.
+        max_rows: Optional limit on the number of returned rows.
+        db_id: Target database ID (defaults to DEFAULT_DB_ID = "erp_main").
 
     Returns:
         List of rows as dictionaries.
@@ -44,13 +53,44 @@ async def run_readonly_query(
         asyncio.TimeoutError: If the query exceeds the timeout limit.
         Exception: If the database throws a SQL error (e.g. syntax, missing table).
     """
-    engine = settings.db_engine
+    target_db_id = (db_id or DEFAULT_DB_ID).strip()
+    from src.sql.registry import get_connection, get_database
+
+    conn_cfg = get_connection(target_db_id)
+    engine = conn_cfg.get("engine")
+    if not engine:
+        try:
+            db_meta = get_database(target_db_id)
+            engine = db_meta.get("engine")
+        except Exception:
+            pass
+    if not engine:
+        engine = settings.db_engine
+
     profile = get_dialect_profile(engine)
     row_cap = max_rows if max_rows is not None else MAX_ROWS
 
-    if engine == "sqlite" and not DB_PATH.exists():
-        logger.warning(f"Database file not found at {DB_PATH}")
-        return []
+    if engine == "sqlite":
+        import src.core.db_client as db_client_mod
+
+        active_db_path = getattr(db_client_mod, "DB_PATH", DB_PATH)
+        db_file = None
+        if conn_cfg.get("path"):
+            db_file = Path(conn_cfg["path"])
+        elif conn_cfg.get("database"):
+            db_val = str(conn_cfg["database"])
+            if db_val.endswith(".db") or Path(db_val).exists():
+                db_file = Path(db_val)
+        if db_file is None:
+            if target_db_id == DEFAULT_DB_ID:
+                db_file = active_db_path
+            else:
+                db_file = DATA_DIR / "sqlite" / f"{target_db_id}.db"
+
+        if not db_file.exists():
+            logger.warning(f"Database file not found at {db_file}")
+            return []
+        conn_cfg["path"] = str(db_file)
 
     import sqlglot
     from sqlglot import exp
@@ -87,7 +127,10 @@ async def run_readonly_query(
 
     try:
         async with asyncio.timeout(QUERY_TIMEOUT_SECONDS):
-            results = await _execute(engine, sql, params)
+            try:
+                results = await _execute(engine, sql, params, conn_cfg)
+            except TypeError:
+                results = await _execute(engine, sql, params)
 
             if len(results) >= row_cap:
                 logger.warning(f"Query results capped at {row_cap} rows to protect context window.")
@@ -102,12 +145,17 @@ async def run_readonly_query(
         raise
 
 
-async def _execute(engine: str, sql: str, params: dict | None) -> list[dict[str, Any]]:
+async def _execute(
+    engine: str,
+    sql: str,
+    params: dict | None,
+    cfg: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Open a read-only connection for the configured engine and run the query.
 
     Delegates to the engine-specific connector in src.sql.connectors.
     """
     from src.sql.connectors import get_connector
 
-    connector = get_connector(engine)
+    connector = get_connector(engine, cfg=cfg)
     return await connector.run_readonly(sql, params)

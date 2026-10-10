@@ -15,6 +15,7 @@ from src.core import db_config_file
 from src.core.config import settings
 from src.sql.engine import ENGINES
 from src.sql.engine import REQUIRED_FIELDS as _REQUIRED
+from src.sql.knowledge.loaders import DEFAULT_DB_ID
 
 logger = logging.getLogger(__name__)
 
@@ -135,29 +136,51 @@ async def _test_connection(cfg: dict[str, Any]) -> None:
         raise DBSettingsError(f"Could not connect: {type(e).__name__}: {e}") from None
 
 
-def _apply_runtime(cfg: dict[str, Any]) -> None:
-    settings.db_engine = cfg["engine"]
-    if cfg["engine"] != "sqlite":
-        settings.db_host = cfg["host"]
-        settings.db_port = cfg["port"]
-        settings.db_name = cfg["database"]
-        settings.db_readonly_user = cfg["username"]
-        settings.db_readonly_password = cfg["password"]
-        if cfg["engine"] == "mssql" and cfg.get("odbc_driver"):
-            settings.db_odbc_driver = cfg["odbc_driver"]
-    # Everything cached from the previous database is now wrong.
+def _apply_runtime(cfg: dict[str, Any], db_id: str = DEFAULT_DB_ID) -> None:
+    target_db_id = (db_id or DEFAULT_DB_ID).strip()
+    if target_db_id == DEFAULT_DB_ID:
+        settings.db_engine = cfg["engine"]
+        if cfg["engine"] != "sqlite":
+            settings.db_host = cfg["host"]
+            settings.db_port = cfg["port"]
+            settings.db_name = cfg["database"]
+            settings.db_readonly_user = cfg["username"]
+            settings.db_readonly_password = cfg["password"]
+            if cfg["engine"] == "mssql" and cfg.get("odbc_driver"):
+                settings.db_odbc_driver = cfg["odbc_driver"]
+
+    # Invalidate ONLY this db_id's schema, column registry, result, semantic and knowledge caches
     from src.stages.s12b_sql_retrieval import SQLRetriever
     from src.utils.semantic_cache import SemanticCache
-    SQLRetriever.clear_schema_cache()
-    SQLRetriever.clear_result_cache()
-    SemanticCache.reset()
+
+    try:
+        SQLRetriever.clear_schema_cache(target_db_id)
+    except TypeError:
+        SQLRetriever.clear_schema_cache()
+
+    try:
+        SQLRetriever.clear_result_cache(target_db_id)
+    except TypeError:
+        SQLRetriever.clear_result_cache()
+
+    if hasattr(SemanticCache, "clear_cache"):
+        SemanticCache.clear_cache(target_db_id)
+    elif hasattr(SemanticCache, "reset"):
+        SemanticCache.reset()
+
+    try:
+        from src.stages.s12b_sql_retrieval import clear_knowledge_caches
+        clear_knowledge_caches(target_db_id)
+    except (ImportError, AttributeError):
+        pass
 
 
 async def test_only(payload: dict[str, Any]) -> None:
     await _test_connection(_clean(payload))
 
 
-async def save(payload: dict[str, Any]) -> dict[str, Any]:
+async def save(payload: dict[str, Any], db_id: str = DEFAULT_DB_ID) -> dict[str, Any]:
+    target_db_id = (db_id or DEFAULT_DB_ID).strip()
     cfg = _clean(payload)
     async with _save_lock:
         await _test_connection(cfg)                   # 1. test BEFORE writing anything
@@ -170,14 +193,14 @@ async def save(payload: dict[str, Any]) -> dict[str, Any]:
             if cfg["engine"] == "mssql" and cfg.get("odbc_driver"):
                 updates["db_odbc_driver"] = cfg["odbc_driver"]
         try:                                          # 2. persist (atomic; old file kept on failure)
-            db_config_file.write(updates)
+            if target_db_id == DEFAULT_DB_ID:
+                db_config_file.write(updates)
             from src.sql import registry
-            from src.sql.knowledge.loaders import DEFAULT_DB_ID
-            registry.save_connection(DEFAULT_DB_ID, updates)
+            registry.save_connection(target_db_id, updates)
         except (OSError, ValueError) as e:
             reason = getattr(e, "strerror", None) or str(e)
             raise DBSettingsError(f"Could not save the connection settings: {reason}") from None
-        _apply_runtime(cfg)                           # 3. live, no restart
-    logger.info("Database connection updated: engine=%s host=%s db=%s",
-                cfg["engine"], cfg.get("host", "-"), cfg.get("database", "-"))
+        _apply_runtime(cfg, db_id=target_db_id)       # 3. live, no restart
+    logger.info("Database connection updated [%s]: engine=%s host=%s db=%s",
+                target_db_id, cfg["engine"], cfg.get("host", "-"), cfg.get("database", "-"))
     return current_config()

@@ -14,11 +14,14 @@ logger = logging.getLogger(__name__)
 class MySQLConnector:
     """Read-only MySQL database connector."""
 
+    def __init__(self, cfg: dict[str, Any] | None = None) -> None:
+        self._cfg = cfg or {}
+
     async def test(self, cfg: dict[str, Any] | None = None) -> None:
         """Test MySQL connection."""
         import aiomysql
 
-        c = cfg or {}
+        c = cfg if cfg is not None else self._cfg
         host = c.get("host") or settings.db_host
         port = int(c.get("port") or settings.db_port)
         user = c.get("username") or settings.db_readonly_user
@@ -50,12 +53,19 @@ class MySQLConnector:
         """Open a read-only connection as dedicated read-only user and run query."""
         import aiomysql
 
+        c = self._cfg or {}
+        host = c.get("host") or settings.db_host
+        port = int(c.get("port") or settings.db_port)
+        user = c.get("username") or settings.db_readonly_user
+        password = c.get("password") or settings.db_readonly_password
+        database = c.get("database") or settings.db_name
+
         conn = await aiomysql.connect(
-            host=settings.db_host,
-            port=settings.db_port,
-            user=settings.db_readonly_user,
-            password=settings.db_readonly_password,
-            db=settings.db_name,
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            db=database,
             cursorclass=aiomysql.cursors.DictCursor,
         )
         try:

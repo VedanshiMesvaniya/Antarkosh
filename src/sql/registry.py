@@ -11,7 +11,9 @@ from typing import Any
 
 import yaml
 
-from src.core.config import CONFIG_DIR, DATABASES_DIR
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+CONFIG_DIR = PROJECT_ROOT / "config"
+DATABASES_DIR = PROJECT_ROOT / "databases"
 from src.sql.engine import Engine
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
 
@@ -22,6 +24,7 @@ KNOWN_CONNECTION_KEYS: tuple[str, ...] = (
     "host",
     "port",
     "database",
+    "path",
     "username",
     "password",
     "odbc_driver",

@@ -288,24 +288,31 @@ def _extract_table_names(sql: str, dialect: str) -> list[str]:
         return []
 
 
-@functools.lru_cache(maxsize=32)
-def _get_raw_relationships_cached(db_id: str) -> list[dict[str, Any]]:
-    try:
-        path = get_knowledge_path("relationships", db_id=db_id)
-        data = json.loads(path.read_text(encoding="utf-8"))
-        rels = data.get("relationships") if isinstance(data, dict) else data
-        return rels if isinstance(rels, list) else []
-    except Exception:
-        return []
+_RAW_RELATIONSHIPS_CACHE: dict[str, list[dict[str, Any]]] = {}
 
 
 def _get_raw_relationships(db_id: str = DEFAULT_DB_ID) -> list[dict[str, Any]]:
     """Load raw relationship list via knowledge loader for db_id."""
     normalized_id = (db_id or DEFAULT_DB_ID).strip()
-    return _get_raw_relationships_cached(normalized_id)
+    if normalized_id not in _RAW_RELATIONSHIPS_CACHE:
+        try:
+            path = get_knowledge_path("relationships", db_id=normalized_id)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            rels = data.get("relationships") if isinstance(data, dict) else data
+            _RAW_RELATIONSHIPS_CACHE[normalized_id] = rels if isinstance(rels, list) else []
+        except Exception:
+            _RAW_RELATIONSHIPS_CACHE[normalized_id] = []
+    return _RAW_RELATIONSHIPS_CACHE[normalized_id]
 
 
-_get_raw_relationships.cache_clear = _get_raw_relationships_cached.cache_clear  # type: ignore[attr-defined]
+def _clear_raw_relationships_cache(db_id: str | None = None) -> None:
+    if db_id is None:
+        _RAW_RELATIONSHIPS_CACHE.clear()
+    else:
+        _RAW_RELATIONSHIPS_CACHE.pop((db_id or DEFAULT_DB_ID).strip(), None)
+
+
+_get_raw_relationships.cache_clear = _clear_raw_relationships_cache  # type: ignore[attr-defined]
 
 
 def _extract_schema_table_names(schema: str) -> set[str]:
@@ -384,85 +391,108 @@ def _format_scoped_relationships(
     )
 
 
-@functools.lru_cache(maxsize=32)
-def _load_relationships_cached(db_id: str) -> str:
-    rels = _get_raw_relationships(db_id)
-    if not rels:
-        return ""
-    grouped: dict[str, list[str]] = {}
-    for r in rels:
-        frm, fcol = r.get("from_table"), r.get("from_column")
-        to, tcol = r.get("to_table"), r.get("to_column")
-        if not all((frm, fcol, to, tcol)):
-            continue
-        grouped.setdefault(frm, []).append(f"{fcol}->{to}.{tcol}")
-    return "\n".join(
-        f"- {table}: {', '.join(edges)}" for table, edges in sorted(grouped.items())
-    )
+_LOAD_RELATIONSHIPS_CACHE: dict[str, str] = {}
 
 
 def _load_relationships(db_id: str = DEFAULT_DB_ID) -> str:
     """Load the inferred join map from disk, cached per database."""
     normalized_id = (db_id or DEFAULT_DB_ID).strip()
-    return _load_relationships_cached(normalized_id)
+    if normalized_id not in _LOAD_RELATIONSHIPS_CACHE:
+        rels = _get_raw_relationships(normalized_id)
+        if not rels:
+            _LOAD_RELATIONSHIPS_CACHE[normalized_id] = ""
+        else:
+            grouped: dict[str, list[str]] = {}
+            for r in rels:
+                frm, fcol = r.get("from_table"), r.get("from_column")
+                to, tcol = r.get("to_table"), r.get("to_column")
+                if not all((frm, fcol, to, tcol)):
+                    continue
+                grouped.setdefault(frm, []).append(f"{fcol}->{to}.{tcol}")
+            _LOAD_RELATIONSHIPS_CACHE[normalized_id] = "\n".join(
+                f"- {table}: {', '.join(edges)}" for table, edges in sorted(grouped.items())
+            )
+    return _LOAD_RELATIONSHIPS_CACHE[normalized_id]
 
 
-_load_relationships.cache_clear = _load_relationships_cached.cache_clear  # type: ignore[attr-defined]
+def _clear_relationships_cache(db_id: str | None = None) -> None:
+    if db_id is None:
+        _LOAD_RELATIONSHIPS_CACHE.clear()
+    else:
+        _LOAD_RELATIONSHIPS_CACHE.pop((db_id or DEFAULT_DB_ID).strip(), None)
 
 
-@functools.lru_cache(maxsize=32)
-def _load_glossary_cached(db_id: str) -> str:
-    try:
-        path = get_knowledge_path("glossary", db_id=db_id)
-        groups = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(groups, dict) or not groups:
-            return ""
+_load_relationships.cache_clear = _clear_relationships_cache  # type: ignore[attr-defined]
 
-        lines: list[str] = []
-        for concept, syns in groups.items():
-            if isinstance(syns, str):
-                synonym_text = syns
-            elif isinstance(syns, list):
-                synonym_text = ", ".join(str(item) for item in syns if str(item).strip())
-            else:
-                synonym_text = str(syns)
 
-            synonym_text = synonym_text.strip()
-            if synonym_text:
-                lines.append(f"- {concept}: {synonym_text}")
-        return "\n".join(lines)
-    except Exception:
-        return ""
+_LOAD_GLOSSARY_CACHE: dict[str, str] = {}
 
 
 def _load_glossary(db_id: str = DEFAULT_DB_ID) -> str:
     """Load SQL glossary from disk, cached per database. ARCH-9."""
     normalized_id = (db_id or DEFAULT_DB_ID).strip()
-    return _load_glossary_cached(normalized_id)
+    if normalized_id not in _LOAD_GLOSSARY_CACHE:
+        try:
+            path = get_knowledge_path("glossary", db_id=normalized_id)
+            groups = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(groups, dict) or not groups:
+                _LOAD_GLOSSARY_CACHE[normalized_id] = ""
+            else:
+                lines: list[str] = []
+                for concept, syns in groups.items():
+                    if isinstance(syns, str):
+                        synonym_text = syns
+                    elif isinstance(syns, list):
+                        synonym_text = ", ".join(str(item) for item in syns if str(item).strip())
+                    else:
+                        synonym_text = str(syns)
+
+                    synonym_text = synonym_text.strip()
+                    if synonym_text:
+                        lines.append(f"- {concept}: {synonym_text}")
+                _LOAD_GLOSSARY_CACHE[normalized_id] = "\n".join(lines)
+        except Exception:
+            _LOAD_GLOSSARY_CACHE[normalized_id] = ""
+    return _LOAD_GLOSSARY_CACHE[normalized_id]
 
 
-_load_glossary.cache_clear = _load_glossary_cached.cache_clear  # type: ignore[attr-defined]
+def _clear_glossary_cache(db_id: str | None = None) -> None:
+    if db_id is None:
+        _LOAD_GLOSSARY_CACHE.clear()
+    else:
+        _LOAD_GLOSSARY_CACHE.pop((db_id or DEFAULT_DB_ID).strip(), None)
 
 
-@functools.lru_cache(maxsize=32)
-def _get_raw_column_glossary_cached(db_id: str) -> dict:
-    try:
-        path = get_knowledge_path("column_glossary", db_id=db_id)
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            return {}
-        return data
-    except Exception:
-        return {}
+_load_glossary.cache_clear = _clear_glossary_cache  # type: ignore[attr-defined]
+
+
+_RAW_COLUMN_GLOSSARY_CACHE: dict[str, dict] = {}
 
 
 def _get_raw_column_glossary(db_id: str = DEFAULT_DB_ID) -> dict:
     """Load column-mapped glossary dict from disk, cached per database."""
     normalized_id = (db_id or DEFAULT_DB_ID).strip()
-    return _get_raw_column_glossary_cached(normalized_id)
+    if normalized_id not in _RAW_COLUMN_GLOSSARY_CACHE:
+        try:
+            path = get_knowledge_path("column_glossary", db_id=normalized_id)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                _RAW_COLUMN_GLOSSARY_CACHE[normalized_id] = {}
+            else:
+                _RAW_COLUMN_GLOSSARY_CACHE[normalized_id] = data
+        except Exception:
+            _RAW_COLUMN_GLOSSARY_CACHE[normalized_id] = {}
+    return _RAW_COLUMN_GLOSSARY_CACHE[normalized_id]
 
 
-_get_raw_column_glossary.cache_clear = _get_raw_column_glossary_cached.cache_clear  # type: ignore[attr-defined]
+def _clear_raw_column_glossary_cache(db_id: str | None = None) -> None:
+    if db_id is None:
+        _RAW_COLUMN_GLOSSARY_CACHE.clear()
+    else:
+        _RAW_COLUMN_GLOSSARY_CACHE.pop((db_id or DEFAULT_DB_ID).strip(), None)
+
+
+_get_raw_column_glossary.cache_clear = _clear_raw_column_glossary_cache  # type: ignore[attr-defined]
 
 
 _GLOSSARY_STOP_WORDS = frozenset({
@@ -639,6 +669,21 @@ def _clear_soft_delete_tables_cache(db_id: str | None = None) -> None:
 
 
 _get_tables_with_soft_delete.cache_clear = _clear_soft_delete_tables_cache  # type: ignore[attr-defined]
+
+
+def clear_knowledge_caches(db_id: str | None = None) -> None:
+    """Clear all knowledge caches for a specific db_id or globally."""
+    _get_raw_relationships.cache_clear(db_id)
+    _load_relationships.cache_clear(db_id)
+    _load_glossary.cache_clear(db_id)
+    _get_raw_column_glossary.cache_clear(db_id)
+    _get_raw_behavioral_atlas.cache_clear(db_id)
+    _get_tables_with_soft_delete.cache_clear(db_id)
+    try:
+        from src.sql.context import clear_context_cache
+        clear_context_cache(db_id)
+    except Exception:
+        pass
 
 
 def enforce_soft_delete_filter(sql: str, intent: str, dialect: str = "mysql") -> str:
@@ -1051,7 +1096,18 @@ class SQLRetriever:
         self._router = router
         self._vector_store = vector_store
         self._embeddings = embedding_service
-        self._dialect = get_dialect_profile(settings.db_engine)
+        from src.sql.registry import get_connection, get_database
+        conn_cfg = get_connection(self.db_id)
+        engine = conn_cfg.get("engine")
+        if not engine:
+            try:
+                db_meta = get_database(self.db_id)
+                engine = db_meta.get("engine")
+            except Exception:
+                pass
+        if not engine:
+            engine = settings.db_engine
+        self._dialect = get_dialect_profile(engine)
         self._glossary = _load_glossary(self.db_id)
         self._relationships = _load_relationships(self.db_id)
         self._pattern_learner = PatternLearner()
@@ -1290,7 +1346,7 @@ class SQLRetriever:
 
                 # --- 4. Execute Read-Only Query ---
                 with timed_stage("sql_execution") as exec_stage:
-                    rows = await run_readonly_query(sql)
+                    rows = await run_readonly_query(sql, db_id=self.db_id)
                     is_zero_rows = len(rows) == 0
                     is_agg_zero = _is_aggregate_over_zero_rows(sql, rows, self._dialect.sqlglot_dialect)
                     is_empty_result = is_zero_rows or is_agg_zero
@@ -1626,7 +1682,7 @@ class SQLRetriever:
             # Validation succeeded -> Execute read-only query
             try:
                 with timed_stage("sql_execution") as exec_stage:
-                    rows = await run_readonly_query(current_sql)
+                    rows = await run_readonly_query(current_sql, db_id=self.db_id)
                     is_zero_rows = len(rows) == 0
                     is_agg_zero = _is_aggregate_over_zero_rows(current_sql, rows, self._dialect.sqlglot_dialect)
                     is_empty_result = is_zero_rows or is_agg_zero
@@ -1806,13 +1862,13 @@ class SQLRetriever:
             return SQLRetriever._full_schema_cache[self.db_id]
 
         try:
-            rows = await run_readonly_query(self._dialect.schema_query, max_rows=20000)
+            rows = await run_readonly_query(self._dialect.schema_query, max_rows=20000, db_id=self.db_id)
             schema = format_schema_rows(self._dialect, rows)
 
             if self._dialect.fk_query:  # MySQL / PostgreSQL: one query covers all FKs
-                fk_rows = await run_readonly_query(self._dialect.fk_query, max_rows=20000)
+                fk_rows = await run_readonly_query(self._dialect.fk_query, max_rows=20000, db_id=self.db_id)
             elif self._dialect.key == Engine.SQLITE:
-                fk_rows = await fetch_sqlite_foreign_keys()
+                fk_rows = await fetch_sqlite_foreign_keys(db_id=self.db_id)
             else:
                 fk_rows = []
 
@@ -2598,16 +2654,17 @@ SELECT so.sales_order_no AS sales_order_number, so.sales_order_date AS order_dat
         return True
 
 
-async def fetch_sqlite_foreign_keys() -> list[dict]:
+async def fetch_sqlite_foreign_keys(db_id: str = DEFAULT_DB_ID) -> list[dict]:
     """Fetch foreign key relationships from SQLite database."""
     tables = await run_readonly_query(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence';"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence';",
+        db_id=db_id,
     )
     fks = []
     for row in tables:
         table = row["name"]
         escaped_table = table.replace('"', '""')
-        cols = await run_readonly_query(f'PRAGMA foreign_key_list("{escaped_table}");')
+        cols = await run_readonly_query(f'PRAGMA foreign_key_list("{escaped_table}");', db_id=db_id)
         for c in cols:
             fks.append({
                 "table_name": table,
