@@ -9,7 +9,7 @@ from typing import Any
 
 from src.sql.repair.delta_repair import build_delta_repair_payload, count_tokens
 from src.utils.error_classification import classify_error
-from src.utils.failure_capture import capture_sql_failure
+from src.sql.learning.failure_capture import capture_sql_failure
 from src.utils.query_budget import get_or_create_budget_controller
 from src.utils.telemetry import get_current_query_id, log_telemetry, timed_stage
 

@@ -34,7 +34,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | F7 | Thin SQLRetriever (pipeline.py), s12b is a shim | F7 | 704 passed |
 | [x] | G1 | Move unused and single-importer modules | G1 | 710 passed |
 | [x] | G2 | Move 3-4 importer modules | 01a7a7f | 714 passed |
-| [ ] | G3 | Move 5 importer modules | | |
+| [x] | G3 | Move 5 importer modules | 05e1792 | 720 passed |
 | [ ] | G4 | Move sql_safety, query_classifier, ingestion_registry | | |
 | [ ] | G5 | Move rag stages, retrieval, ingestion, schema_ingestion | | |
 | [ ] | G6 | Learned data per database | | |
@@ -73,6 +73,11 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 - `src/utils/empty_result_classifier.py` re-exporting `classify_empty_result`, `VALID_EMPTY`, `SUSPICIOUS_EMPTY` from `src.sql.safety.empty_result_classifier` (removed in Phase I)
 - `src/stages/sql_repair.py` re-exporting `MAX_DELTA_REPAIR_ATTEMPTS`, `attempt_delta_repair`, `extract_schema_context_from_ddl`, `extract_sql_from_response` from `src.sql.repair.sql_repair` (removed in Phase I)
 - `src/prompts/delta_repair.py` re-exporting `build_delta_repair_payload`, `count_tokens`, `format_compact_schema`, `DELTA_REPAIR_SYSTEM_PROMPT` from `src.sql.repair.delta_repair` (removed in Phase I)
+- `src/utils/schema_compactor.py` re-exporting `compact_ddl`, `extract_join_hints`, `AUDIT_COLUMNS` from `src.sql.schema_compactor` (removed in Phase I)
+- `src/utils/schema_budget.py` re-exporting `DEFAULT_SCHEMA_TOKEN_BUDGET`, `select_schema_within_budget` from `src.sql.schema_budget` (removed in Phase I)
+- `src/utils/schema_token_estimator.py` re-exporting `estimate_schema_tokens` from `src.sql.schema_token_estimator` (removed in Phase I)
+- `src/utils/failure_capture.py` re-exporting `DEFAULT_FAILURE_LOG_FILE`, `capture_sql_failure` from `src.sql.learning.failure_capture` (removed in Phase I)
+- `src/core/metadata_store.py` re-exporting `MetadataBackend`, `JsonMetadataBackend`, `QdrantMetadataBackend`, `create_metadata_backend`, `migrate_registry` from `src.rag.metadata_store` (removed in Phase I)
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.

@@ -208,12 +208,12 @@ from src.stages.s10_embeddings import EmbeddingService
 from src.sql.engine import Engine
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, get_knowledge_path
 from src.sql.safety.empty_result_classifier import classify_empty_result
-from src.utils.failure_capture import capture_sql_failure
+from src.sql.learning.failure_capture import capture_sql_failure
 from src.utils.feature_flags import is_feature_enabled
 from src.utils.query_budget import QueryBudgetExceededError, get_or_create_budget_controller
-from src.utils.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
-from src.utils.schema_compactor import compact_ddl, extract_join_hints
-from src.utils.schema_token_estimator import estimate_schema_tokens
+from src.sql.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
+from src.sql.schema_compactor import compact_ddl, extract_join_hints
+from src.sql.schema_token_estimator import estimate_schema_tokens
 from src.utils.stream_token_counter import TokenBudgetExceededError
 from src.utils.telemetry import get_or_create_query_id, log_telemetry, timed_stage
 from src.guards.schema_guard import evaluate_schema_sufficiency

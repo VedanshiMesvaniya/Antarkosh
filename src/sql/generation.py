@@ -39,7 +39,7 @@ from src.sql.prompt_builder import build_sql_prompt
 from src.sql.soft_delete import detect_soft_delete_intent, enforce_soft_delete_filter
 from src.sql.safety.empty_result_classifier import classify_empty_result
 from src.utils.error_classification import classify_error
-from src.utils.failure_capture import capture_sql_failure
+from src.sql.learning.failure_capture import capture_sql_failure
 from src.utils.feature_flags import is_feature_enabled
 from src.utils.query_budget import QueryBudgetExceededError, get_or_create_budget_controller
 from src.utils.stream_token_counter import TokenBudgetExceededError

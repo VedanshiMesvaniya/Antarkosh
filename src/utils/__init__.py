@@ -17,7 +17,7 @@ from src.utils.error_classification import (
     classify_failure_category,
     normalize_error,
 )
-from src.utils.failure_capture import capture_sql_failure
+from src.sql.learning.failure_capture import capture_sql_failure
 from src.sql.fast_path import (
     build_aggregate_micro_prompt,
     format_aggregate_fast_path,
@@ -38,9 +38,9 @@ from src.utils.query_classifier import (
     classify_query_intent,
 )
 from src.utils.retry_diagnostics import RetryDiagnostic
-from src.utils.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
-from src.utils.schema_compactor import AUDIT_COLUMNS, compact_ddl, extract_join_hints
-from src.utils.schema_token_estimator import estimate_schema_tokens
+from src.sql.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
+from src.sql.schema_compactor import AUDIT_COLUMNS, compact_ddl, extract_join_hints
+from src.sql.schema_token_estimator import estimate_schema_tokens
 from src.utils.sql_safety import (
     check_dangerous_patterns,
     is_destructive_sql,

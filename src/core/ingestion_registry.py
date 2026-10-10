@@ -62,7 +62,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from src.core.metadata_store import MetadataBackend, create_metadata_backend
+from src.rag.metadata_store import MetadataBackend, create_metadata_backend
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class IngestionRegistry:
             self._backend = backend
         elif registry_path is not None:
             # Explicit path → force the JSON backend (used by tests/tools).
-            from src.core.metadata_store import JsonMetadataBackend
+            from src.rag.metadata_store import JsonMetadataBackend
 
             self._backend = JsonMetadataBackend(registry_path)
         else:

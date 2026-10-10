@@ -15,9 +15,9 @@ from src.models.schemas import ChunkType
 from src.sql.knowledge.loaders import DEFAULT_DB_ID
 from src.sql.table_router import route_anchor_tables, route_tables_for_query
 from src.utils.feature_flags import is_feature_enabled
-from src.utils.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
-from src.utils.schema_compactor import compact_ddl, extract_join_hints
-from src.utils.schema_token_estimator import estimate_schema_tokens
+from src.sql.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
+from src.sql.schema_compactor import compact_ddl, extract_join_hints
+from src.sql.schema_token_estimator import estimate_schema_tokens
 from src.utils.telemetry import log_telemetry
 
 logger = logging.getLogger(__name__)

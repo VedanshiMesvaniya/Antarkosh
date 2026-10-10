@@ -377,3 +377,21 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | G2-14 | src/prompts/delta_repair.py | src/prompts/delta_repair.py | shim | Re-exports build_delta_repair_payload, count_tokens, format_compact_schema, DELTA_REPAIR_SYSTEM_PROMPT | a-g pass | 01a7a7f |
 | G2-15 | (new) | tests/test_g2_modules.py | test | Tests verifying object identity for all 7 shims and smoke testing moved modules | a-g pass | 01a7a7f |
 
+---
+
+## Step G3 — Schema Utilities, Failure Capture, and Metadata Store Moves (schema_compactor, schema_budget, schema_token_estimator, failure_capture, metadata_store)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| G3-1 | src/utils/schema_compactor.py | src/sql/schema_compactor.py | move | Moved schema DDL compactor and join hint extractor | a-g pass | 05e1792 |
+| G3-2 | src/utils/schema_compactor.py | src/utils/schema_compactor.py | shim | Re-exports compact_ddl, extract_join_hints, AUDIT_COLUMNS | a-g pass | 05e1792 |
+| G3-3 | src/utils/schema_budget.py | src/sql/schema_budget.py | move | Moved dynamic schema token budget allocator and table pruner | a-g pass | 05e1792 |
+| G3-4 | src/utils/schema_budget.py | src/utils/schema_budget.py | shim | Re-exports DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget | a-g pass | 05e1792 |
+| G3-5 | src/utils/schema_token_estimator.py | src/sql/schema_token_estimator.py | move | Moved schema token estimator | a-g pass | 05e1792 |
+| G3-6 | src/utils/schema_token_estimator.py | src/utils/schema_token_estimator.py | shim | Re-exports estimate_schema_tokens | a-g pass | 05e1792 |
+| G3-7 | src/utils/failure_capture.py | src/sql/learning/failure_capture.py | move | Moved SQL generation & execution failure logger; added _get_failure_log_file() resolver | a-g pass | 05e1792 |
+| G3-8 | src/utils/failure_capture.py | src/utils/failure_capture.py | shim | Re-exports DEFAULT_FAILURE_LOG_FILE, capture_sql_failure | a-g pass | 05e1792 |
+| G3-9 | src/core/metadata_store.py | src/rag/metadata_store.py | move | Moved document metadata backend (JSON and Qdrant backend implementations) | a-g pass | 05e1792 |
+| G3-10 | src/core/metadata_store.py | src/core/metadata_store.py | shim | Re-exports MetadataBackend, JsonMetadataBackend, QdrantMetadataBackend, create_metadata_backend, migrate_registry | a-g pass | 05e1792 |
+| G3-11 | (new) | tests/test_g3_modules.py | test | Tests verifying object identity for all 5 shims and smoke testing moved modules | a-g pass | 05e1792 |
+
