@@ -21,7 +21,7 @@ if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
 from scripts._paths import REPO_ROOT
-
+from src.core.db_client import run_readonly_query
 from src.sql.knowledge.loaders import get_knowledge_path
 
 
