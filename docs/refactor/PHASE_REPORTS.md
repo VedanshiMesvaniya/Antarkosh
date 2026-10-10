@@ -558,4 +558,33 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: H5
 
+---
+
+## Step H5 Report: Docker, CI, and Container Deployment Verification
+- **Step ID**: H5
+- **Commits**:
+  - `db9fd43` (Sub-move H5-1: update `.dockerignore` for databases and learned exclusions)
+  - `9e9776c` (Sub-move H5-2: optimize Dockerfile COPY layers and enable persistent learned data location)
+  - `652e132` (Sub-move H5-2: format imports in `test_g6_modules.py`)
+  - `6ababc4` (Sub-move H5-3: document persistent locations for multi-db learned data and connections)
+- **Files Changed**:
+  - `.dockerignore`: excluded `evals/`, `databases/*/evals/`, `databases/*/learned/`, and `databases/*/learned/*` while ensuring `databases/` curated packs are shipped and `config/connections.json` remains excluded.
+  - `Dockerfile`: added runtime directory pre-creation (`mkdir -p /app/data /app/config /app/databases`) to support ephemeral container runs and persistent volume mount points.
+  - `src/sql/knowledge/loaders.py`: updated `get_learned_path` to support `LEARNED_DATA_DIR` environment variable for mounting persistent volumes in containerized deployments.
+  - `tests/core/test_g6_modules.py`: added unit test verifying `LEARNED_DATA_DIR` environment variable override and auto-creation.
+  - `render.yaml`: documented persistent disk configuration blueprint and added commented `CONNECTIONS_FILE` and `LEARNED_DATA_DIR` environment overrides.
+  - `docs/DEPLOY.md`: documented multi-database persistent storage architecture (`databases/*/learned`, `connections.json`, and `data/`).
+  - Tracking: `docs/refactor/PATH_CHANGES.md`, `docs/refactor/PROGRESS.md`.
+- **What Changed**:
+  - Updated container build and deployment assets for multi-database architecture:
+    - Confirmed `databases/` curated knowledge packs are baked directly into the Docker image so all databases are ready on boot.
+    - Confirmed connection credentials (`config/connections.json`) and machine-learned data (`databases/*/learned/`) are strictly excluded from Docker images via `.dockerignore`.
+    - Added environment variable support (`LEARNED_DATA_DIR`) and documented `CONNECTIONS_FILE` allowing production environments (Render, Railway, Docker, Kubernetes) to mount a persistent disk at `/app/data` and persist all connections and learned assets across container redeployments.
+    - Verified that Docker CLI is not installed on this Windows host (`docker : The term 'docker' is not recognized`), as anticipated by the plan instructions ("build the image if Docker exists, otherwise say so").
+- **Checks a-g**: a-g all passed; pytest: 742 passed, 14 skipped, 8 deselected, 1 xfailed (matching baseline); ruff clean; compileall clean; import src.main ok; zero drift; offline eval 163/163 questions verified; health/overview 200 OK.
+- **Shims Left**: All previous shims remain intact.
+- **Issues Found**: None.
+- **Next Step ID**: H6
+
+
 

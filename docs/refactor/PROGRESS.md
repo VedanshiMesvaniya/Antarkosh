@@ -42,7 +42,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | H2 | tests/ mirror src | feeba3a, 1338266, 6daf4e8, 00b4ddd, c42c3e3 | 742 passed |
 | [x] | H3 | evals into databases/erp_main/evals | 8c869c7, 01ce81e, 51bd408, 8b26a4b | 742 passed |
 | [x] | H4 | docs reorganized | 44109f5, 2de3262, 34e511c | 742 passed |
-| [ ] | H5 | Docker/CI/render verified | | |
+| [x] | H5 | Docker/CI/render verified | db9fd43, 9e9776c, 652e132, 6ababc4 | 742 passed |
 | [ ] | H6 | api/ui.py split | | |
 | [ ] | I | Cleanup (needs the word "approved") | | |
 

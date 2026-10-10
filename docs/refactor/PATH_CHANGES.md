@@ -518,6 +518,17 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | H4-2 | docs/sql_pipeline_enhancements.md, docs/text_to_sql_pipeline_architecture.md | docs/sql/sql_pipeline_enhancements.md, docs/sql/text_to_sql_pipeline_architecture.md | move | Moved SQL pipeline documentation to docs/sql/ | a-g pass | 2de3262 |
 | H4-3 | README.md, docs/ARCHITECTURE.md | README.md, docs/ARCHITECTURE.md | docs | Updated directory layout trees to reflect docs/databases/, docs/sql/, databases/erp_main/, and evals/ | a-g pass | 34e511c |
 
+---
+
+## Step H5 — Docker, CI, and Container Deployment Verification
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| H5-1 | .dockerignore | .dockerignore | config | Excluded evals/, databases/*/evals/, databases/*/learned/ while preserving databases/ knowledge packs and config/connections.json exclusion | a-g pass | db9fd43 |
+| H5-2 | Dockerfile, src/sql/knowledge/loaders.py | Dockerfile, src/sql/knowledge/loaders.py | code/build | Pre-created /app/data, /app/config, /app/databases in Dockerfile; supported LEARNED_DATA_DIR override for volume mounts | a-g pass | 9e9776c, 652e132 |
+| H5-3 | render.yaml, docs/DEPLOY.md | render.yaml, docs/DEPLOY.md | docs/config | Documented persistent disk blueprint and CONNECTIONS_FILE / LEARNED_DATA_DIR runtime persistence | a-g pass | 6ababc4 |
+
+
 
 
 
