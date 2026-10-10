@@ -268,5 +268,14 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None new (Findings #11 and #12 timing jitter on full suite run remain documented).
 - **Next Step ID**: E5
 
+---
 
-
+## Step E5 Report: Dynamic Connection Resolution and Per-Database Cache Invalidation
+- **Step ID**: E5
+- **Commits**: 622dd28
+- **Files Changed**: `src/core/db_client.py`, `src/core/db_settings.py`, `src/sql/connectors/__init__.py`, `src/sql/connectors/mssql.py`, `src/sql/connectors/mysql.py`, `src/sql/connectors/oracle.py`, `src/sql/connectors/postgresql.py`, `src/sql/connectors/sqlite.py`, `src/sql/knowledge/loaders.py`, `src/sql/registry.py`, `src/stages/s12b_sql_retrieval.py`, `src/utils/semantic_cache.py`, `tests/test_sql_retriever_multi_db_cache.py`, `tests/test_sql_db_connection_invalidation.py`.
+- **What Changed**: Threaded `db_id` through `run_readonly_query()` and `SQLRetriever` to dynamically resolve connection settings from `src.sql.registry` (`get_connection` / `get_database`) with fallback to `DEFAULT_DB_ID` ("erp_main"). Added configuration override support `cfg` across all engine connectors. In `db_settings._apply_runtime()`, replaced the global cache wipe with targeted per-`db_id` invalidation (`clear_schema_cache(target_db_id)`, `clear_result_cache(target_db_id)`, `clear_cache(target_db_id)`, and `clear_knowledge_caches(target_db_id)`). Scoped semantic cache purges by `db_id`. Fixed circular import in `registry.py` and `loaders.py` with `src.core.config`. Added comprehensive tests in `tests/test_sql_db_connection_invalidation.py` asserting connection resolution by `db_id` and verifying changing a connection for database A clears database A's caches while database B's caches survive. Verified `tests/test_db_settings.py` passes completely unmodified.
+- **Checks a-g**: a-g all passed; pytest: 625 passed, 18 skipped, 8 deselected, 1 xfailed (+4 passed vs 621 baseline); zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I).
+- **Issues Found**: None new (Findings #11 and #12 timing jitter on full suite run remain documented).
+- **Next Step ID**: E6

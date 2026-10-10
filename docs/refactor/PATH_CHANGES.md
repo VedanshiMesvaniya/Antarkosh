@@ -227,5 +227,16 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | E4-3 | src/core/db_settings.py | src/core/db_settings.py | wire | db_settings delegates ENGINES, connector tests, and mirrors erp_main via registry.save_connection | a-g pass | cba67de |
 | E4-4 | tests/test_db_settings.py | tests/test_db_settings.py | test | existing test suite passes unmodified | a-g pass | cba67de |
 
+---
 
+## Step E5 — Dynamic Connection Resolution and Per-Database Cache Invalidation
 
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| E5-1 | src/core/db_client.py | src/core/db_client.py | behavior | run_readonly_query accepts db_id (default erp_main), resolves connection config via registry, passes to connectors | a-g pass | 622dd28 |
+| E5-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | behavior | SQLRetriever resolves engine/dialect by db_id, passes db_id to run_readonly_query, per-db knowledge caching & clear | a-g pass | 622dd28 |
+| E5-3 | src/core/db_settings.py | src/core/db_settings.py | behavior | _apply_runtime performs per-db_id cache invalidation instead of global wipe; save accepts db_id | a-g pass | 622dd28 |
+| E5-4 | src/utils/semantic_cache.py | src/utils/semantic_cache.py | behavior | clear and clear_cache accept db_id to selectively purge scoped semantic caches | a-g pass | 622dd28 |
+| E5-5 | src/sql/connectors/ | src/sql/connectors/ | behavior | connectors accept connection config dictionary override in get_connector / run_readonly | a-g pass | 622dd28 |
+| E5-6 | tests/test_sql_retriever_multi_db_cache.py | tests/test_sql_retriever_multi_db_cache.py | test | updated test_selective_and_global_cache_clearing for per-db_id invalidation | a-g pass | 622dd28 |
+| E5-7 | (new) | tests/test_sql_db_connection_invalidation.py | test | tests verifying connection resolution by db_id, db A caches cleared and db B caches survive on connection change | a-g pass | 622dd28 |

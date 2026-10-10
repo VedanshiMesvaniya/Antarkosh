@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 603 passed, 17 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 625 passed, 18 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -23,7 +23,7 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | E2 | Dialects package, mssql/oracle stubs (not registered) | 5b9ba01 | 603 passed |
 | [x] | E3 | registry.py (connections.json, db.yaml) | 25a13bf | 618 passed |
 | [x] | E4 | db_settings into connectors/registry | cba67de | 621 passed |
-| [ ] | E5 | Per-database connection, remove global cache wipe | | |
+| [x] | E5 | Per-database connection, remove global cache wipe | 622dd28 | 625 passed |
 | [ ] | E6 | Database access control and admin endpoints | | |
 | [ ] | F1 | Extract soft_delete | | |
 | [ ] | F2 | Extract intent | | |
