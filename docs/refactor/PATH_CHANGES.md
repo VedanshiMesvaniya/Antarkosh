@@ -483,7 +483,7 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | H1-16 | scripts/check_providers.py | scripts/ops/check_providers.py | move | Moved to scripts/ops/, uses scripts/_paths.py | a-g pass | 4b7b818 |
 | H1-17 | scripts/verify_telemetry.py | scripts/ops/verify_telemetry.py | move | Moved to scripts/ops/, uses scripts/_paths.py | a-g pass | 4b7b818 |
 | H1-18 | scripts/migrate_existing_docs_to_system_user.py | scripts/ops/migrate_existing_docs_to_system_user.py | move | Moved to scripts/ops/, uses scripts/_paths.py | a-g pass | 4b7b818 |
-| H1-19 | (docs & configs) | README.md, docs, configs | docs | Updated script invocation paths across documentation and configs | a-g pass | sub-move 4 |
+| H1-19 | (docs & configs) | README.md, docs, configs | docs | Updated script invocation paths across documentation and configs | a-g pass | 9098c57 |
 
 
 

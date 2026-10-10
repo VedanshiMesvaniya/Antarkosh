@@ -447,5 +447,30 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: H1
 
+---
+
+## Step H1 Report: Scripts Reorganization
+- **Step ID**: H1
+- **Commits**: `59ab567` (sub-move 1: db scripts), `0f9f882` (sub-move 2: eval scripts), `4b7b818` (sub-move 3: ops scripts), `9098c57` (sub-move 4: docs & configs), `c843cb9` (fix auto_harvest import)
+- **Files Changed**:
+  - `scripts/db/`: `build_sql_relationships.py`, `build_sql_glossary.py`, `build_behavioral_atlas.py`, `generate_behavioral_atlas.py`, `auto_harvest_metadata.py`, `verify_atlas.py`, `load_mysql_dump.py`, `setup_db.py`, `__init__.py`
+  - `scripts/eval/`: `run_batch_eval.py`, `test_question.py`, `sql_smoke_test.py`, `adversarial_smoke_test.py`, `production_smoke_test.py`, `run_shadow_audit.py`, `generate_benchmark_fixtures.py`, `__init__.py`
+  - `scripts/ops/`: `check_providers.py`, `verify_telemetry.py`, `migrate_existing_docs_to_system_user.py`, `__init__.py`
+  - Documentation, configs, and tracking: `README.md`, `docs/text_to_sql_pipeline_architecture.md`, `config/sql_relationships.json`, `databases/erp_main/schema/relationships.json`, `docs/refactor/PATH_CHANGES.md`, `docs/refactor/PROGRESS.md`
+- **What Changed**:
+  - Reorganized root-level operational and diagnostic scripts into clean, domain-specific packages under `scripts/`:
+    - `scripts/db/`: 8 schema and database scripts.
+    - `scripts/eval/`: 7 evaluation, benchmarking, and smoke testing scripts.
+    - `scripts/ops/`: 3 ops, migrations, and telemetry verification scripts.
+    - Existing subdirectories (`scripts/analytics/`, `scripts/golden/`, `scripts/rollout/`) stayed intact.
+  - Standardized all moved scripts on `from scripts._paths import REPO_ROOT` with robust `Path(__file__).resolve().parents[2]` path initialization for standalone CLI execution.
+  - Updated all references across `README.md` (CLI overview table, provider health instruction, demo DB setup instruction, project structure tree), `docs/text_to_sql_pipeline_architecture.md` (metadata harvesting, batch test runner, and single question inspector paths), and note fields in `config/sql_relationships.json` and `databases/erp_main/schema/relationships.json`.
+  - Confirmed CI workflow (`.github/workflows/ci.yml`), `Dockerfile`, and `render.yaml` do not hardcode individual script paths and remain compatible.
+- **Checks a-g**: a-g all passed; pytest: 742 passed, 14 skipped, 8 deselected, 1 xfailed (matching pre-H1 baseline); ruff clean; compileall clean; import src.main ok; zero drift; offline eval 163/163 tables verified; health/overview 200 OK.
+- **Shims Left**: All previous shims remain intact.
+- **Issues Found**: None.
+- **Next Step ID**: H2
+
+
 
 
