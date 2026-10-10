@@ -318,3 +318,13 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | F6-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Re-exports all generation functions, execution helpers, safety checks, and formatting utilities; delegates SQLRetriever._generate_sql to generate_sql, _is_safe_read_query to is_safe_read_query, and execution loops to execute_with_retry / execute_with_delta_repair | a-g pass | F6 |
 | F6-3 | src/sql/prompt_builder.py | src/sql/prompt_builder.py | wire | Added public cache dict aliases without leading underscore (RAW_RELATIONSHIPS_CACHE etc.) | a-g pass | F6 |
 | F6-4 | (new) | tests/test_sql_generation.py | test | Tests verifying object identity for all public & underscore aliases, unwrapping & CoT parsing, schema/FK row formatting, display filtering & sanitation, AST safety checks, 0-row aggregate detection, generate_sql soft-delete enforcement, and abstention handling | a-g pass | F6 |
+
+---
+
+## Step F7 — Thin SQLRetriever Pipeline and Stage 12b Shim
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| F7-1 | src/stages/s12b_sql_retrieval.py | src/sql/pipeline.py | code | Extracted SQLRetriever class, clear_knowledge_caches, and query result cache lifecycle into thin src/sql/pipeline.py (< 300 lines) | a-g pass | F7 |
+| F7-2 | src/stages/s12b_sql_retrieval.py | src/stages/s12b_sql_retrieval.py | shim | Converted s12b_sql_retrieval.py into a thin re-export compatibility shim (< 250 lines) re-exporting SQLRetriever and all F1–F6 extracted symbols | a-g pass | F7 |
+| F7-3 | (new) | tests/test_sql_pipeline.py | test | Tests verifying SQLRetriever object identity, initialization, result & schema cache per-db_id isolation, access control enforcement, and feature flag patching | a-g pass | F7 |

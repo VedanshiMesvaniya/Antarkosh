@@ -365,3 +365,15 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: F7
 
+---
+
+## Step F7 Report: Thin SQLRetriever Pipeline and Stage 12b Shim
+- **Step ID**: F7
+- **Commits**: F7
+- **Files Changed**: `src/sql/pipeline.py`, `src/stages/s12b_sql_retrieval.py`, `tests/test_sql_pipeline.py`.
+- **What Changed**: Extracted `SQLRetriever`, `clear_knowledge_caches`, and result cache lifecycle into thin module `src/sql/pipeline.py` (270 lines, well below the 400-line limit). Re-exported `SQLRetriever`, `clear_knowledge_caches`, and all F1–F6 extracted symbols in `src/stages/s12b_sql_retrieval.py` which now serves as a clean 230-line backwards-compatibility shim. Added 6 comprehensive unit tests in `tests/test_sql_pipeline.py` covering object identity, retriever initialization, result & schema cache per-db_id isolation, access control, and feature flag mock patching.
+- **Checks a-g**: a-g all passed; pytest: 704 passed, 18 skipped, 8 deselected, 1 xfailed (+6 passed vs 698 baseline); ruff clean; compileall clean; import src.main ok; zero drift; health/overview 200 OK.
+- **Shims Left**: `src/sql/knowledge/loaders.py` fallback to legacy locations for erp_main (Phase I); transition rule in `s12b`/`s11` for legacy schema chunks; `src/core/sql_dialects.py` shim (Phase I); `src/core/db_config_file.py` shim delegating to `src.sql.registry` (Phase I); `src/stages/s12b_sql_retrieval.py` re-exporting soft-delete, intent, table_router, schema_retrieval, prompt_builder, generation, and pipeline symbols (Phase I).
+- **Issues Found**: None.
+- **Next Step ID**: G1
+
