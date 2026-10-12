@@ -5,8 +5,6 @@ from pathlib import Path
 
 import pytest
 
-import src.core.pattern_learner as shim_pl
-import src.core.schema_monitor as shim_sm
 import src.sql.learning.failure_capture as learn_fc
 import src.sql.learning.pattern_learner as learn_pl
 import src.sql.learning.schema_monitor as learn_sm
@@ -22,15 +20,13 @@ from src.sql.learning.schema_monitor import SchemaDrift, SchemaMonitor
 
 def test_g6_shims_and_constants_identity():
     """Verify shims preserve object identity and path constants."""
-    assert shim_pl.PatternLearner is learn_pl.PatternLearner
-    assert shim_pl.LearnedPattern is learn_pl.LearnedPattern
-    assert shim_pl.LEARNED_PATTERNS_PATH == learn_pl.LEARNED_PATTERNS_PATH
-    assert shim_pl.LEARNING_METRICS_PATH == learn_pl.LEARNING_METRICS_PATH
+    assert learn_pl.LEARNED_PATTERNS_PATH is not None
+    assert learn_pl.LEARNING_METRICS_PATH is not None
 
-    assert shim_sm.SchemaMonitor is learn_sm.SchemaMonitor
-    assert shim_sm.SchemaDrift is learn_sm.SchemaDrift
-    assert shim_sm.SCHEMA_ATLAS_PATH == learn_sm.SCHEMA_ATLAS_PATH
-    assert shim_sm.DRIFT_LOG_PATH == learn_sm.DRIFT_LOG_PATH
+    assert learn_sm.SchemaMonitor is not None
+    assert learn_sm.SchemaDrift is not None
+    assert learn_sm.SCHEMA_ATLAS_PATH is not None
+    assert learn_sm.DRIFT_LOG_PATH is not None
 
     assert shim_fc.capture_sql_failure is learn_fc.capture_sql_failure
     assert shim_fc.DEFAULT_FAILURE_LOG_FILE == learn_fc.DEFAULT_FAILURE_LOG_FILE

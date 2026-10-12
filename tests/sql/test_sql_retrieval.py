@@ -25,7 +25,6 @@ from src.stages.s12b_sql_retrieval import (
     _unwrap_sql,
 )
 
-
 # ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
@@ -301,8 +300,8 @@ async def test_empty_schema_not_cached_permanently(tmp_path: Path, monkeypatch: 
     conn = sqlite3.connect(empty_db)
     conn.close()
 
-    from src.core import config
     import src.core.db_client as db_client_mod
+    from src.core import config
     monkeypatch.setattr(config.settings, "db_engine", "sqlite", raising=False)
     monkeypatch.setattr(db_client_mod, "DB_PATH", empty_db, raising=False)
 
@@ -366,6 +365,7 @@ async def test_single_row_null_column_is_success(live_db):
 async def test_sync_live_schema_atomicity(monkeypatch: pytest.MonkeyPatch):
     """sync_live_schema embeds before upserting into vector store, ensuring no empty-store gap."""
     from unittest.mock import AsyncMock, MagicMock
+
     from src.pipeline.schema_ingestion import sync_live_schema
 
     mock_run = AsyncMock(return_value=[
@@ -392,9 +392,9 @@ async def test_sync_live_schema_atomicity(monkeypatch: pytest.MonkeyPatch):
 def test_glossary_and_relationships_no_drift():
     """Verify that every column and table in sql_column_glossary.json and sql_relationships.json
     resolves to a valid active schema column without drift."""
-    from src.core.sql_drift_validator import validate_glossary_and_relationships
+    from src.sql.safety.drift_validator import validate_glossary_and_relationships
     errors = validate_glossary_and_relationships()
-    assert not errors, f"Glossary or relationship drift detected:\n" + "\n".join(errors)
+    assert not errors, "Glossary or relationship drift detected:\n" + "\n".join(errors)
 
 
 def test_scoped_relationships_filters_unrelated_tables():
