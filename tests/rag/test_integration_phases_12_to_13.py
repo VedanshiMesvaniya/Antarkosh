@@ -22,7 +22,7 @@ from src.stages.s12b_sql_retrieval import SQLRetriever
 from src.utils.circuit_breaker import get_shared_circuit_breaker
 from src.utils.feature_flags import DEFAULT_FLAGS
 from src.utils.query_budget import QueryBudgetController, set_current_budget_controller
-from src.utils.query_classifier import (
+from src.sql.query_classifier import (
     AGGREGATE_QUERY,
     EXPLANATION_QUERY,
     LIST_QUERY,
@@ -30,7 +30,7 @@ from src.utils.query_classifier import (
 )
 from src.sql.schema_budget import select_schema_within_budget
 from src.sql.schema_compactor import compact_ddl
-from src.utils.sql_safety import validate_sql_safety
+from src.sql.safety.sql_safety import validate_sql_safety
 
 
 @pytest.fixture(autouse=True)

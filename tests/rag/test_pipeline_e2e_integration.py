@@ -62,7 +62,7 @@ async def test_full_pipeline_e2e_indepth() -> None:
             tmp_path = Path(tmp_dir)
             
             # Isolated registry for the test
-            from src.core.ingestion_registry import IngestionRegistry
+            from src.rag.ingestion_registry import IngestionRegistry
             test_registry = IngestionRegistry(registry_path=tmp_path / "test_registry.json")
 
             ingestion_pipeline = IngestionPipeline(

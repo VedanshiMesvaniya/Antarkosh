@@ -25,7 +25,7 @@ from src.sql.safety.empty_result_classifier import (
 from src.sql.schema_budget import select_schema_within_budget
 from src.sql.schema_compactor import compact_ddl, extract_join_hints
 from src.sql.schema_token_estimator import estimate_schema_tokens
-from src.utils.sql_safety import is_destructive_sql, validate_sql_safety
+from src.sql.safety.sql_safety import is_destructive_sql, validate_sql_safety
 
 
 def test_1_schema_budget_and_compaction_pipeline():

@@ -1,9 +1,11 @@
 """Unit tests for Layer 1 SemanticCache (dynamic TTL, similarity threshold, LRU eviction, scope isolation)."""
 
 import time
+
 import pytest
+
 from src.models.schemas import QueryResult
-from src.utils.query_classifier import QueryType, classify_query
+from src.sql.query_classifier import QueryType
 from src.sql.semantic_cache import (
     SIMILARITY_THRESHOLD,
     SemanticCache,

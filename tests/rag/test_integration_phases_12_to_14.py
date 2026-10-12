@@ -36,7 +36,7 @@ from src.core.provider_client import (
 )
 from src.stages.s12_s13_s14_retrieval import Generator
 from src.utils.circuit_breaker import get_shared_circuit_breaker
-from src.utils.query_classifier import classify_query_intent, LIST_QUERY
+from src.sql.query_classifier import LIST_QUERY, classify_query_intent
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk
 
 

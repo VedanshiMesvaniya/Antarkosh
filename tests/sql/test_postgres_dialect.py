@@ -19,7 +19,7 @@ from src.core.sql_dialects import DIALECTS, get_dialect_profile
 from src.pipeline.schema_ingestion import _split_schema_by_table
 from src.stages.s12b_sql_retrieval import SQLRetriever, format_schema_rows
 from src.utils.error_classification import classify_error
-from src.utils.sql_safety import check_cartesian_explosion, is_destructive_sql
+from src.sql.safety.sql_safety import check_cartesian_explosion, is_destructive_sql
 
 PG = get_dialect_profile("postgresql")
 

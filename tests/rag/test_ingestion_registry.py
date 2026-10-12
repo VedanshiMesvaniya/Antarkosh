@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from src.core.ingestion_registry import IngestionRegistry, RegistryStatus
+from src.rag.ingestion_registry import IngestionRegistry, RegistryStatus
 from src.rag.metadata_store import JsonMetadataBackend
 
 

@@ -106,13 +106,13 @@ def test_chunk_owner_clause_skipped_when_doc_level_acl_applies():
 
 def test_cache_signature_changes_when_access_changes(tmp_path, monkeypatch):
     from unittest.mock import patch
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
 
     f = tmp_path / "doc.pdf"
     f.write_text("x")
     reg = IngestionRegistry(registry_path=tmp_path / "r.json")
     entry = reg.create_version(f, "h", 1, user_id="admin", allowed_users=["rahul"])
-    with patch("src.core.ingestion_registry.IngestionRegistry.get_active", side_effect=reg.get_active):
+    with patch("src.rag.ingestion_registry.IngestionRegistry.get_active", side_effect=reg.get_active):
         before = _cache_acl_signature("rahul")
         reg.update_document_access(entry["document_id"], [])
         after = _cache_acl_signature("rahul")

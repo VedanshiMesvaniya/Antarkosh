@@ -20,7 +20,7 @@ from src.sql.fast_path import (
     is_pure_factual,
     is_template_enabled,
 )
-from src.utils.query_classifier import QueryType
+from src.sql.query_classifier import QueryType
 
 
 def extract_numbers(text: str) -> list[float]:

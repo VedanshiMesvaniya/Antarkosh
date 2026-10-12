@@ -190,7 +190,7 @@ def test_ingestion_tasks_cover_every_stage_that_calls_a_model():
 
 
 def test_pipeline_default_router_is_the_gemini_first_ingestion_router(tmp_path):
-    from src.core.ingestion_registry import IngestionRegistry
+    from src.rag.ingestion_registry import IngestionRegistry
     from src.pipeline.ingestion import IngestionPipeline
     pipe = IngestionPipeline(
         embedding_service=EmbeddingService(primary=BGEM3EmbeddingAdapter()),
@@ -353,7 +353,7 @@ def test_qdrant_configured_needs_only_url(monkeypatch):
 
 
 def test_metadata_backend_selection_follows_url(monkeypatch, tmp_path):
-    from src.core import metadata_store
+    from src.rag import metadata_store
     monkeypatch.setattr(settings, "qdrant_url", "")
     monkeypatch.setattr(settings, "qdrant_api_key", "")
     assert isinstance(metadata_store.create_metadata_backend(tmp_path / "r.json"),

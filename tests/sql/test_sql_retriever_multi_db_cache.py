@@ -8,10 +8,10 @@ import pytest
 from src.core.db_settings import _apply_runtime
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import Chunk, ChunkType, QueryResult, RetrievedChunk
+from src.sql.query_classifier import QueryType
 from src.sql.safety.column_registry import ColumnRegistry
 from src.sql.semantic_cache import SemanticCache, get_semantic_cache
 from src.stages.s12b_sql_retrieval import SQLRetriever
-from src.utils.query_classifier import QueryType
 
 
 @pytest.fixture(autouse=True)

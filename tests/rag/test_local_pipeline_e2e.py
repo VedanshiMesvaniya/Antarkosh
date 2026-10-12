@@ -23,7 +23,7 @@ pytest.importorskip("pdfplumber")
 
 from src.core import local_models  # noqa: E402
 from src.core.config import settings  # noqa: E402
-from src.core.ingestion_registry import IngestionRegistry  # noqa: E402
+from src.rag.ingestion_registry import IngestionRegistry  # noqa: E402
 from src.models.schemas import ChunkType  # noqa: E402
 
 

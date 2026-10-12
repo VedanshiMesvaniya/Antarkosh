@@ -9,14 +9,13 @@ import pytest
 
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import ChunkType
-from src.stages.s12b_sql_retrieval import SQLRetriever
-from src.utils.golden_models import GoldenCase
-from src.utils.sql_safety import (
+from src.sql.safety.sql_safety import (
     check_dangerous_patterns,
     is_destructive_sql,
-    validate_sql_safety,
     validate_tables_and_columns,
 )
+from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.utils.golden_models import GoldenCase
 
 GOLDEN_CASES_PATH = Path(__file__).resolve().parent.parent / "golden" / "sql_repair" / "cases.json"
 

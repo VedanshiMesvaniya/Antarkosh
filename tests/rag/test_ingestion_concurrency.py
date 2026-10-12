@@ -19,7 +19,7 @@ import pytest
 # where it isn't installed — same reason the e2e ingestion test is excluded.
 pytest.importorskip("pdfplumber")
 
-from src.core.ingestion_registry import IngestionRegistry  # noqa: E402
+from src.rag.ingestion_registry import IngestionRegistry  # noqa: E402
 from src.pipeline.ingestion import (  # noqa: E402
     IngestionPipeline,
     IngestionResult,

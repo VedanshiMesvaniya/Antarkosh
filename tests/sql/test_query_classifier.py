@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 
-from src.utils.query_classifier import (
+from src.sql.query_classifier import (
     AGGREGATE_QUERY,
     EXPLANATION_QUERY,
     LIST_QUERY,

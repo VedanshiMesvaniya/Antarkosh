@@ -6,7 +6,7 @@ from scripts.analytics.baseline_aggregator import aggregate_baseline_metrics
 from scripts.analytics.telemetry_parser import parse_telemetry_file
 from src.sql.learning.failure_capture import capture_sql_failure
 from src.utils.feature_flags import is_feature_enabled
-from src.utils.sql_safety import is_destructive_sql, parse_sql, validate_tables_and_columns
+from src.sql.safety.sql_safety import is_destructive_sql, parse_sql, validate_tables_and_columns
 from src.utils.telemetry import (
     get_current_query_id,
     get_or_create_query_id,

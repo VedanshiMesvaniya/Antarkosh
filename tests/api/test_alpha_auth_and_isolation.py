@@ -28,7 +28,7 @@ from unittest.mock import patch
 
 from src.main import app
 from src.core.state import state_manager
-from src.core.ingestion_registry import IngestionRegistry, RegistryStatus
+from src.rag.ingestion_registry import IngestionRegistry, RegistryStatus
 from src.stages.s11_vector_store import QdrantStore
 from qdrant_client.models import IsEmptyCondition
 
@@ -278,8 +278,8 @@ async def test_ui_document_endpoints_isolation(tmp_path):
     v_m = test_registry.create_version(dummy_file_m, "hash_m", 10, user_id="mihir")
     v_r = test_registry.create_version(dummy_file_r, "hash_r", 8, user_id="rahul")
 
-    with patch("src.core.ingestion_registry.IngestionRegistry.get_all", return_value=test_registry.get_all()), \
-         patch("src.core.ingestion_registry.IngestionRegistry.get_by_document_id", side_effect=test_registry.get_by_document_id):
+    with patch("src.rag.ingestion_registry.IngestionRegistry.get_all", return_value=test_registry.get_all()), \
+         patch("src.rag.ingestion_registry.IngestionRegistry.get_by_document_id", side_effect=test_registry.get_by_document_id):
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -316,9 +316,9 @@ async def test_only_admin_can_upload_update_delete_documents(tmp_path):
     test_registry = IngestionRegistry(registry_path=registry_file)
     v_admin = test_registry.create_version(dummy_doc, "hash_admin", 12, user_id="admin")
 
-    with patch("src.core.ingestion_registry.IngestionRegistry.get_all", side_effect=test_registry.get_all), \
-         patch("src.core.ingestion_registry.IngestionRegistry.get_by_document_id", side_effect=test_registry.get_by_document_id), \
-         patch("src.core.ingestion_registry.IngestionRegistry.update_document_access", side_effect=test_registry.update_document_access):
+    with patch("src.rag.ingestion_registry.IngestionRegistry.get_all", side_effect=test_registry.get_all), \
+         patch("src.rag.ingestion_registry.IngestionRegistry.get_by_document_id", side_effect=test_registry.get_by_document_id), \
+         patch("src.rag.ingestion_registry.IngestionRegistry.update_document_access", side_effect=test_registry.update_document_access):
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -435,7 +435,7 @@ async def test_user_cannot_get_answer_from_unauthorized_document(tmp_path):
 
     retriever = Retriever(store=mock_store, embedding_service=mock_embed)
 
-    with patch("src.core.ingestion_registry.IngestionRegistry.get_active", side_effect=test_reg.get_active):
+    with patch("src.rag.ingestion_registry.IngestionRegistry.get_active", side_effect=test_reg.get_active):
         # 1. Rahul asks query (only has access to v_public, NOT v_secret)
         rahul_results = await retriever.retrieve("tell me secret plans", filters={"user_id": "rahul"})
         rahul_doc_ids = [r.chunk.document_id for r in rahul_results]
@@ -505,9 +505,9 @@ async def test_admin_manage_document_user_access_api(tmp_path):
     entry = test_registry.create_version(dummy_file, "hash_roadmap", 12, user_id="admin", allowed_users=["mihir"])
     doc_id = entry["document_id"]
 
-    with patch("src.core.ingestion_registry.IngestionRegistry.get_all", return_value=test_registry.get_all()), \
-         patch("src.core.ingestion_registry.IngestionRegistry.get_by_document_id", side_effect=test_registry.get_by_document_id), \
-         patch("src.core.ingestion_registry.IngestionRegistry.update_document_access", side_effect=test_registry.update_document_access):
+    with patch("src.rag.ingestion_registry.IngestionRegistry.get_all", return_value=test_registry.get_all()), \
+         patch("src.rag.ingestion_registry.IngestionRegistry.get_by_document_id", side_effect=test_registry.get_by_document_id), \
+         patch("src.rag.ingestion_registry.IngestionRegistry.update_document_access", side_effect=test_registry.update_document_access):
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
