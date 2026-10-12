@@ -1,11 +1,9 @@
 """Unit tests for Phase 3 Failure Capture Layer."""
 
 import json
-from pathlib import Path
-import pytest
 
+from src.sql.learning.failure_capture import capture_sql_failure
 from src.utils.error_classification import normalize_error
-from src.utils.failure_capture import capture_sql_failure
 
 
 def test_normalize_error_stripping():

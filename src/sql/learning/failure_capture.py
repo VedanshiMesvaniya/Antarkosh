@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from src.core.config import DATA_DIR, PROJECT_ROOT
+from src.core.config import DATA_DIR
 from src.sql.knowledge.loaders import (
     DEFAULT_DB_ID,
     get_learned_path,
@@ -21,12 +21,6 @@ DEFAULT_FAILURE_LOG_FILE = DATA_DIR / "failed_queries.jsonl"
 
 
 def _get_failure_log_file(db_id: str = DEFAULT_DB_ID) -> Path:
-    import sys
-    shim = sys.modules.get("src.utils.failure_capture")
-    if shim and hasattr(shim, "DEFAULT_FAILURE_LOG_FILE"):
-        shim_val = Path(shim.DEFAULT_FAILURE_LOG_FILE)
-        if shim_val != DEFAULT_FAILURE_LOG_FILE:
-            return shim_val
     if DEFAULT_FAILURE_LOG_FILE != DATA_DIR / "failed_queries.jsonl":
         return Path(DEFAULT_FAILURE_LOG_FILE)
     return get_learned_path("failed_queries.jsonl", db_id=db_id, create_dir=True)

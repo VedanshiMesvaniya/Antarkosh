@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+
 import pytest
 
-from src.utils.feature_flags import is_feature_enabled
+from src.sql.schema_budget import select_schema_within_budget
+from src.sql.schema_token_estimator import estimate_schema_tokens
 from src.utils.golden_models import GoldenCase
-from src.utils.schema_budget import (
-    DEFAULT_SCHEMA_TOKEN_BUDGET,
-    select_schema_within_budget,
-)
-from src.utils.schema_token_estimator import estimate_schema_tokens
 
 GOLDEN_CASES_PATH = Path(__file__).resolve().parent.parent / "golden" / "sql_repair" / "cases.json"
 

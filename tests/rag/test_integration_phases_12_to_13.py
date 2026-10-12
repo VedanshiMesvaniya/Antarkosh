@@ -28,8 +28,8 @@ from src.utils.query_classifier import (
     LIST_QUERY,
     classify_query_intent,
 )
-from src.utils.schema_budget import select_schema_within_budget
-from src.utils.schema_compactor import compact_ddl
+from src.sql.schema_budget import select_schema_within_budget
+from src.sql.schema_compactor import compact_ddl
 from src.utils.sql_safety import validate_sql_safety
 
 

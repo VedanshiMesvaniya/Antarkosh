@@ -22,9 +22,9 @@ from src.sql.safety.empty_result_classifier import (
     VALID_EMPTY,
     classify_empty_result,
 )
-from src.utils.schema_budget import select_schema_within_budget
-from src.utils.schema_compactor import compact_ddl, extract_join_hints
-from src.utils.schema_token_estimator import estimate_schema_tokens
+from src.sql.schema_budget import select_schema_within_budget
+from src.sql.schema_compactor import compact_ddl, extract_join_hints
+from src.sql.schema_token_estimator import estimate_schema_tokens
 from src.utils.sql_safety import is_destructive_sql, validate_sql_safety
 
 

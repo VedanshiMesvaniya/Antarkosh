@@ -8,7 +8,6 @@ import pytest
 import src.sql.learning.failure_capture as learn_fc
 import src.sql.learning.pattern_learner as learn_pl
 import src.sql.learning.schema_monitor as learn_sm
-import src.utils.failure_capture as shim_fc
 from src.sql.knowledge.loaders import (
     get_learned_path,
     resolve_learned_read_path,
@@ -28,8 +27,8 @@ def test_g6_shims_and_constants_identity():
     assert learn_sm.SCHEMA_ATLAS_PATH is not None
     assert learn_sm.DRIFT_LOG_PATH is not None
 
-    assert shim_fc.capture_sql_failure is learn_fc.capture_sql_failure
-    assert shim_fc.DEFAULT_FAILURE_LOG_FILE == learn_fc.DEFAULT_FAILURE_LOG_FILE
+    assert learn_fc.capture_sql_failure is not None
+    assert learn_fc.DEFAULT_FAILURE_LOG_FILE is not None
 
 
 def test_get_learned_path_creates_folder_on_write(tmp_path):

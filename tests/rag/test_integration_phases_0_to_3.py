@@ -1,20 +1,15 @@
 """Comprehensive End-to-End Integration Audit Test for Phases 0 through 3."""
 
 import json
-from pathlib import Path
-import pytest
 
 from scripts.analytics.baseline_aggregator import aggregate_baseline_metrics
 from scripts.analytics.telemetry_parser import parse_telemetry_file
-from src.utils.error_classification import classify_error, normalize_error
-from src.utils.failure_capture import capture_sql_failure
+from src.sql.learning.failure_capture import capture_sql_failure
 from src.utils.feature_flags import is_feature_enabled
 from src.utils.sql_safety import is_destructive_sql, parse_sql, validate_tables_and_columns
 from src.utils.telemetry import (
     get_current_query_id,
     get_or_create_query_id,
-    log_telemetry,
-    set_current_query_id,
     timed_stage,
 )
 
@@ -56,7 +51,7 @@ def test_full_phases_0_to_3_integration_pipeline(tmp_path, monkeypatch):
 
     # Patch default log files to test isolated files
     monkeypatch.setattr("src.utils.telemetry.TELEMETRY_FILE", test_telemetry_file)
-    monkeypatch.setattr("src.utils.failure_capture.DEFAULT_FAILURE_LOG_FILE", test_failure_file)
+    monkeypatch.setattr("src.sql.learning.failure_capture.DEFAULT_FAILURE_LOG_FILE", test_failure_file)
 
     # 1. Pipeline Start: Context & Query ID generation
     qid = get_or_create_query_id()

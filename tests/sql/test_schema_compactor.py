@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from unittest.mock import patch
+
 import pytest
 
+from src.sql.schema_compactor import AUDIT_COLUMNS, compact_ddl, extract_join_hints
 from src.utils.golden_models import GoldenCase
-from src.utils.schema_compactor import AUDIT_COLUMNS, compact_ddl, extract_join_hints
 
 GOLDEN_CASES_PATH = Path(__file__).resolve().parent.parent / "golden" / "sql_repair" / "cases.json"
 

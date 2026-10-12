@@ -61,7 +61,7 @@ def test_registry_save_overwrites_existing_file(tmp_path):
     # The JSON metadata backend must atomically overwrite an existing file
     # (the os.replace / Windows fix). Use the lineage schema so the roundtrip
     # doesn't trigger the legacy-migration path.
-    from src.core.metadata_store import JsonMetadataBackend
+    from src.rag.metadata_store import JsonMetadataBackend
 
     path = tmp_path / "reg.json"
     path.write_text("{}")  # destination already exists

@@ -12,7 +12,7 @@ import json
 import pytest
 
 from src.core.ingestion_registry import IngestionRegistry, RegistryStatus
-from src.core.metadata_store import JsonMetadataBackend
+from src.rag.metadata_store import JsonMetadataBackend
 
 
 class InMemoryBackend:
@@ -269,7 +269,7 @@ def test_json_backend_batch_upsert_and_delete(tmp_path):
 
 
 def test_migrate_registry_legacy_schema():
-    from src.core.metadata_store import migrate_registry
+    from src.rag.metadata_store import migrate_registry
 
     legacy = {
         "f" * 64: {
@@ -295,7 +295,7 @@ def test_migrate_registry_legacy_schema():
 def test_migrate_registry_rekeys_lineage_by_document_id():
     """Lineage-schema data keyed by something other than document_id is rekeyed
     (e.g. a Qdrant import or a hand-edited file)."""
-    from src.core.metadata_store import migrate_registry
+    from src.rag.metadata_store import migrate_registry
 
     data = {
         "SOME_KEY": {"document_id": "real-id", "content_hash": "h", "active": True}
