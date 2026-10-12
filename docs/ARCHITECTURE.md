@@ -94,8 +94,8 @@ Path-safety helpers for handling untrusted, caller-supplied path fragments:
 ### `src/core/confidence.py` (QA Gates)
 Scores OCR and table-extraction output against multiple heuristics (garbage-character ratio, dictionary-word ratio, cross-checking OCR text against engine confidence) before allowing it into the vector store. Low-confidence extractions are flagged rather than silently corrupting retrieval.
 
-### `src/core/db_client.py` & `src/core/sql_dialects.py` (Text-to-SQL)
-Read-only Text-to-SQL execution engine. `db_client.py` handles connection management and query execution for SQLite and MySQL. `sql_dialects.py` provides a `DIALECTS` registry — each entry is a simple dict with prompt wording, sqlglot dialect name, and schema introspection query. Adding a new database engine is a one-entry addition, not a new class hierarchy.
+### `src/core/db_client.py` & `src/sql/connectors/` (Database Connectivity)
+Read-only database execution engine. `db_client.py` routes queries through engine-specific connector implementations (`src/sql/connectors/`) supporting SQLite, MySQL, PostgreSQL, MSSQL, and Oracle.
 
 ---
 
@@ -120,11 +120,9 @@ Direct RAG query endpoint (bypasses the chat/UI state layer):
 
 ---
 
-## 4. The 14-Stage RAG Pipeline (`src/stages/`)
+## 4. The RAG & Text-to-SQL Pipelines
 
-The ingest and query logic is rigorously decoupled into 14 explicit stages, ensuring atomic processing and easy debugging.
-
-### Ingestion Pipeline (`src/pipeline/ingestion.py`)
+### Document Ingestion Pipeline (`src/rag/ingestion.py`, `src/rag/stages/`)
 Documents are passed sequentially through stages 1–11 in memory. If a stage fails, the document is discarded without corrupting the database.
 
 * **s01_file_detection.py**: Wraps `python-magic` and `filetype` to securely validate MIME types, preventing spoofed files. Supports PDF, DOCX, PPTX, XLSX, CSV, TSV, Markdown, Plaintext, HTML, XML, JSON, and images.
@@ -135,22 +133,18 @@ Documents are passed sequentially through stages 1–11 in memory. If a stage fa
 * **s06_tables.py**: Uses heuristics (`camelot-py`) and vision models to accurately extract tabular data into Markdown format.
 * **s07_s08_visuals.py**: Slices charts, graphs, and images from the PDF and sends them to a Vision LLM to generate deep descriptive captions. Utilizes `asyncio.gather` bounded by a semaphore to process multiple visuals in parallel for maximum throughput.
 * **s09_chunking.py**: Implements semantic, token-based chunking with fractional overlap to maintain sentence boundaries.
-* **s10_embeddings.py**: Sends chunks to Jina AI's V3 Embedding model, converting text to 1024-dimensional floating-point vectors **alongside exact-keyword Sparse Vectors**.
-* **s11_vector_store.py**: The final commit. Pushes the multi-vectors and payload metadata to Qdrant Cloud. Enables **Reciprocal Rank Fusion (RRF)** for true hybrid search.
+* **s10_embeddings.py**: Sends chunks to local BGE-M3 Embedding model, converting text to 1024-dimensional floating-point vectors **alongside exact-keyword Sparse Vectors**.
+* **s11_vector_store.py**: The final commit. Pushes the multi-vectors and payload metadata to local or remote Qdrant. Enables **Reciprocal Rank Fusion (RRF)** for true hybrid search.
 
-### Retrieval Pipeline (`src/pipeline/query.py`)
-When a user submits a prompt, it triggers stages 12–14. The `QueryPipeline` orchestrates the flow and emits `ThinkingStep` events for the UI's reasoning trace.
-
-* **s12_s13_s14_retrieval.py**: 
-  - **Stage 12 (Retrieve):** Embeds the user prompt, queries Qdrant using **Hybrid Search (Dense + Sparse)** with optional **Metadata Filters**, and pulls 50 chunks via RRF fusion. Includes document diversity enforcement and exhaustive query detection.
-  - **Stage 13 (Rerank):** Sends the 50 chunks to Jina's Cross-Encoder Reranker to re-order them based on deep contextual relevance to the prompt.
-  - **Stage 14 (Generate):** Formats the top 25 chunks into a massive context block and feeds it to the `ProviderRouter`. Enforces citation generation via footnotes (e.g., `[1]`), and yields the generative answer chunk-by-chunk for real-time UI streaming. Detects visualization queries and can generate Mermaid chart markup.
-
-* **s12b_sql_retrieval.py** (Text-to-SQL):
-  - Translates natural language to SQL using an LLM with the database schema as context.
-  - Every generated query is AST-validated via `sqlglot` to ensure it's a read-only `SELECT`.
-  - Results are capped to a maximum row count.
-  - Results are injected into the RAG context alongside vector-retrieved chunks.
+### Hybrid Retrieval Pipeline (`src/pipeline/query.py`, `src/rag/retrieval.py`)
+When a user submits a prompt, it triggers the hybrid query pipeline:
+* **Retrieval (`src/rag/retrieval.py`):** Embeds the prompt, queries Qdrant using Hybrid Search (Dense + Sparse) with optional metadata filters, reranks via cross-encoder, and streams synthesized answers with citations.
+* **Text-to-SQL Engine (`src/sql/`):**
+  - **`intent.py`**: Extracts analytical and temporal query intent.
+  - **`table_router.py`**: Matches anchor tables and routing hints.
+  - **`schema_retrieval.py`**: Retrieves table DDLs within token budget (`schema_budget.py`, `schema_compactor.py`).
+  - **`prompt_builder.py`**: Injects schema context, column definitions, and 1-hop relationship joins.
+  - **`generation.py`**: Generates dialect-aware SQL, enforces AST read-only safety, runs delta self-repair on failure, and executes safely.
 
 ---
 

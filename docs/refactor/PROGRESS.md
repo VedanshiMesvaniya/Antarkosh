@@ -1,6 +1,6 @@
 # Restructure Progress
 
-Branch: `restructure`. Last recorded test result: 742 passed, 14 skipped, 8 deselected, 1 xfailed, 0 failed.
+Branch: `restructure`. Last recorded test result: 713 passed, 13 skipped, 8 deselected, 1 xfailed, 0 failed.
 The agent ticks a step only after checks a-g pass, and writes the commit hash.
 
 | Done | Step | What | Commit | Tests after |
@@ -43,48 +43,10 @@ The agent ticks a step only after checks a-g pass, and writes the commit hash.
 | [x] | H3 | evals into databases/erp_main/evals | 8c869c7, 01ce81e, 51bd408, 8b26a4b | 742 passed |
 | [x] | H4 | docs reorganized | 44109f5, 2de3262, 34e511c | 742 passed |
 | [x] | H6 | api/ui.py split | 988247a, fa82f91, 73a9b51, ca53e87, a8c1c34, 7508536, c37ccd1, de7afef | 741 passed |
-| [ ] | I | Cleanup (needs the word "approved") | | |
+| [x] | I | Cleanup: all shims removed, legacy files deleted, loaders clean, db_config_file removed | 3488c09, 6213958, 6b2e28e, 81ddece, aa2d800, 92d0f2f, 3dd4570, 01f5905, fb3cd6f | 713 passed |
 
 ## Shims currently in place
-- `src/sql/knowledge/loaders.py` legacy fallback to `config/` and `evals/Antarkosh/` (removed in Phase I)
-- `src/core/sql_dialects.py` re-exporting `DIALECTS`, `SQLDialectProfile`, `get_dialect_profile` from `src.sql.dialects` (removed in Phase I)
-- `src/core/db_config_file.py` delegating `read`, `write`, `apply_to` to `src.sql.registry` for `erp_main` (removed in Phase I)
-- `src/stages/s12b_sql_retrieval.py` re-exporting `detect_soft_delete_intent`, `_get_tables_with_soft_delete`, `_clear_soft_delete_tables_cache`, `enforce_soft_delete_filter`, `_SOFT_DELETE_TABLES_CACHE`, `FALLBACK_SOFT_DELETE_TABLES` from `src.sql.soft_delete` (removed in Phase I)
-- `src/stages/s12b_sql_retrieval.py` re-exporting `extract_analytical_intent` from `src.sql.intent` (removed in Phase I)
-- `src/stages/s12b_sql_retrieval.py` re-exporting `load_routing_hints`, `route_tables_for_query`, `route_anchor_tables`, `_clear_routing_hints_cache`, `_ROUTING_HINTS_CACHE` from `src.sql.table_router` (removed in Phase I)
-- `src/stages/s12b_sql_retrieval.py` re-exporting `extract_schema_table_names`, `extract_table_ddl_map`, `get_1hop_neighbors`, `format_scoped_relationships`, `build_scoped_schema_fallback`, `retrieve_schema_from_qdrant` from `src.sql.schema_retrieval` (removed in Phase I)
-- `src/stages/s12b_sql_retrieval.py` re-exporting `get_raw_relationships`, `load_relationships`, `load_glossary`, `get_raw_column_glossary`, `get_raw_behavioral_atlas`, `stem_word`, `matches_glossary_candidate`, `build_column_glossary_for_query`, `build_behavioral_atlas_for_query`, `get_scoped_readability_rules`, `OUTPUT_READABILITY_RULES`, `build_sql_prompt`, and prompt caches from `src.sql.prompt_builder` (removed in Phase I)
-- `src/stages/s12b_sql_retrieval.py` re-exporting `generate_sql`, `execute_with_retry`, `execute_with_delta_repair`, `is_safe_read_query`, `UnsafeQueryError`, `DANGEROUS_FUNCTIONS`, `unwrap_sql`, `extract_cot_and_sql`, `format_schema_rows`, `format_fk_rows`, `format_rows_as_markdown`, `sanitize_rows`, `filter_display_rows`, `is_all_null`, `is_aggregate_over_zero_rows`, `extract_table_names`, and `fetch_sqlite_foreign_keys` from `src.sql.generation` (removed in Phase I)
-- `src/stages/s12b_sql_retrieval.py` re-exporting `SQLRetriever`, `clear_knowledge_caches`, and `MAX_RESULT_CACHE_ENTRIES` from `src.sql.pipeline` (removed in Phase I)
-- `src/core/join_graph.py` re-exporting `ForeignKey`, `JoinPath`, `JoinGraphBuilder` from `src.sql.safety.join_graph` (removed in Phase I)
-- `src/core/schema_monitor.py` re-exporting `SchemaDrift`, `SchemaMonitor`, path constants from `src.sql.learning.schema_monitor` (removed in Phase I)
-- `src/core/ab_test_engine.py` re-exporting `ExperimentEvent`, `ABTestEngine`, path constants from `src.sql.learning.ab_test_engine` (removed in Phase I)
-- `src/core/context_gatekeeper.py` re-exporting `ContextAction`, `ConversationState`, `ContextGatekeeper` from `src.pipeline.context_gatekeeper` (removed in Phase I)
-- `src/core/sql_drift_validator.py` re-exporting validator functions and path constants from `src.sql.safety.drift_validator` (removed in Phase I)
-- `src/core/result_validator.py` re-exporting validator classes and enums from `src.sql.safety.result_validator` (removed in Phase I)
-- `src/core/confidence_scorer.py` re-exporting `ConfidenceBreakdown`, `ConfidenceScorer` from `src.sql.safety.confidence_scorer` (removed in Phase I)
-- `src/core/pattern_learner.py` re-exporting `LearnedPattern`, `PatternLearner`, path constants from `src.sql.learning.pattern_learner` (removed in Phase I)
-- `src/utils/sql_privacy.py` re-exporting `sanitize_assistant_turn` and privacy regexes from `src.sql.safety.sql_privacy` (removed in Phase I)
-- `src/core/pipeline_metrics.py` re-exporting `CURRENT_DB_ID`, `METRICS_FILE`, `PipelineEvent`, `log_event`, `get_score_summary`, `get_recent_events` from `src.sql.learning.pipeline_metrics` (removed in Phase I)
-- `src/core/sql_column_registry.py` re-exporting `ColumnRegistry`, `COLUMN_GLOSSARY_PATH`, `GLOSSARY_PATH` from `src.sql.safety.column_registry` (removed in Phase I)
-- `src/utils/fast_path.py` re-exporting `DISABLED_TEMPLATES`, `fast_path_format`, `format_aggregate_fast_path`, `format_list_fast_path` from `src.sql.fast_path` (removed in Phase I)
-- `src/utils/semantic_cache.py` re-exporting `SemanticCache`, `get_semantic_cache`, `CachedEntry` from `src.sql.semantic_cache` (removed in Phase I)
-- `src/utils/empty_result_classifier.py` re-exporting `classify_empty_result`, `VALID_EMPTY`, `SUSPICIOUS_EMPTY` from `src.sql.safety.empty_result_classifier` (removed in Phase I)
-- `src/stages/sql_repair.py` re-exporting `MAX_DELTA_REPAIR_ATTEMPTS`, `attempt_delta_repair`, `extract_schema_context_from_ddl`, `extract_sql_from_response` from `src.sql.repair.sql_repair` (removed in Phase I)
-- `src/prompts/delta_repair.py` re-exporting `build_delta_repair_payload`, `count_tokens`, `format_compact_schema`, `DELTA_REPAIR_SYSTEM_PROMPT` from `src.sql.repair.delta_repair` (removed in Phase I)
-- `src/utils/schema_compactor.py` re-exporting `compact_ddl`, `extract_join_hints`, `AUDIT_COLUMNS` from `src.sql.schema_compactor` (removed in Phase I)
-- `src/utils/schema_budget.py` re-exporting `DEFAULT_SCHEMA_TOKEN_BUDGET`, `select_schema_within_budget` from `src.sql.schema_budget` (removed in Phase I)
-- `src/utils/schema_token_estimator.py` re-exporting `estimate_schema_tokens` from `src.sql.schema_token_estimator` (removed in Phase I)
-- `src/utils/failure_capture.py` re-exporting `DEFAULT_FAILURE_LOG_FILE`, `capture_sql_failure` from `src.sql.learning.failure_capture` (removed in Phase I)
-- `src/core/metadata_store.py` re-exporting `MetadataBackend`, `JsonMetadataBackend`, `QdrantMetadataBackend`, `create_metadata_backend`, `migrate_registry` from `src.rag.metadata_store` (removed in Phase I)
-- `src/utils/sql_safety.py` re-exporting `validate_sql_safety`, `is_destructive_sql`, `check_cartesian_explosion`, `check_dangerous_patterns`, `DANGEROUS_FUNCTIONS` from `src.sql.safety.sql_safety` (removed in Phase I)
-- `src/utils/query_classifier.py` re-exporting `QueryType`, `TTL_BY_QUERY_TYPE`, `classify_query`, `classify_query_intent` from `src.sql.query_classifier` (removed in Phase I)
-- `src/core/ingestion_registry.py` re-exporting `IngestionRegistry`, `RegistryStatus`, `RegistryCheckResult` from `src.rag.ingestion_registry` (removed in Phase I)
-- `src/stages/s01_file_detection.py` through `s11_vector_store.py` (10 shims) re-exporting from `src.rag.stages` (removed in Phase I)
-- `src/stages/s12_s13_s14_retrieval.py` re-exporting from `src.rag.retrieval` with `_ShimModule` setattr mirroring (removed in Phase I)
-- `src/pipeline/ingestion.py` re-exporting from `src.rag.ingestion` with `_ShimModule` (removed in Phase I)
-- `src/pipeline/folder_ingestion.py` re-exporting from `src.rag.folder_ingestion` with `_ShimModule` (removed in Phase I)
-- `src/pipeline/schema_ingestion.py` re-exporting from `src.sql.schema_retrieval` with `_ShimModule` (removed in Phase I)
+None (all compatibility shims cleanly removed across Groups G1–G5, s12b_sql_retrieval, sql_dialects, legacy knowledge loaders fallback, and db_config_file).
 
 ## Open issues
 See `docs/refactor/FOUND_ISSUES.md`.

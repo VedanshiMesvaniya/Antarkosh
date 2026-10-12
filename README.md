@@ -182,10 +182,10 @@ Standard Text-to-SQL approaches fail on enterprise databases because real schema
      - *"Who bought from us?"* $\rightarrow$ Customer Sales (`sales_order`).
      - *"What did we buy from suppliers?"* $\rightarrow$ Procurement (`purchase`).
 2. **Hybrid Schema RAG & Anchor Injection**:
-   - Employs a **Behavioral Schema Atlas** (`config/behavioral_schema_atlas.json`) covering 70 enterprise tables.
+   - Employs a **Behavioral Schema Atlas** (`databases/<db_id>/semantics/behavioral_atlas.json`) covering 70 enterprise tables.
    - Uses hybrid dense + sparse retrieval to dynamically inject only the relevant table DDLs, keeping schema context within a strict **1,500-token budget**.
 3. **Dynamic Enum Glossary & 1-Hop Foreign Key Graph Expansion**:
-   - Leverages `config/sql_glossary.json` (835 physical column mappings) and `config/sql_relationships.json` (162 foreign-key join paths).
+   - Leverages `databases/<db_id>/semantics/glossary.json` (835 physical column mappings) and `databases/<db_id>/schema/relationships.json` (162 foreign-key join paths).
    - Resolves multi-table joins without LLM hallucinations. Correctly maps business acronyms (e.g., `'P'` = pending carton verification, `'V'` = verified).
 4. **Dialect-Aware Text-to-SQL Generation**:
    - Generates database-specific SQL tailored to the configured dialect (`sqlite` or `mysql`) using live system date and dynamic few-shot exemplars.
@@ -487,12 +487,9 @@ Antarkosh/
 ├── README.md                    # This master documentation file
 │
 ├── config/                      # Configuration files & schema registries
-│   ├── behavioral_schema_atlas.json # Behavioral schema definitions (70 tables)
+│   ├── connections.json         # Per-database connection credentials (mode 0600)
 │   ├── features.yaml            # Optimization feature flags
 │   ├── providers.yaml           # LLM task-to-provider routing & fallback rules
-│   ├── sql_column_glossary.json # Domain synonyms mapped to physical columns
-│   ├── sql_glossary.json        # High-level business concepts
-│   ├── sql_relationships.json   # 1-hop FK join paths (162 paths)
 │   └── validation_thresholds.yaml # Guard validation thresholds
 │
 ├── data/                        # Local runtime state (gitignored)
@@ -549,17 +546,15 @@ Antarkosh/
 │   ├── api/                     # FastAPI route modules
 │   │   ├── auth.py              # Session authentication
 │   │   ├── query.py             # Stateless RAG endpoints
-│   │   ├── ui.py                # Chat, streaming, and UI management
+│   │   ├── ui/                  # Modular UI routers (chats, documents, databases, settings, telemetry)
 │   │   └── upload.py            # Single, batch, and streaming ingestion
 │   ├── core/                    # Engine foundations
 │   │   ├── config.py            # Typed settings & environment loader
-│   │   ├── db_client.py         # Async SQLite & MySQL connection pools
+│   │   ├── db_client.py         # Async database client connection routing
 │   │   ├── file_lock.py         # Cross-platform advisory file locking
-│   │   ├── ingestion_registry.py# Content-addressed deduplication
 │   │   ├── paths.py             # Path-traversal sanitization
 │   │   ├── provider_client.py   # Multi-provider routing engine (~750 lines)
 │   │   ├── rate_limiter.py      # Provider rate limiters & backoff
-│   │   ├── sql_dialects.py      # Dialect registry (SQLite, MySQL)
 │   │   └── state.py             # JSON Data Access Object
 │   ├── guards/                  # Runtime validation guards
 │   │   ├── citation_guard.py    # Anti-hallucination footnote validator
@@ -567,29 +562,38 @@ Antarkosh/
 │   │   └── temporal_guard.py    # Temporal intent & projection validator
 │   ├── models/                  # Pydantic schemas & trace models
 │   ├── pipeline/                # High-level orchestrators
-│   │   ├── folder_ingestion.py  # Background drop-folder watcher
-│   │   ├── ingestion.py         # 14-stage document ingestion pipeline
+│   │   ├── context_gatekeeper.py# Conversation context gatekeeper
 │   │   └── query.py             # Hybrid query pipeline coordinator
-│   ├── stages/                  # Atomic pipeline stages (s01 to s14)
-│   │   ├── s01_file_detection.py# MIME & magic file inspection
-│   │   ├── s02_classification.py# Zero-shot document classification
-│   │   ├── s03_parsing.py       # PDF, DOCX, PPTX, XLSX parsers
-│   │   ├── s04_ocr.py           # Gemini vision OCR
-│   │   ├── s05_layout.py        # Gemini layout analysis
-│   │   ├── s06_tables.py        # Camelot table extraction
-│   │   ├── s07_s08_visuals.py   # Vision chart extraction & captioning
-│   │   ├── s09_chunking.py      # Semantic token chunking
-│   │   ├── s10_embeddings.py    # BGE-M3 dense + sparse vectors (local)
-│   │   ├── s11_vector_store.py  # Qdrant upsert & RRF
-│   │   ├── s12_s13_s14_retrieval.py # Hybrid search, reranking & synthesis
-│   │   ├── s12b_sql_retrieval.py# 9-stage Text-to-SQL engine
-│   │   └── sql_repair.py        # Delta repair prompt generator
-│   ├── utils/                   # Accelerators & utilities
-│   │   ├── circuit_breaker.py   # Circuit breaker pattern
+│   ├── rag/                     # RAG document processing and retrieval
+│   │   ├── folder_ingestion.py  # Background drop-folder watcher
+│   │   ├── ingestion.py         # Multi-stage document ingestion pipeline
+│   │   ├── ingestion_registry.py# Content-addressed deduplication
+│   │   ├── metadata_store.py    # Document metadata storage backend
+│   │   ├── retrieval.py         # Hybrid search, reranking & synthesis
+│   │   └── stages/              # Document ingestion stages (s01 to s11)
+│   ├── sql/                     # Modular Text-to-SQL architecture
+│   │   ├── connectors/          # Per-engine async connection managers (SQLite, MySQL, Postgres, MSSQL, Oracle)
+│   │   ├── dialects/            # Dialect profiles & SQL syntax facts
+│   │   ├── knowledge/           # Database knowledge pack loaders
+│   │   ├── learning/            # Pattern learning, schema monitoring, failure capture, pipeline metrics
+│   │   ├── repair/              # Delta repair and SQL self-repair loop
+│   │   ├── safety/              # Column registry, confidence scoring, drift/result validation, SQL safety
 │   │   ├── fast_path.py         # Layer 2 template fast-path
-│   │   ├── schema_budget.py     # Schema compaction (<1500 tokens)
-│   │   ├── semantic_cache.py    # Layer 1 semantic cache
-│   │   ├── sql_safety.py        # sqlglot AST sanitizer
+│   │   ├── generation.py        # Dialect-aware SQL generation and execution
+│   │   ├── intent.py            # Analytical and temporal intent extraction
+│   │   ├── pipeline.py          # SQLRetriever orchestrator
+│   │   ├── prompt_builder.py    # Schema prompt formatting & glossary injection
+│   │   ├── registry.py          # Database registry, connection persistence, and access control
+│   │   ├── schema_budget.py     # Schema compaction & token budget management
+│   │   ├── schema_compactor.py  # DDL compaction & join hint extraction
+│   │   ├── schema_retrieval.py  # Multi-DB schema RAG & live schema synchronization
+│   │   ├── semantic_cache.py    # Layer 1 semantic query cache
+│   │   ├── soft_delete.py       # Soft-delete filter detection & injection
+│   │   └── table_router.py      # Query table routing & hint matching
+│   ├── utils/                   # Accelerators & cross-cutting utilities
+│   │   ├── circuit_breaker.py   # Circuit breaker pattern
+│   │   ├── error_classification.py # Pipeline error classifier
+│   │   ├── feature_flags.py     # Feature flag utilities
 │   │   └── telemetry.py         # Structured telemetry logger
 │   ├── cli.py                   # Command-line interface
 │   └── main.py                  # FastAPI application entry point

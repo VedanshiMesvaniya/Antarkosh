@@ -633,6 +633,42 @@ To re-sync schema chunks in a deployed environment without downtime:
 - **Issues Found**: None.
 - **Next Step ID**: Phase I (Cleanup) — awaiting explicit user approval with the word "approved".
 
+---
+
+## Phase I Report: Cleanup & Canonical Architecture Finalization
+- **Phase ID**: Phase I
+- **Commits**: `0288849`, `3488c09`, `6213958`, `6b2e28e`, `81ddece`, `aa2d800`, `92d0f2f`, `3dd4570`, `01f5905`, `fb3cd6f`
+- **Files Changed**:
+  - Audited dependencies in `requirements.txt` vs `pyproject.toml`, `uv.lock`, `Dockerfile`.
+  - Removed 9 G1 shims: `src/core/{join_graph, schema_monitor, ab_test_engine, context_gatekeeper, sql_drift_validator, result_validator, confidence_scorer, pattern_learner}`, `src/utils/sql_privacy`.
+  - Removed 7 G2 shims: `src/core/{pipeline_metrics, sql_column_registry}`, `src/utils/{fast_path, semantic_cache, empty_result_classifier}`, `src/stages/sql_repair`, `src/prompts/delta_repair`.
+  - Removed 5 G3 shims: `src/utils/{schema_compactor, schema_budget, schema_token_estimator, failure_capture}`, `src/core/metadata_store`.
+  - Removed 3 G4 shims: `src/utils/{sql_safety, query_classifier}`, `src/core/ingestion_registry`.
+  - Removed 14 G5 shims: `src/stages/s01..s11`, `src/stages/s12_s13_s14_retrieval`, `src/pipeline/{ingestion, folder_ingestion, schema_ingestion}`.
+  - Removed Text-to-SQL monolith shim `src/stages/s12b_sql_retrieval.py` and deleted empty `src/stages/` folder; updated all callers to `src.sql.*`.
+  - Removed `src/core/sql_dialects.py` shim; updated callers to `src.sql.dialects`.
+  - Deleted legacy knowledge files (`config/sql_glossary.json`, `config/sql_relationships.json`, `config/sql_column_glossary.json`, `config/behavioral_schema_atlas.json`, `evals/Antarkosh/Antarkosh_schema.json`) and removed fallback branch in `src/sql/knowledge/loaders.py`.
+  - Replaced parity test in `tests/sql/test_database_knowledge_parity.py` with tests asserting files exist in `databases/erp_main/` and load cleanly; enforced zero legacy references in `tests/core/test_no_legacy_knowledge_paths.py`.
+  - Removed `src/core/db_config_file.py` shim and `tests/sql/test_db_config_file.py`; wired `apply_to` directly into `src.sql.registry`.
+  - Updated `README.md`, `docs/ARCHITECTURE.md`, `docs/refactor/PATH_CHANGES.md`, and `docs/refactor/PROGRESS.md`.
+- **What Changed**:
+  - Executed all cleanup steps outlined in Section 5 of `EXECUTION_PLAN.md` with strict one-commit-per-group isolation and full verification loops between commits.
+  - Every single compatibility shim was retired and direct imports across the repository now target canonical modules (`src.sql.*`, `src.rag.*`, `src.core.*`, `src.api.ui.*`).
+  - No legacy knowledge files remain in `config/` or `evals/`; all knowledge packs live exclusively within `databases/<db_id>/`.
+  - Database connection persistence is fully unified under `src.sql.registry` (`config/connections.json`), eliminating `db_config_file.py`.
+  - All tests mirror `src/` and pass with 0 failures; offline eval 163/163 passed; zero drift.
+- **Checks a-g**:
+  - a. Compileall: passed 0 errors across `src`, `tests`, `scripts`.
+  - b. Drift validator: 0 errors.
+  - c. Pytest: 713 passed, 13 skipped, 8 deselected, 1 xfailed (0 failed).
+  - d. Offline evaluation: 163/163 valid queries across 46 referenced tables.
+  - e. Server health / overview: verified clean.
+  - f. PATH_CHANGES: complete with zero pending rows.
+  - g. Git status: clean.
+- **Shims Left**: 0 (zero shims remaining in the repository).
+- **Issues Found**: None.
+- **Status**: Phase I Complete. Refactoring execution plan fully executed.
+
 
 
 

@@ -542,6 +542,23 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | H6-6 | tests/api/test_dashboard_telemetry_api.py, tests/core/test_shadow_guards.py | tests/api/test_dashboard_telemetry_api.py, tests/core/test_shadow_guards.py | test | Calibrated microbenchmark latency assertions and warmups for Windows scheduler jitter | a-g pass | 5e92419, c17c532, ffda5f1 |
 | H6-7 | docs/ARCHITECTURE.md, docs/document-identity.html | docs/ARCHITECTURE.md, docs/document-identity.html | docs | Updated references and architecture descriptions from src/api/ui.py to src/api/ui/ package | a-g pass | de7afef |
 
+---
+
+## Phase I — Cleanup (Compatibility Shims, Legacy Files, Loaders, and Registry)
+
+| # | old path / module | new path / module | kind | references updated (file:line) | verified (checks a-g) | commit |
+|---|---|---|---|---|---|---|
+| I-0 | requirements.txt, pyproject.toml, uv.lock, Dockerfile | requirements.txt, pyproject.toml, uv.lock, Dockerfile | audit | Audited dependencies; removed py-cpuinfo from requirements.txt to align with uv.lock/Dockerfile | a-g pass | 0288849 |
+| I-1 | 9 G1 shim modules | src/core/{join_graph, schema_monitor, ab_test_engine, context_gatekeeper, sql_drift_validator, result_validator, confidence_scorer, pattern_learner}, src/utils/sql_privacy | delete | Removed 9 G1 shim files; updated callers across codebase | a-g pass | 3488c09 |
+| I-2 | 7 G2 shim modules | src/core/{pipeline_metrics, sql_column_registry}, src/utils/{fast_path, semantic_cache, empty_result_classifier}, src/stages/sql_repair, src/prompts/delta_repair | delete | Removed 7 G2 shim files; updated callers across codebase | a-g pass | 6213958 |
+| I-3 | 5 G3 shim modules | src/utils/{schema_compactor, schema_budget, schema_token_estimator, failure_capture}, src/core/metadata_store | delete | Removed 5 G3 shim files; updated callers across codebase | a-g pass | 6b2e28e |
+| I-4 | 3 G4 shim modules | src/utils/{sql_safety, query_classifier}, src/core/ingestion_registry | delete | Removed 3 G4 shim files; updated callers across codebase | a-g pass | 81ddece |
+| I-5 | 14 G5 shim modules | src/stages/s01..s11, src/stages/s12_s13_s14_retrieval, src/pipeline/{ingestion, folder_ingestion, schema_ingestion} | delete | Removed 14 G5 shim files; updated callers across codebase | a-g pass | aa2d800 |
+| I-6 | src/stages/s12b_sql_retrieval.py | src/sql/{soft_delete, intent, table_router, schema_retrieval, prompt_builder, generation, pipeline} | delete | Removed s12b_sql_retrieval.py shim and emptied src/stages/; updated all callers | a-g pass | 92d0f2f |
+| I-7 | src/core/sql_dialects.py | src/sql/dialects/ | delete | Removed sql_dialects.py shim; updated callers across db_client, SQL pipeline, and tests | a-g pass | 3dd4570 |
+| I-8 | Legacy knowledge files | databases/erp_main/ | delete | Deleted config/sql_*.json, config/behavioral_schema_atlas.json, evals/Antarkosh/Antarkosh_schema.json; removed loader fallback in src/sql/knowledge/loaders.py; updated tests | a-g pass | 01f5905 |
+| I-9 | src/core/db_config_file.py | src/sql/registry.py | delete | Removed db_config_file.py shim and tests/sql/test_db_config_file.py; wired apply_to directly into src.sql.registry | a-g pass | fb3cd6f |
+
 
 
 
