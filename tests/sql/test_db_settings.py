@@ -16,8 +16,8 @@ from src.core.config import settings
 
 @pytest.fixture(autouse=True)
 def env(tmp_path, monkeypatch):
-    path = tmp_path / "db_connection.json"
-    monkeypatch.setenv("DB_CONFIG_FILE", str(path))
+    path = tmp_path / "connections.json"
+    monkeypatch.setenv("CONNECTIONS_FILE", str(path))
     for name, val in [("db_engine", "sqlite"), ("db_host", ""), ("db_port", 3306),
                       ("db_name", ""), ("db_readonly_user", ""), ("db_readonly_password", "")]:
         monkeypatch.setattr(settings, name, val)
@@ -50,7 +50,11 @@ PG = {"engine": "postgresql", "host": "pg.local", "port": 5432, "database": "gm"
 
 
 def _stored(env) -> dict:
-    return json.loads(env.path.read_text())
+    from src.sql.registry import CANONICAL_TO_LEGACY_KEYS
+
+    raw = json.loads(env.path.read_text())
+    erp = raw.get("erp_main", {})
+    return {CANONICAL_TO_LEGACY_KEYS.get(k, k): v for k, v in erp.items()}
 
 
 @pytest.mark.parametrize("bad", [
@@ -113,9 +117,11 @@ async def test_switch_to_sqlite_keeps_server_values(env):
 
 
 async def test_unwritable_config_is_a_clean_error(env, monkeypatch):
-    def _boom(updates):
+    from src.sql import registry
+
+    def _boom(*a, **k):
         raise PermissionError(13, "Permission denied")
-    monkeypatch.setattr(dbs.db_config_file, "write", _boom)
+    monkeypatch.setattr(registry, "save_connection", _boom)
     with pytest.raises(dbs.DBSettingsError, match="Could not save"):
         await dbs.save(MYSQL)
     assert settings.db_engine == "sqlite" and env.calls == []

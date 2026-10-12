@@ -1,8 +1,6 @@
-"""Admin-editable live-database connection: validate -> test -> save to config file -> hot-apply.
+"""Admin-editable live-database connection: validate -> test -> save to registry -> hot-apply.
 
-The connection is persisted in ``config/db_connection.json`` (or ``$DB_CONFIG_FILE``)
-by ``db_config_file`` — not in ``.env`` — so it does not depend on how the host
-provides environment variables.
+The connection is persisted in ``config/connections.json`` by ``src.sql.registry``.
 """
 
 from __future__ import annotations
@@ -11,7 +9,6 @@ import asyncio
 import logging
 from typing import Any
 
-from src.core import db_config_file
 from src.core.config import settings
 from src.sql.engine import ENGINES
 from src.sql.engine import REQUIRED_FIELDS as _REQUIRED
@@ -198,8 +195,6 @@ async def save(payload: dict[str, Any], db_id: str = DEFAULT_DB_ID) -> dict[str,
             if cfg["engine"] == "mssql" and cfg.get("odbc_driver"):
                 updates["db_odbc_driver"] = cfg["odbc_driver"]
         try:                                          # 2. persist (atomic; old file kept on failure)
-            if target_db_id == DEFAULT_DB_ID:
-                db_config_file.write(updates)
             from src.sql import registry
             registry.save_connection(target_db_id, updates)
         except (OSError, ValueError) as e:

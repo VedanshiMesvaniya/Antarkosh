@@ -444,10 +444,36 @@ def list_databases(
     return databases
 
 
+def apply_to(target: Any, db_id: str = DEFAULT_DB_ID) -> list[str]:
+    """Apply stored database connection settings for db_id to target (e.g. settings object).
+
+    Returns the list of setting attributes applied.
+    """
+    conn = get_connection(db_id)
+    if not conn:
+        return []
+
+    applied: list[str] = []
+    for canon_k, leg_k in CANONICAL_TO_LEGACY_KEYS.items():
+        if canon_k in conn and conn[canon_k] is not None:
+            val = conn[canon_k]
+            if leg_k == "db_port" and val is not None:
+                try:
+                    val = int(val)
+                except (ValueError, TypeError):
+                    continue
+            setattr(target, leg_k, val)
+            applied.append(leg_k)
+    if applied:
+        logger.info("DB connection settings applied for %s: %s", db_id, ", ".join(applied))
+    return applied
+
+
 __all__ = [
     "CANONICAL_TO_LEGACY_KEYS",
     "KNOWN_CONNECTION_KEYS",
     "LEGACY_TO_CANONICAL_KEYS",
+    "apply_to",
     "atomic_write_json",
     "atomic_write_yaml",
     "can_access_database",

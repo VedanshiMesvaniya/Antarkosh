@@ -19,7 +19,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 DATABASES_DIR = PROJECT_ROOT / "databases"
 SQLITE_DIR = DATA_DIR / "sqlite"
 
-from src.core.db_config_file import apply_to as _apply_db_config_file
+from src.sql.registry import apply_to as _apply_db_config
 
 
 class FeaturesConfig(BaseModel):
@@ -267,7 +267,7 @@ def _apply_ingestion_config_file(target: Settings) -> None:
 settings = Settings()
 
 # The admin-saved DB connection (if any) wins over env/.env, on every host.
-_apply_db_config_file(settings)
+_apply_db_config(settings)
 
 # Ingestion settings from config/ingestion.json (if any) win over env/.env.
 _apply_ingestion_config_file(settings)

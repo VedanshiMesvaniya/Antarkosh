@@ -265,18 +265,13 @@ def test_passwords_never_appear_in_log_output(temp_connections, caplog):
     assert secret_password not in log_content
 
 
-def test_db_config_file_shim_integration(temp_connections):
-    """src.core.db_config_file should delegate read/write/apply_to to registry."""
-    from src.core import db_config_file
+def test_registry_apply_to(temp_connections):
+    """registry.apply_to should apply connection settings to target."""
+    from src.sql import registry
 
-    db_config_file.write({"db_host": "shim_host", "db_port": 5432, "db_name": "shim_db"})
-    read_vals = db_config_file.read()
-    assert read_vals["db_host"] == "shim_host"
-    assert read_vals["db_port"] == 5432
-    assert read_vals["db_name"] == "shim_db"
-
+    registry.save_connection("erp_main", {"db_host": "applied_host", "db_port": 5432, "db_name": "applied_db"})
     target = types.SimpleNamespace(db_host="", db_port=0, db_name="")
-    applied = db_config_file.apply_to(target)
+    applied = registry.apply_to(target, "erp_main")
     assert "db_host" in applied
-    assert target.db_host == "shim_host"
+    assert target.db_host == "applied_host"
     assert target.db_port == 5432
