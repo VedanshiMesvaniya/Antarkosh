@@ -5,6 +5,8 @@ Falls back to a local in-memory store for development/testing.
 
 Hybrid search: dense cosine similarity + BGE-M3 sparse vectors fused via
 Reciprocal Rank Fusion (RRF), replacing the previous BM25-lite heuristic.
+
+Origin: moved from src/stages/s11_vector_store.py
 """
 
 from __future__ import annotations

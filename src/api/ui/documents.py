@@ -1,4 +1,7 @@
-"""Document management endpoints for UI API — listing, version history, deletion, user access."""
+"""Document management endpoints for UI API — listing, version history, deletion, user access.
+
+Origin: extracted from src/api/ui.py (document routes, DocumentAccessPayload, _doc_view)
+"""
 
 from __future__ import annotations
 

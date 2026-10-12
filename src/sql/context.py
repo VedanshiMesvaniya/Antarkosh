@@ -1,4 +1,7 @@
-"""Database context definition and per-database caching."""
+"""Database context definition and per-database caching.
+
+Origin: new (no previous file)
+"""
 
 from __future__ import annotations
 

@@ -2,6 +2,8 @@
 
 Selects candidate schema tables/chunks sequentially in relevance priority order
 until the strict token budget is exhausted.
+
+Origin: moved from src/utils/schema_budget.py
 """
 
 from __future__ import annotations

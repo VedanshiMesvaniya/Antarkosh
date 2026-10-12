@@ -3,6 +3,8 @@
 Assistant answers that came from the database contain the result table (and, for
 fast-path templates, a sentence holding the value). Only the SQL that was executed
 may be referenced; rows and values must never be forwarded to a model.
+
+Origin: moved from src/utils/sql_privacy.py
 """
 
 from __future__ import annotations

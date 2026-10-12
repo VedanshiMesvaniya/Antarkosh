@@ -1,4 +1,7 @@
-"""SQL dialect facts and profile registry for Text-to-SQL retrieval."""
+"""SQL dialect facts and profile registry for Text-to-SQL retrieval.
+
+Origin: extracted from src/core/sql_dialects.py (DIALECTS, get_dialect_profile)
+"""
 
 from __future__ import annotations
 

@@ -8,6 +8,8 @@ result is recorded on the page.
 Only called on pages where Stage 3 left text empty (structure == SCANNED
 or ocr_method == "pending_ocr"). Native-text pages are never re-OCR'd —
 that would be a quality regression.
+
+Origin: moved from src/stages/s04_ocr.py
 """
 
 from __future__ import annotations

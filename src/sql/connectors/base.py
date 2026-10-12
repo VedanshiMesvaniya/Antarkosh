@@ -1,4 +1,7 @@
-"""Database connector protocol and base types."""
+"""Database connector protocol and base types.
+
+Origin: new (no previous file)
+"""
 
 from __future__ import annotations
 

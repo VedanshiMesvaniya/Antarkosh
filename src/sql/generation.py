@@ -1,6 +1,5 @@
 """SQL generation, execution glue, and repair calls.
 
-Extracted from Stage 12b (s12b_sql_retrieval.py) in Step F6.
 Handles:
 - SQL response parsing, code unwrapping, and CoT separation
 - Dialect schema row formatting and SQLite foreign key fetching
@@ -8,6 +7,8 @@ Handles:
 - LLM SQL generation with soft-delete enforcement and token budget fallback
 - Execution retry loop with column/alias/semantic validation
 - Targeted Delta Repair loop for validation and execution error recovery
+
+Origin: extracted from src/stages/s12b_sql_retrieval.py (generate_sql, execute_with_retry, execute_with_delta_repair, is_safe_read_query, unwrap_sql, extract_cot_and_sql, format_schema_rows, format_fk_rows, format_rows_as_markdown, sanitize_rows, filter_display_rows, is_all_null, is_aggregate_over_zero_rows, extract_table_names, fetch_sqlite_foreign_keys)
 """
 
 from __future__ import annotations

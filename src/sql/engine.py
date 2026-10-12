@@ -1,4 +1,8 @@
-"""Database engine definitions and dialect mapping."""
+"""Database engine definitions and dialect mapping.
+
+Origin: new (Engine enum)
+Origin: extracted from src/core/db_settings.py (ENGINES, REQUIRED_FIELDS)
+"""
 
 from __future__ import annotations
 

@@ -1,7 +1,8 @@
 """Stage 12b text-to-SQL retrieval pipeline.
 
-Extracted from Stage 12b (s12b_sql_retrieval.py) in Step F7.
 Houses the SQLRetriever engine, result cache, and lifecycle management.
+
+Origin: extracted from src/stages/s12b_sql_retrieval.py (SQLRetriever, clear_knowledge_caches)
 """
 
 from __future__ import annotations

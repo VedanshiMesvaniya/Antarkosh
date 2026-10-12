@@ -22,6 +22,8 @@ local file is only an import seed, never authoritative.
 The backend exposes two operations — a full snapshot read and an atomic batch
 write (upserts + deletes together) — which is all the registry's version state
 machine needs, and which each backend can implement atomically.
+
+Origin: moved from src/core/metadata_store.py
 """
 
 from __future__ import annotations

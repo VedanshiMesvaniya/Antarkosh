@@ -1,6 +1,8 @@
 """
 Schema Drift Detection Engine
 Monitors database schema changes and auto-heals the schema atlas.
+
+Origin: moved from src/core/schema_monitor.py
 """
 import json
 import logging

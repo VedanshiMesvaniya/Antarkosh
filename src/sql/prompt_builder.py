@@ -3,6 +3,8 @@
 Constructs comprehensive, token-bounded reasoning prompts for text-to-SQL translation,
 including analytical intent, scoped readability protocols, behavioral schema atlas,
 table relationships, column glossaries, and dialect date/time rules.
+
+Origin: extracted from src/stages/s12b_sql_retrieval.py (get_raw_relationships, load_relationships, load_glossary, get_raw_column_glossary, get_raw_behavioral_atlas, stem_word, matches_glossary_candidate, build_column_glossary_for_query, build_behavioral_atlas_for_query, get_scoped_readability_rules, build_sql_prompt)
 """
 
 from __future__ import annotations

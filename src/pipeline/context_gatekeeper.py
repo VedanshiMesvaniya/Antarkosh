@@ -1,6 +1,8 @@
 """
 Multi-Turn Query Refinement - Context Gatekeeper
 Determines if a query is a follow-up (REFINE), new topic (RESET), or ambiguous (ASK).
+
+Origin: moved from src/core/context_gatekeeper.py
 """
 import logging
 from typing import Dict, List, Any, Optional, Tuple

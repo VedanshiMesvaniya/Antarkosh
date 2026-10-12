@@ -1,4 +1,7 @@
-"""MySQL dialect profile."""
+"""MySQL dialect profile.
+
+Origin: extracted from src/core/sql_dialects.py (MYSQL_PROFILE, get_profile)
+"""
 
 from __future__ import annotations
 

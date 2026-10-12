@@ -1,4 +1,7 @@
-"""Local Telemetry Dashboard API endpoints — overview, failure distribution, guard telemetry, trace logs."""
+"""Local Telemetry Dashboard API endpoints — overview, failure distribution, guard telemetry, trace logs.
+
+Origin: extracted from src/api/ui.py (telemetry routes, in-memory telemetry aggregator)
+"""
 
 from __future__ import annotations
 

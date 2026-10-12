@@ -1,4 +1,7 @@
-"""Oracle dialect profile stub."""
+"""Oracle dialect profile stub.
+
+Origin: new (no previous file)
+"""
 
 from __future__ import annotations
 

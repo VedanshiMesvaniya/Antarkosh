@@ -10,6 +10,8 @@ aggregate but never directly change pipeline behavior (noise-resistant by
 design: a single wrong thumb doesn't flip anything).
 
 Thread-safe via the same file-lock mechanism used by UIStateManager.
+
+Origin: moved from src/core/pipeline_metrics.py
 """
 
 from __future__ import annotations

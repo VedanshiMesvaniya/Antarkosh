@@ -9,6 +9,8 @@ The approach:
 3. Prose sections are semantically chunked within structural boundaries
    (~300-800 tokens, ~10-15% overlap)
 4. Every chunk carries hierarchy metadata for parent-document retrieval
+
+Origin: moved from src/stages/s09_chunking.py
 """
 
 from __future__ import annotations

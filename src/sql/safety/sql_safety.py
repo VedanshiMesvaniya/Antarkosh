@@ -3,6 +3,8 @@
 Enforces read-only execution, checks for destructive SQL operations,
 flags dangerous query patterns (SELECT *, CROSS JOIN), and validates
 table and column references against schema context before database execution.
+
+Origin: moved from src/utils/sql_safety.py
 """
 
 from __future__ import annotations

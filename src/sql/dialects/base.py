@@ -1,4 +1,7 @@
-"""Base SQL dialect profile definition."""
+"""Base SQL dialect profile definition.
+
+Origin: extracted from src/core/sql_dialects.py (SQLDialectProfile)
+"""
 
 from __future__ import annotations
 

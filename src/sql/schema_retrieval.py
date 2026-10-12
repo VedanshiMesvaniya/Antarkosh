@@ -3,6 +3,9 @@
 Extracts relevant DB schema chunks using Schema RAG against Qdrant,
 with dynamic token budget selection, domain anchor injection, 1-hop graph
 expansion, and scoped schema fallback.
+
+Origin: extracted from src/stages/s12b_sql_retrieval.py (extract_schema_table_names, extract_table_ddl_map, get_1hop_neighbors, format_scoped_relationships, build_scoped_schema_fallback, retrieve_schema_from_qdrant)
+Origin: merged from src/pipeline/schema_ingestion.py (sync_live_schema)
 """
 
 from __future__ import annotations

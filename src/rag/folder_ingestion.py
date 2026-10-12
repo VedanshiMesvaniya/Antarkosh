@@ -16,6 +16,8 @@ Three ways to drive it, all sharing :func:`scan_and_ingest`:
 The service depends only on the small ``_Ingester`` interface (an ``ingest``
 coroutine returning a result with a ``skipped`` flag), so it is trivially
 testable with a fake pipeline and no heavy document-processing dependencies.
+
+Origin: moved from src/pipeline/folder_ingestion.py
 """
 
 from __future__ import annotations

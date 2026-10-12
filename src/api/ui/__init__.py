@@ -1,4 +1,7 @@
-"""UI API package — aggregated router for chats, documents, databases, settings, and telemetry."""
+"""UI API package — aggregated router for chats, documents, databases, settings, and telemetry.
+
+Origin: extracted from src/api/ui.py (APIRouter registration, _UIModule proxy)
+"""
 
 from __future__ import annotations
 

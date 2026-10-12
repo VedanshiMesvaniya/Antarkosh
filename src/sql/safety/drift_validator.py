@@ -1,6 +1,8 @@
 """SQL Drift Validator — verifies that glossary mappings and relationship maps
 
 match the active database schema without stale, dropped, or misspelled column references.
+
+Origin: moved from src/core/sql_drift_validator.py
 """
 
 from __future__ import annotations

@@ -2,6 +2,8 @@
 
 Constructs surgical, highly compact (< 500 tokens) prompt payloads for SQL repair
 without resending full schemas or conversational context.
+
+Origin: moved from src/prompts/delta_repair.py
 """
 
 from __future__ import annotations

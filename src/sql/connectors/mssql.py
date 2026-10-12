@@ -1,4 +1,7 @@
-"""MSSQL database connector."""
+"""MSSQL database connector.
+
+Origin: merged from src/core/db_settings.py (_test_mssql) and src/core/db_client.py (mssql branch)
+"""
 
 from __future__ import annotations
 

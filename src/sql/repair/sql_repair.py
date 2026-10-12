@@ -1,4 +1,7 @@
-"""Delta Repair Executor for surgically fixing failed SQL queries with compact prompts."""
+"""Delta Repair Executor for surgically fixing failed SQL queries with compact prompts.
+
+Origin: moved from src/stages/sql_repair.py
+"""
 
 from __future__ import annotations
 

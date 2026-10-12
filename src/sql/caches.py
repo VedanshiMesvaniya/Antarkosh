@@ -1,4 +1,7 @@
-"""Unified SQL caches module (semantic cache and result cache helpers)."""
+"""Unified SQL caches module (semantic cache and result cache helpers).
+
+Origin: new (no previous file)
+"""
 
 from __future__ import annotations
 

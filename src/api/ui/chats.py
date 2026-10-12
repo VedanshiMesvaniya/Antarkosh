@@ -1,4 +1,7 @@
-"""Chat endpoints for UI API — conversations, streaming messages, titles, documents, feedback."""
+"""Chat endpoints for UI API — conversations, streaming messages, titles, documents, feedback.
+
+Origin: extracted from src/api/ui.py (chats routes, schemas, prompt templates)
+"""
 
 from __future__ import annotations
 

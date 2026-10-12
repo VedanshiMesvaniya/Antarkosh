@@ -3,6 +3,8 @@
 
 Eliminates synthesis LLM latency (~10.5s) for pure factual queries (COUNT, SUM, LIST)
 by deterministically formatting validated SQL results into natural Markdown.
+
+Origin: moved from src/utils/fast_path.py
 """
 
 from __future__ import annotations

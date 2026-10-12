@@ -1,4 +1,7 @@
-"""Knowledge pack management and loaders."""
+"""Knowledge pack management and loaders.
+
+Origin: new (no previous file)
+"""
 
 from src.sql.knowledge.loaders import (
     DEFAULT_DB_ID,

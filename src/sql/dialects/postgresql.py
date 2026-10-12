@@ -1,4 +1,7 @@
-"""PostgreSQL dialect profile."""
+"""PostgreSQL dialect profile.
+
+Origin: extracted from src/core/sql_dialects.py (POSTGRESQL_PROFILE, get_profile)
+"""
 
 from __future__ import annotations
 

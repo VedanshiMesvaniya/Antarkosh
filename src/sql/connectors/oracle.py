@@ -1,4 +1,7 @@
-"""Oracle database connector."""
+"""Oracle database connector.
+
+Origin: merged from src/core/db_settings.py (_test_oracle) and src/core/db_client.py (oracle branch)
+"""
 
 from __future__ import annotations
 

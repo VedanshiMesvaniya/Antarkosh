@@ -1,4 +1,7 @@
-"""SQLite database connector."""
+"""SQLite database connector.
+
+Origin: extracted from src/core/db_client.py (run_sqlite_readonly_query)
+"""
 
 from __future__ import annotations
 

@@ -11,6 +11,8 @@ ARCH-3: BGEM3EmbeddingAdapter is an EmbeddingAdapter implementation. Tests (or
 
 ARCH-4: QdrantStore creates the collection from the service's vector_dim and
         rejects upserts whose vectors have a different dimension.
+
+Origin: moved from src/stages/s10_embeddings.py
 """
 
 from __future__ import annotations

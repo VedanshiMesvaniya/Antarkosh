@@ -3,6 +3,8 @@
 Distinguishes between valid business emptiness (no records matching valid filter)
 and suspicious empty results (mismatched join keys, broken joins without filters,
 impossible date bounds, or malformed string predicates).
+
+Origin: moved from src/utils/empty_result_classifier.py
 """
 
 from __future__ import annotations

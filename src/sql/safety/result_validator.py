@@ -1,6 +1,8 @@
 """
 Semantic Correctness Validation Engine
 Validates SQL queries and results for logical correctness before returning to users.
+
+Origin: moved from src/core/result_validator.py
 """
 import logging
 from typing import Dict, List, Any, Optional, Tuple

@@ -6,6 +6,8 @@ model preferences, general images get broader understanding prompts.
 
 Stage 7: Gemini Flash primary → fallback providers → optional cross-check
 Stage 8: Gemini Flash primary → Nemotron-Nano-VL fallback
+
+Origin: moved from src/stages/s07_s08_visuals.py
 """
 
 from __future__ import annotations

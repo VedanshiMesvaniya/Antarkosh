@@ -4,6 +4,8 @@ Two-layer approach:
   1. Structural layer (native PDFs): PyMuPDF block/line/span geometry gives heading
      detection, column ordering, and footnote-region detection heuristically.
   2. Semantic layer (scanned pages): Vision-LLM structured-Markdown prompt.
+
+Origin: moved from src/stages/s05_layout.py
 """
 
 from __future__ import annotations

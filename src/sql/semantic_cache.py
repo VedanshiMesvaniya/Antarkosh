@@ -3,6 +3,8 @@
 
 Serves repetitive and near-paraphrase queries with sub-second latency (< 0.8s)
 by evaluating vector similarity against cached results with dynamic TTLs.
+
+Origin: moved from src/utils/semantic_cache.py
 """
 
 from __future__ import annotations

@@ -10,6 +10,8 @@ The structural classification drives per-page routing in Stage 3+4 (native pages
 skip OCR, scanned pages go through the OCR chain). The semantic classification
 drives downstream extraction behavior (invoices get key-value extraction,
 contracts get clause-level chunking, etc.).
+
+Origin: moved from src/stages/s02_classification.py
 """
 
 from __future__ import annotations

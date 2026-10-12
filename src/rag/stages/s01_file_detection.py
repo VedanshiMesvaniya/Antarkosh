@@ -6,6 +6,8 @@ cross-checked against file extension.
 
 Per the architecture doc: "spending an API call on [file-type detection]
 would be pure over-engineering."
+
+Origin: moved from src/stages/s01_file_detection.py
 """
 
 from __future__ import annotations

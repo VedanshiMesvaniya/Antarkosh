@@ -3,6 +3,8 @@
 Classifies user questions into COUNT, SUM, LIST, POLICY, or OTHER to determine:
 1. Dynamic TTL for Layer 1 Semantic Cache.
 2. Fast-Path template formatting eligibility for Layer 2.
+
+Origin: moved from src/utils/query_classifier.py
 """
 
 from __future__ import annotations

@@ -1,4 +1,7 @@
-"""MSSQL dialect profile stub."""
+"""MSSQL dialect profile stub.
+
+Origin: new (no previous file)
+"""
 
 from __future__ import annotations
 

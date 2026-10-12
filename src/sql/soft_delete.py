@@ -1,4 +1,7 @@
-"""Soft-delete intent detection, table resolution, and SQL filter enforcement."""
+"""Soft-delete intent detection, table resolution, and SQL filter enforcement.
+
+Origin: extracted from src/stages/s12b_sql_retrieval.py (detect_soft_delete_intent, _get_tables_with_soft_delete)
+"""
 
 from __future__ import annotations
 

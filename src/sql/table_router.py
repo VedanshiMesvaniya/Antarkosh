@@ -1,4 +1,7 @@
-"""Database-agnostic table routing and keyword map matching."""
+"""Database-agnostic table routing and keyword map matching.
+
+Origin: extracted from src/stages/s12b_sql_retrieval.py (load_routing_hints, route_tables_for_query, route_anchor_tables)
+"""
 
 from __future__ import annotations
 

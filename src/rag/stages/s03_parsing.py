@@ -9,6 +9,8 @@ Key design decisions from the architecture doc:
 - Mixed PDF → page-by-page routing (native pages → text layer, scanned → OCR chain)
 - Office → python-docx/pptx/openpyxl (no API call needed for structured formats)
 - Text formats → direct parse (already machine-readable)
+
+Origin: moved from src/stages/s03_parsing.py
 """
 
 from __future__ import annotations

@@ -1,6 +1,8 @@
 """
 Dynamic Pattern Learning Engine
 Captures successful reflexion fixes, abstracts them into patterns, and merges with static library.
+
+Origin: moved from src/core/pattern_learner.py
 """
 import json
 import logging

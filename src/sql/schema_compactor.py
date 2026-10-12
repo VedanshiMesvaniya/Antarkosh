@@ -3,6 +3,8 @@
 Transforms verbose raw DDLs into dense, LLM-optimized semantic representations,
 stripping non-essential audit columns while preserving Primary Keys, Foreign Keys,
 and Join Hints.
+
+Origin: moved from src/utils/schema_compactor.py
 """
 
 from __future__ import annotations

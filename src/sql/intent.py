@@ -1,4 +1,7 @@
-"""Business analytical intent detection for text-to-SQL generation."""
+"""Business analytical intent detection for text-to-SQL generation.
+
+Origin: extracted from src/stages/s12b_sql_retrieval.py (extract_analytical_intent)
+"""
 
 from __future__ import annotations
 

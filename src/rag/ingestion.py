@@ -7,6 +7,8 @@ Features:
   - Deduplication via SHA-256 registry (skips already-ingested files)
   - True hybrid dense+sparse embeddings passed to vector store
   - ingest_with_progress() async generator for SSE-based progress streaming
+
+Origin: moved from src/pipeline/ingestion.py
 """
 
 from __future__ import annotations

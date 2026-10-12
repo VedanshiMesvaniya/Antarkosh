@@ -49,6 +49,8 @@ model differs from the current one (or has none, as with entries created before
 this field existed or imported from the legacy ``ingested_files.json``) is
 reported as ``STALE_EMBEDDING`` instead of ``ALREADY_INGESTED``: the pipeline
 re-indexes it rather than skipping it.
+
+Origin: moved from src/core/ingestion_registry.py
 """
 
 from __future__ import annotations

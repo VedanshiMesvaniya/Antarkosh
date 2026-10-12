@@ -1,6 +1,8 @@
 """
 A/B Testing Framework for Prompt Optimization
 Enables scientific testing of prompt variants with statistical significance analysis.
+
+Origin: moved from src/core/ab_test_engine.py
 """
 import json
 import os

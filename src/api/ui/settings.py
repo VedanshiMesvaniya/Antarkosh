@@ -1,4 +1,7 @@
-"""System settings and provider management endpoints for UI API."""
+"""System settings and provider management endpoints for UI API.
+
+Origin: extracted from src/api/ui.py (settings routes, _PROVIDER_METADATA, get_provider_usage)
+"""
 
 from __future__ import annotations
 

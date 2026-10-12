@@ -1,4 +1,7 @@
-"""Database connectors package."""
+"""Database connectors package.
+
+Origin: new (no previous file)
+"""
 
 from __future__ import annotations
 

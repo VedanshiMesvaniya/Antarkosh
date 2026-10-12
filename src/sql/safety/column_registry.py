@@ -12,6 +12,8 @@ extra DB round-trips.  Two validation passes:
    from the user's question as a column alias even though the underlying
    expression resolves to something semantically different.  This prevents e.g.
    `product_type_id AS technology_used` when the user asked about "technology".
+
+Origin: moved from src/core/sql_column_registry.py
 """
 
 from __future__ import annotations

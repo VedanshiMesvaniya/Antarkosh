@@ -1,4 +1,7 @@
-"""PostgreSQL database connector."""
+"""PostgreSQL database connector.
+
+Origin: merged from src/core/db_settings.py (_test_postgresql) and src/core/db_client.py (postgresql branch)
+"""
 
 from __future__ import annotations
 

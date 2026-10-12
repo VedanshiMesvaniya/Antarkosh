@@ -1,4 +1,7 @@
-"""Database management endpoints for UI API — listing, metadata, access control, connection test & save."""
+"""Database management endpoints for UI API — listing, metadata, access control, connection test & save.
+
+Origin: extracted from src/api/ui.py (database routes, DBConnectionPayload)
+"""
 
 from __future__ import annotations
 

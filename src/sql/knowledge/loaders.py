@@ -1,4 +1,7 @@
-"""Loaders for database knowledge pack files."""
+"""Loaders for database knowledge pack files.
+
+Origin: new (no previous file)
+"""
 
 from __future__ import annotations
 

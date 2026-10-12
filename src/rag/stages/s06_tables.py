@@ -7,6 +7,8 @@ Decision tree from the architecture doc:
 
 Camelot/pdfplumber cost nothing and are exact on well-formed ruled tables —
 always try them first on native PDFs.
+
+Origin: moved from src/stages/s06_tables.py
 """
 
 from __future__ import annotations

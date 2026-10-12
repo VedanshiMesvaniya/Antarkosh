@@ -1,5 +1,7 @@
 """
 Join Graph Builder for validating SQL join paths against schema foreign keys.
+
+Origin: moved from src/core/join_graph.py
 """
 import logging
 from typing import Dict, List, Set, Tuple, Any, Optional

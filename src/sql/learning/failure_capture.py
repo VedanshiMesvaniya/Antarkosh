@@ -1,4 +1,7 @@
-"""Failure capture utility for logging exact failed SQL queries, errors, and metadata."""
+"""Failure capture utility for logging exact failed SQL queries, errors, and metadata.
+
+Origin: moved from src/utils/failure_capture.py
+"""
 
 from __future__ import annotations
 

@@ -2,6 +2,8 @@
 Explainable Confidence Scoring Engine
 Calculates dynamic confidence scores based on pattern matches, validation results, 
 execution efficiency, and query complexity.
+
+Origin: moved from src/core/confidence_scorer.py
 """
 import logging
 from typing import Dict, List, Any, Optional, Tuple

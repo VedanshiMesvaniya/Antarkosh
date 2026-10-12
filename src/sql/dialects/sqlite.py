@@ -1,4 +1,7 @@
-"""SQLite dialect profile."""
+"""SQLite dialect profile.
+
+Origin: extracted from src/core/sql_dialects.py (SQLITE_PROFILE, get_profile)
+"""
 
 from __future__ import annotations
 

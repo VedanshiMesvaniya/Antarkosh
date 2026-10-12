@@ -4,6 +4,8 @@ Stage 12: True hybrid dense+sparse retrieval with RRF fusion (top 20-50)
           BM25-lite heuristic REMOVED — replaced by real Qdrant sparse vectors.
 Stage 13: local bge-reranker-v2-m3 → top 5-8
 Stage 14: Task-routed LLM generation with citations
+
+Origin: moved from src/stages/s12_s13_s14_retrieval.py
 """
 
 from __future__ import annotations

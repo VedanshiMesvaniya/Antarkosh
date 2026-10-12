@@ -1,4 +1,7 @@
-"""Alias for src.sql.safety.column_registry."""
+"""Alias for src.sql.safety.column_registry.
+
+Origin: moved from src/core/sql_column_registry.py
+"""
 
 from __future__ import annotations
 

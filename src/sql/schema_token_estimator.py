@@ -1,4 +1,7 @@
-"""Schema token estimation and budget calculation utilities."""
+"""Schema token estimation and budget calculation utilities.
+
+Origin: moved from src/utils/schema_token_estimator.py
+"""
 
 from __future__ import annotations
 
