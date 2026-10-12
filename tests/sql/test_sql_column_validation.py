@@ -1,7 +1,7 @@
 """Tests for the Schema-Aware Column Registry."""
 
 import pytest
-from src.core.sql_column_registry import ColumnRegistry
+from src.sql.safety.column_registry import ColumnRegistry
 
 
 @pytest.fixture

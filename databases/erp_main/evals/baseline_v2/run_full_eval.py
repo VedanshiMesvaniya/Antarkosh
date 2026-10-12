@@ -27,8 +27,8 @@ if str(REPO_ROOT) not in sys.path:
 from src.pipeline.query import QueryPipeline
 
 from src.sql.knowledge.loaders import get_knowledge_path
-from src.core.sql_column_registry import ColumnRegistry
-from src.utils.sql_safety import (
+from src.sql.safety.column_registry import ColumnRegistry
+from src.sql.safety.sql_safety import (
     check_cartesian_explosion,
     clamp_cartesian_limits,
     is_destructive_sql,

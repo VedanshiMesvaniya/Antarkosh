@@ -7,10 +7,10 @@ import json
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.core.pipeline_metrics import CURRENT_DB_ID, log_event
 from src.main import app
 from src.models.schemas import QueryResult
 from src.sql.context import DEFAULT_DB_ID
+from src.sql.learning.pipeline_metrics import CURRENT_DB_ID, log_event
 
 
 def _client():
@@ -150,7 +150,7 @@ async def test_ui_chat_routes_db_id_validation_and_propagation(monkeypatch):
 
 def test_pipeline_metrics_logs_db_id(tmp_path, monkeypatch):
     metrics_path = tmp_path / "metrics.jsonl"
-    monkeypatch.setattr("src.core.pipeline_metrics.METRICS_FILE", metrics_path)
+    monkeypatch.setattr("src.sql.learning.pipeline_metrics.METRICS_FILE", metrics_path)
 
     # 1. Default when no db_id is provided
     log_event("query_success", query="select 1")

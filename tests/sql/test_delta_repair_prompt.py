@@ -2,9 +2,8 @@
 
 import json
 from pathlib import Path
-import pytest
 
-from src.prompts.delta_repair import (
+from src.sql.repair.delta_repair import (
     DELTA_REPAIR_SYSTEM_PROMPT,
     MAX_TOTAL_REPAIR_TOKENS,
     build_delta_repair_payload,

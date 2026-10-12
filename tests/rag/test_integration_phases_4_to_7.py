@@ -16,9 +16,9 @@ import pytest
 from src.core import config, db_client
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import ChunkType
-from src.prompts.delta_repair import build_delta_repair_payload, count_tokens, MAX_TOTAL_REPAIR_TOKENS
+from src.sql.repair.delta_repair import build_delta_repair_payload, count_tokens, MAX_TOTAL_REPAIR_TOKENS
 from src.stages.s12b_sql_retrieval import SQLRetriever
-from src.stages.sql_repair import MAX_DELTA_REPAIR_ATTEMPTS
+from src.sql.repair.sql_repair import MAX_DELTA_REPAIR_ATTEMPTS
 from src.utils.circuit_breaker import (
     CircuitBreakerOpenError,
     ProviderCircuitBreaker,

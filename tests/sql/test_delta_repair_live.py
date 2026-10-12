@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from src.core.provider_client import ProviderRouter
-from src.stages.sql_repair import attempt_delta_repair
+from src.sql.repair.sql_repair import attempt_delta_repair
 from src.utils.golden_models import GoldenCase
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

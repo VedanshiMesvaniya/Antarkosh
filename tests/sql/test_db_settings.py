@@ -33,7 +33,7 @@ def env(tmp_path, monkeypatch):
 
     monkeypatch.setitem(sys.modules, "src.stages.s12b_sql_retrieval",
                         types.SimpleNamespace(SQLRetriever=_Retriever))
-    monkeypatch.setitem(sys.modules, "src.utils.semantic_cache",
+    monkeypatch.setitem(sys.modules, "src.sql.semantic_cache",
                         types.SimpleNamespace(SemanticCache=_Cache))
 
     async def _ok(cfg):  # no real server in unit tests

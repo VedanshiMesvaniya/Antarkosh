@@ -9,7 +9,7 @@ import pytest
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
 from src.stages.s12_s13_s14_retrieval import Generator
-from src.utils.fast_path import (
+from src.sql.fast_path import (
     DISABLED_TEMPLATES,
     FAIL_RATE_THRESHOLD,
     _fail_counters,
@@ -97,7 +97,7 @@ def test_circuit_breaker_and_manual_override(monkeypatch):
     _fail_counters.clear()
 
     # Manual override test
-    monkeypatch.setattr("src.utils.fast_path.DISABLED_TEMPLATES", {QueryType.SUM})
+    monkeypatch.setattr("src.sql.fast_path.DISABLED_TEMPLATES", {QueryType.SUM})
     assert is_template_enabled(QueryType.SUM) is False
     assert is_template_enabled(QueryType.COUNT) is True
 

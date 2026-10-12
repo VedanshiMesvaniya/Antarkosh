@@ -17,7 +17,7 @@ from src.core import config, db_client
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import ChunkType
 from src.stages.s12b_sql_retrieval import SQLRetriever
-from src.utils.empty_result_classifier import (
+from src.sql.safety.empty_result_classifier import (
     SUSPICIOUS_EMPTY,
     VALID_EMPTY,
     classify_empty_result,

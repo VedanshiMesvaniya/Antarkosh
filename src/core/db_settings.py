@@ -151,9 +151,10 @@ def _apply_runtime(cfg: dict[str, Any], db_id: str = DEFAULT_DB_ID) -> None:
 
     # Invalidate ONLY this db_id's schema, column registry, result, semantic and knowledge caches
     import sys
+
     from src.stages.s12b_sql_retrieval import SQLRetriever
-    if "src.utils.semantic_cache" in sys.modules and hasattr(sys.modules["src.utils.semantic_cache"], "SemanticCache"):
-        SemanticCache = sys.modules["src.utils.semantic_cache"].SemanticCache
+    if "src.sql.semantic_cache" in sys.modules and hasattr(sys.modules["src.sql.semantic_cache"], "SemanticCache"):
+        SemanticCache = sys.modules["src.sql.semantic_cache"].SemanticCache
     else:
         from src.sql.semantic_cache import SemanticCache
 

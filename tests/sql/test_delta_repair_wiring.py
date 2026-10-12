@@ -10,7 +10,7 @@ from src.core import config, db_client
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import ChunkType
 from src.stages.s12b_sql_retrieval import SQLRetriever
-from src.stages.sql_repair import (
+from src.sql.repair.sql_repair import (
     MAX_DELTA_REPAIR_ATTEMPTS,
     attempt_delta_repair,
     extract_schema_context_from_ddl,

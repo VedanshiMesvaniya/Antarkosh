@@ -14,7 +14,7 @@ import os
 
 import pytest
 
-from src.core.sql_column_registry import ColumnRegistry
+from src.sql.safety.column_registry import ColumnRegistry
 from src.core.sql_dialects import DIALECTS, get_dialect_profile
 from src.pipeline.schema_ingestion import _split_schema_by_table
 from src.stages.s12b_sql_retrieval import SQLRetriever, format_schema_rows

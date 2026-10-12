@@ -4,9 +4,9 @@ import time
 import pytest
 from src.models.schemas import QueryResult
 from src.utils.query_classifier import QueryType, classify_query
-from src.utils.semantic_cache import (
-    SemanticCache,
+from src.sql.semantic_cache import (
     SIMILARITY_THRESHOLD,
+    SemanticCache,
     _cosine_similarity,
     get_semantic_cache,
 )

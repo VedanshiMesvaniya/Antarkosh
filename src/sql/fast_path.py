@@ -63,10 +63,6 @@ def _record_fast_path_success(query_type: QueryType) -> None:
 
 
 def _get_disabled_templates() -> set[QueryType]:
-    import sys
-    shim = sys.modules.get("src.utils.fast_path")
-    if shim and hasattr(shim, "DISABLED_TEMPLATES"):
-        return shim.DISABLED_TEMPLATES
     return DISABLED_TEMPLATES
 
 

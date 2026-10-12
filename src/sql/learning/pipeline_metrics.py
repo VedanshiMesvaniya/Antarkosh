@@ -31,10 +31,6 @@ METRICS_FILE = DATA_DIR / "pipeline_metrics.jsonl"
 
 
 def _get_metrics_file() -> Path:
-    import sys
-    core_mod = sys.modules.get("src.core.pipeline_metrics")
-    if core_mod and hasattr(core_mod, "METRICS_FILE"):
-        return Path(core_mod.METRICS_FILE)
     return METRICS_FILE
 
 
