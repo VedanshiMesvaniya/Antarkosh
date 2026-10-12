@@ -17,7 +17,7 @@ from src.core.db_client import run_readonly_query
 from src.sql.learning.pipeline_metrics import CURRENT_DB_ID
 from src.core.provider_client import ProviderRouter
 from src.sql.safety.column_registry import ColumnRegistry
-from src.core.sql_dialects import get_dialect_profile
+from src.sql.dialects import get_dialect_profile
 from src.sql.learning.pattern_learner import PatternLearner
 from src.sql.safety.confidence_scorer import ConfidenceBreakdown, ConfidenceScorer
 from src.sql.safety.result_validator import ResultValidator

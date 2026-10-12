@@ -16,7 +16,7 @@ from typing import Any
 
 from src.core.config import settings
 from src.core.db_client import run_readonly_query
-from src.core.sql_dialects import SQLDialectProfile, get_dialect_profile
+from src.sql.dialects import SQLDialectProfile, get_dialect_profile
 from src.models.schemas import Chunk, ChunkType, DocumentType
 from src.sql.engine import Engine
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, get_knowledge_path, validate_db_id

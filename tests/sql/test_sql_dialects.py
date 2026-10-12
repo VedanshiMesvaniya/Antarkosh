@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from src.core.sql_dialects import DIALECTS, SQLDialectProfile, get_dialect_profile
+from src.sql.dialects import DIALECTS, SQLDialectProfile, get_dialect_profile
 from src.sql.pipeline import SQLRetriever
 from src.sql.generation import format_schema_rows
 

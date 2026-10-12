@@ -17,7 +17,7 @@ from typing import Any
 import aiosqlite
 
 from src.core.config import DATA_DIR, settings
-from src.core.sql_dialects import get_dialect_profile
+from src.sql.dialects import get_dialect_profile
 
 logger = logging.getLogger(__name__)
 
