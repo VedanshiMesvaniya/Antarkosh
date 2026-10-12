@@ -1,4 +1,4 @@
-"""Loaders for database knowledge pack files with fallback to legacy locations."""
+"""Loaders for database knowledge pack files."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-CONFIG_DIR = PROJECT_ROOT / "config"
 DATABASES_DIR = PROJECT_ROOT / "databases"
 
 logger = logging.getLogger(__name__)
@@ -33,21 +32,19 @@ def validate_db_id(db_id: str) -> None:
         )
 
 
-# Mapping of kind -> (relative_path_in_db_folder, legacy_fallback_path)
-_KNOWLEDGE_PATHS: dict[str, tuple[str, Path]] = {
-    "schema": ("schema/schema.json", PROJECT_ROOT / "evals" / "Antarkosh" / "Antarkosh_schema.json"),
-    "relationships": ("schema/relationships.json", CONFIG_DIR / "sql_relationships.json"),
-    "glossary": ("semantics/glossary.json", CONFIG_DIR / "sql_glossary.json"),
-    "column_glossary": ("semantics/column_glossary.json", CONFIG_DIR / "sql_column_glossary.json"),
-    "behavioral_atlas": ("semantics/behavioral_atlas.json", CONFIG_DIR / "behavioral_schema_atlas.json"),
-    "routing_hints": ("semantics/routing_hints.json", CONFIG_DIR / "routing_hints.json"),
+# Mapping of kind -> relative_path_in_db_folder
+_KNOWLEDGE_PATHS: dict[str, str] = {
+    "schema": "schema/schema.json",
+    "relationships": "schema/relationships.json",
+    "glossary": "semantics/glossary.json",
+    "column_glossary": "semantics/column_glossary.json",
+    "behavioral_atlas": "semantics/behavioral_atlas.json",
+    "routing_hints": "semantics/routing_hints.json",
 }
 
 
 def get_database_knowledge_path(db_id: str = DEFAULT_DB_ID, relative_path: str | None = None) -> Path:
-    """Return the Path for a knowledge file, preferring databases/<db_id>/<relative_path>
-    and falling back to the old config/ location with a warning only for erp_main.
-    """
+    """Return the Path for a knowledge file in databases/<db_id>/<relative_path>."""
     if relative_path is None:
         # Support calling with just relative_path as first arg: get_database_knowledge_path("schema/relationships.json")
         if "/" in db_id or "\\" in db_id or db_id.endswith(".json"):
@@ -68,47 +65,26 @@ def get_database_knowledge_path(db_id: str = DEFAULT_DB_ID, relative_path: str |
     except ValueError:
         raise ValueError(f"Path traversal outside DATABASES_DIR: {relative_path!r}")
 
-    if target_path.exists():
-        return target_path
-
-    if db_id != DEFAULT_DB_ID:
+    if not target_path.exists():
         raise KnowledgeFileNotFound(
             f"Knowledge file {relative_path!r} missing for database {db_id!r} at {target_path}"
         )
 
-    # Determine legacy fallback for erp_main
-    legacy_path = None
-    norm_rel = str(rel_p).replace("\\", "/")
-    for k_rel, k_leg in _KNOWLEDGE_PATHS.values():
-        if norm_rel == k_rel:
-            legacy_path = k_leg
-            break
-    if legacy_path is None:
-        legacy_path = CONFIG_DIR / rel_p.name
-
-    logger.warning(
-        "Database knowledge file %s missing at %s; falling back to legacy location %s",
-        relative_path, target_path, legacy_path
-    )
-    return legacy_path
+    return target_path
 
 
 def get_knowledge_path(kind: str, db_id: str = DEFAULT_DB_ID) -> Path:
-    """Return the Path for a knowledge file by kind, preferring databases/<db_id>/ and falling back to legacy path."""
+    """Return the Path for a knowledge file by kind in databases/<db_id>/."""
     if kind not in _KNOWLEDGE_PATHS:
         raise ValueError(f"Unknown knowledge file kind: {kind!r}")
 
-    rel_path, _ = _KNOWLEDGE_PATHS[kind]
+    rel_path = _KNOWLEDGE_PATHS[kind]
     return get_database_knowledge_path(db_id=db_id, relative_path=rel_path)
 
 
 def load_knowledge_json(kind: str, db_id: str = DEFAULT_DB_ID) -> Any:
-    """Load JSON data for a knowledge file kind, preferring databases/<db_id>/ with fallback."""
+    """Load JSON data for a knowledge file kind from databases/<db_id>/."""
     path = get_knowledge_path(kind, db_id)
-    if not path.exists():
-        if db_id != DEFAULT_DB_ID:
-            raise KnowledgeFileNotFound(f"Knowledge file for kind {kind!r} missing at {path}")
-        return {}
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as e:

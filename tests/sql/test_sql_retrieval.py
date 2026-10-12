@@ -46,7 +46,7 @@ def test_relationships_join_map_disambiguates_columns():
     'Unknown column p.product_color_id' join hallucination."""
     rel = _load_relationships()
     if not rel:
-        pytest.skip("config/sql_relationships.json not present in this deployment")
+        pytest.skip("relationships knowledge not present in this deployment")
     lines = {ln.split(":", 1)[0].lstrip("- ").strip(): ln for ln in rel.splitlines()}
     # product has no product_color_id
     assert "product_color_id" not in lines.get("product", "")

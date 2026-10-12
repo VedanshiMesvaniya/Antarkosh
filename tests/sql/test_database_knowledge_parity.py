@@ -1,54 +1,42 @@
-"""Test byte-identity parity between legacy knowledge files and databases/erp_main/ files,
-and verify fallback loaders.
+"""Test that knowledge files exist in databases/erp_main/ and load cleanly,
+and verify knowledge loaders.
 """
 
 from pathlib import Path
 
 import pytest
 
-from src.core.config import CONFIG_DIR, DATABASES_DIR, PROJECT_ROOT
+from src.core.config import DATABASES_DIR
 from src.sql.knowledge.loaders import (
     KnowledgeFileNotFound,
     get_database_knowledge_path,
+    get_knowledge_path,
     load_knowledge_json,
     validate_db_id,
 )
 
-PAIRS = [
-    (
-        PROJECT_ROOT / "evals" / "Antarkosh" / "Antarkosh_schema.json",
-        DATABASES_DIR / "erp_main" / "schema" / "schema.json",
-    ),
-    (
-        CONFIG_DIR / "sql_relationships.json",
-        DATABASES_DIR / "erp_main" / "schema" / "relationships.json",
-    ),
-    (
-        CONFIG_DIR / "sql_glossary.json",
-        DATABASES_DIR / "erp_main" / "semantics" / "glossary.json",
-    ),
-    (
-        CONFIG_DIR / "sql_column_glossary.json",
-        DATABASES_DIR / "erp_main" / "semantics" / "column_glossary.json",
-    ),
-    (
-        CONFIG_DIR / "behavioral_schema_atlas.json",
-        DATABASES_DIR / "erp_main" / "semantics" / "behavioral_atlas.json",
-    ),
+ERP_MAIN_FILES = [
+    DATABASES_DIR / "erp_main" / "schema" / "schema.json",
+    DATABASES_DIR / "erp_main" / "schema" / "relationships.json",
+    DATABASES_DIR / "erp_main" / "semantics" / "glossary.json",
+    DATABASES_DIR / "erp_main" / "semantics" / "column_glossary.json",
+    DATABASES_DIR / "erp_main" / "semantics" / "behavioral_atlas.json",
+    DATABASES_DIR / "erp_main" / "semantics" / "routing_hints.json",
 ]
 
 
-@pytest.mark.parametrize("old_path,new_path", PAIRS)
-def test_knowledge_file_byte_identity(old_path: Path, new_path: Path):
-    """Old config/evals files and new databases/erp_main/ copies must be byte-identical."""
-    assert old_path.exists(), f"Old file missing: {old_path}"
-    assert new_path.exists(), f"New file missing: {new_path}"
-    assert old_path.read_bytes() == new_path.read_bytes(), (
-        f"Byte mismatch between {old_path} and {new_path}"
-    )
+@pytest.mark.parametrize("file_path", ERP_MAIN_FILES)
+def test_erp_main_knowledge_files_exist_and_load(file_path: Path):
+    """All required knowledge files for erp_main must exist, be non-empty, and contain valid JSON."""
+    assert file_path.exists(), f"Required knowledge file missing: {file_path}"
+    assert file_path.stat().st_size > 0, f"Knowledge file is empty: {file_path}"
+    import json
+
+    data = json.loads(file_path.read_text(encoding="utf-8"))
+    assert isinstance(data, (dict, list)), f"Expected dict or list in {file_path}, got {type(data)}"
 
 
-def test_get_database_knowledge_path_prefers_database_dir():
+def test_get_database_knowledge_path_resolves_database_dir():
     """get_database_knowledge_path must return the databases/erp_main file when it exists."""
     p = get_database_knowledge_path("erp_main", "schema/schema.json")
     assert p == DATABASES_DIR / "erp_main" / "schema" / "schema.json"
@@ -56,18 +44,15 @@ def test_get_database_knowledge_path_prefers_database_dir():
 
 
 def test_get_database_knowledge_path_non_existent_db_raises():
-    """Non-existent database without files must raise KnowledgeFileNotFound, never fall back to erp_main."""
+    """Non-existent database without files must raise KnowledgeFileNotFound, never fall back."""
     with pytest.raises(KnowledgeFileNotFound, match="missing for database"):
         get_database_knowledge_path("non_existent_db", "schema/relationships.json")
 
 
-def test_get_database_knowledge_path_fallback(tmp_path, monkeypatch, caplog):
-    """When an erp_main knowledge file is missing, it falls back to legacy path with a warning."""
-    monkeypatch.setattr("src.sql.knowledge.loaders.DATABASES_DIR", tmp_path)
-    with caplog.at_level("WARNING"):
-        p = get_database_knowledge_path("erp_main", "schema/relationships.json")
-    assert p == CONFIG_DIR / "sql_relationships.json"
-    assert "falling back to legacy location" in caplog.text
+def test_get_database_knowledge_path_missing_file_raises():
+    """When an erp_main knowledge file is missing, KnowledgeFileNotFound is raised."""
+    with pytest.raises(KnowledgeFileNotFound, match="missing for database"):
+        get_database_knowledge_path("erp_main", "schema/non_existent.json")
 
 
 def test_validate_db_id_validation():
@@ -91,7 +76,7 @@ def test_get_database_knowledge_path_path_traversal_rejected():
 
 
 def test_load_knowledge_json_propagates_not_found_for_other_db():
-    """load_knowledge_json propagates KnowledgeFileNotFound for non-erp_main databases."""
+    """load_knowledge_json propagates KnowledgeFileNotFound for non-existent databases."""
     with pytest.raises(KnowledgeFileNotFound):
         load_knowledge_json("relationships", "other_db")
 
@@ -102,6 +87,14 @@ def test_load_knowledge_json():
     assert isinstance(rels, dict)
     assert "relationships" in rels
     assert len(rels["relationships"]) > 0
+
+
+def test_load_knowledge_json_all_kinds():
+    """All supported knowledge kinds load successfully for erp_main."""
+    for kind in ["schema", "relationships", "glossary", "column_glossary", "behavioral_atlas", "routing_hints"]:
+        data = load_knowledge_json(kind, "erp_main")
+        assert isinstance(data, (dict, list))
+        assert len(data) > 0
 
 
 def test_template_structure():

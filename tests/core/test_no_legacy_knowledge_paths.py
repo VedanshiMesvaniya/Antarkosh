@@ -1,9 +1,8 @@
-"""Guard test ensuring no legacy knowledge file paths are referenced in src/
-
-Excludes src/sql/knowledge/loaders.py which retains fallback references until Phase I.
-"""
+"""Guard test ensuring no legacy knowledge file paths are referenced in src/"""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 from src.core.config import PROJECT_ROOT
 
@@ -15,9 +14,7 @@ FORBIDDEN_STRINGS = [
     "Antarkosh_schema.json",
 ]
 
-ALLOWED_FILES = {
-    (PROJECT_ROOT / "src" / "sql" / "knowledge" / "loaders.py").resolve(),
-}
+ALLOWED_FILES: set[Path] = set()
 
 
 def test_no_legacy_knowledge_paths_in_src():
