@@ -533,14 +533,6 @@ def _enrich_table_schema(
     return "\n".join(lines)
 
 
-def _get_run_readonly_query():
-    """Resolve run_readonly_query, honoring any monkeypatches on src.pipeline.schema_ingestion."""
-    mod = sys.modules.get("src.pipeline.schema_ingestion")
-    if mod and hasattr(mod, "run_readonly_query"):
-        return mod.run_readonly_query
-    return run_readonly_query
-
-
 async def sync_live_schema(
     embedding_service: EmbeddingService | None = None,
     vector_store: QdrantStore | None = None,
@@ -555,7 +547,7 @@ async def sync_live_schema(
     store = vector_store or QdrantStore(embedding_service=embeddings)
 
     dialect = get_dialect_profile(settings.db_engine)
-    _query_runner = _get_run_readonly_query()
+    _query_runner = run_readonly_query
 
     # 1. Fetch schema rows from the live database
     schema_rows = await _query_runner(dialect.schema_query, max_rows=20000)

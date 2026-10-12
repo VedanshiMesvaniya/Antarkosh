@@ -29,7 +29,7 @@ from src.models.schemas import Chunk
 logger = logging.getLogger(__name__)
 
 # Re-export so existing callers that do
-#   from src.stages.s10_embeddings import SparseVector
+#   from src.rag.stages.s10_embeddings import SparseVector
 # keep working without changes.
 __all__ = [
     "BGEM3EmbeddingAdapter",

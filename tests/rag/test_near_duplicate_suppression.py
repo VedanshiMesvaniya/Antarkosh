@@ -8,7 +8,7 @@ best-scored representative, while never merging genuinely distinct passages.
 """
 
 from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
-from src.stages.s12_s13_s14_retrieval import _suppress_near_duplicates
+from src.rag.retrieval import _suppress_near_duplicates
 
 
 def _chunk(chunk_id: str, content: str, document_id: str = "doc", score: float = 1.0) -> RetrievedChunk:

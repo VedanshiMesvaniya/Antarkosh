@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 from src.models.schemas import QueryResult, Chunk, RetrievedChunk, ChunkType, DocumentType, TokenUsage
 from src.pipeline.query import QueryPipeline, _is_document_listing_query
-from src.stages.s10_embeddings import SparseVector
+from src.rag.stages.s10_embeddings import SparseVector
 
 
 @pytest.mark.parametrize(

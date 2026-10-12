@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from src.pipeline.folder_ingestion import (
+from src.rag.folder_ingestion import (
     FolderIngestionResult,
     _discover_files,
     scan_and_ingest,

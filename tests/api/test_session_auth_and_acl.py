@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from src.api.auth import ALPHA_USERS, SessionStore
 from src.main import app
 from src.pipeline.query import _cache_acl_signature
-from src.stages.s11_vector_store import QdrantStore
+from src.rag.stages.s11_vector_store import QdrantStore
 
 
 def _client():

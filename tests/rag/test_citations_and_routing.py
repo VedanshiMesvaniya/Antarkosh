@@ -12,11 +12,11 @@ from unittest.mock import AsyncMock
 
 from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
 from src.pipeline.query import QueryPipeline
-from src.stages.s10_embeddings import SparseVector
-from src.stages.s12_s13_s14_retrieval import (
+from src.rag.retrieval import (
     _extract_and_format_citations,
     _is_visualization_query,
 )
+from src.rag.stages.s10_embeddings import SparseVector
 
 
 def _chunk(chunk_id: str, source_file: str, page: int = 1, content: str = "x") -> RetrievedChunk:

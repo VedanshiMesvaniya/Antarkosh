@@ -131,7 +131,7 @@ async def test_hdblow_quantity_adjusted_temporal_intent_sql_gen():
 
 
 def test_acronym_expansion_loading_and_expansion():
-    from src.stages.s12_s13_s14_retrieval import _expand_query_acronyms, _get_acronym_expansions
+    from src.rag.retrieval import _expand_query_acronyms, _get_acronym_expansions
     expansions = _get_acronym_expansions()
     assert "fte" in expansions
     assert "hq" in expansions
@@ -145,7 +145,7 @@ def test_acronym_expansion_loading_and_expansion():
 
 
 def test_answer_rules_structured_prompt():
-    from src.stages.s12_s13_s14_retrieval import _ANSWER_RULES
+    from src.rag.retrieval import _ANSWER_RULES
     assert "Grounding & Precision Rules" in _ANSWER_RULES
     assert "Entity & Terminology Rules" in _ANSWER_RULES
     assert "Citation & Formatting Rules" in _ANSWER_RULES
@@ -157,9 +157,9 @@ def test_answer_rules_structured_prompt():
 @pytest.mark.live
 @pytest.mark.asyncio
 async def test_q2_apple_fte_retrieval_and_reranking():
-    from src.stages.s11_vector_store import QdrantStore
-    from src.stages.s10_embeddings import EmbeddingService
-    from src.stages.s12_s13_s14_retrieval import Retriever, Reranker
+    from src.rag.stages.s11_vector_store import QdrantStore
+    from src.rag.stages.s10_embeddings import EmbeddingService
+    from src.rag.retrieval import Retriever, Reranker
     from src.core.config import settings
 
     store = QdrantStore()
@@ -181,9 +181,9 @@ async def test_q2_apple_fte_retrieval_and_reranking():
 @pytest.mark.live
 @pytest.mark.asyncio
 async def test_q8_rag_architecture_5_layers_retrieval_and_reranking():
-    from src.stages.s11_vector_store import QdrantStore
-    from src.stages.s10_embeddings import EmbeddingService
-    from src.stages.s12_s13_s14_retrieval import Retriever, Reranker
+    from src.rag.stages.s11_vector_store import QdrantStore
+    from src.rag.stages.s10_embeddings import EmbeddingService
+    from src.rag.retrieval import Retriever, Reranker
     from src.core.config import settings
 
     store = QdrantStore()

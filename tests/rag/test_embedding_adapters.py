@@ -11,8 +11,8 @@ from __future__ import annotations
 import pytest
 
 from src.core.embeddings import DimensionMismatchError, EmbeddingAdapter, SparseVector
-from src.stages.s10_embeddings import BGEM3EmbeddingAdapter, EmbeddingService
-from src.stages.s11_vector_store import QdrantStore
+from src.rag.stages.s10_embeddings import BGEM3EmbeddingAdapter, EmbeddingService
+from src.rag.stages.s11_vector_store import QdrantStore
 
 
 # ---------------------------------------------------------------------------

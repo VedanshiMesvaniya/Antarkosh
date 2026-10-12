@@ -13,10 +13,6 @@ from __future__ import annotations
 
 import pytest
 
-import src.pipeline.folder_ingestion as shim_folder_ingestion
-import src.pipeline.ingestion as shim_ingestion
-import src.pipeline.schema_ingestion as shim_schema_ingestion
-
 # 14. Folder Ingestion
 import src.rag.folder_ingestion as new_folder_ingestion
 
@@ -40,80 +36,6 @@ import src.rag.stages.s11_vector_store as new_s11
 
 # 15. Schema Ingestion (merged into sql.schema_retrieval)
 import src.sql.schema_retrieval as new_schema_retrieval
-import src.stages.s01_file_detection as shim_s01
-import src.stages.s02_classification as shim_s02
-import src.stages.s03_parsing as shim_s03
-import src.stages.s04_ocr as shim_s04
-import src.stages.s05_layout as shim_s05
-import src.stages.s06_tables as shim_s06
-import src.stages.s07_s08_visuals as shim_s07
-import src.stages.s09_chunking as shim_s09
-import src.stages.s10_embeddings as shim_s10
-import src.stages.s11_vector_store as shim_s11
-import src.stages.s12_s13_s14_retrieval as shim_retrieval
-
-
-def test_stages_s01_to_s11_shims_object_identity() -> None:
-    """All public functions and classes in stages shims match src.rag.stages."""
-    assert shim_s01.detect_file is new_s01.detect_file
-
-    assert shim_s02.classify_semantic is new_s02.classify_semantic
-    assert shim_s02.classify_structure is new_s02.classify_structure
-
-    assert shim_s03.parse_document is new_s03.parse_document
-
-    assert shim_s04.run_ocr is new_s04.run_ocr
-
-    assert shim_s05.analyze_layout is new_s05.analyze_layout
-
-    assert shim_s06.extract_tables is new_s06.extract_tables
-
-    assert shim_s07.analyze_visuals is new_s07.analyze_visuals
-
-    assert shim_s09.chunk_document is new_s09.chunk_document
-
-    assert shim_s10.EmbeddingService is new_s10.EmbeddingService
-
-    assert shim_s11.QdrantStore is new_s11.QdrantStore
-
-
-def test_retrieval_shim_object_identity() -> None:
-    """Symbols in src.stages.s12_s13_s14_retrieval match src.rag.retrieval."""
-    assert shim_retrieval.Retriever is new_retrieval.Retriever
-    assert shim_retrieval.Generator is new_retrieval.Generator
-    assert shim_retrieval.Reranker is new_retrieval.Reranker
-    assert shim_retrieval._enforce_document_diversity is new_retrieval._enforce_document_diversity
-    assert shim_retrieval._is_exhaustive_query is new_retrieval._is_exhaustive_query
-    assert shim_retrieval._source_mode is new_retrieval._source_mode
-
-
-def test_ingestion_shim_object_identity() -> None:
-    """Symbols in src.pipeline.ingestion match src.rag.ingestion."""
-    assert shim_ingestion.IngestionPipeline is new_ingestion.IngestionPipeline
-    assert shim_ingestion.IngestionResult is new_ingestion.IngestionResult
-    assert shim_ingestion._INGEST_LOCKS is new_ingestion._INGEST_LOCKS
-    assert shim_ingestion.reconcile_active_flags is new_ingestion.reconcile_active_flags
-    assert shim_ingestion._lock_for_hash is new_ingestion._lock_for_hash
-    assert shim_ingestion._discard_redundant_upload is new_ingestion._discard_redundant_upload
-
-
-def test_folder_ingestion_shim_object_identity() -> None:
-    """Symbols in src.pipeline.folder_ingestion match src.rag.folder_ingestion."""
-    assert shim_folder_ingestion.FolderIngestionResult is new_folder_ingestion.FolderIngestionResult
-    assert shim_folder_ingestion.scan_and_ingest is new_folder_ingestion.scan_and_ingest
-    assert shim_folder_ingestion.run_periodic_scan is new_folder_ingestion.run_periodic_scan
-    assert shim_folder_ingestion._discover_files is new_folder_ingestion._discover_files
-
-
-def test_schema_ingestion_shim_object_identity() -> None:
-    """Symbols in src.pipeline.schema_ingestion match src.sql.schema_retrieval."""
-    assert shim_schema_ingestion.sync_live_schema is new_schema_retrieval.sync_live_schema
-    assert shim_schema_ingestion.SCHEMA_DOCUMENT_ID == new_schema_retrieval.SCHEMA_DOCUMENT_ID
-    assert shim_schema_ingestion.get_schema_document_id is new_schema_retrieval.get_schema_document_id
-    assert shim_schema_ingestion._split_schema_by_table is new_schema_retrieval._split_schema_by_table
-    assert shim_schema_ingestion._split_mysql_tables is new_schema_retrieval._split_mysql_tables
-    assert shim_schema_ingestion._split_sqlite_tables is new_schema_retrieval._split_sqlite_tables
-    assert shim_schema_ingestion.run_readonly_query is new_schema_retrieval.run_readonly_query
 
 
 def test_query_pipeline_alias_deleted() -> None:

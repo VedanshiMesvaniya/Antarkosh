@@ -366,12 +366,12 @@ async def test_sync_live_schema_atomicity(monkeypatch: pytest.MonkeyPatch):
     """sync_live_schema embeds before upserting into vector store, ensuring no empty-store gap."""
     from unittest.mock import AsyncMock, MagicMock
 
-    from src.pipeline.schema_ingestion import sync_live_schema
+    from src.sql.schema_retrieval import sync_live_schema
 
     mock_run = AsyncMock(return_value=[
         {"name": "customers", "sql": "CREATE TABLE customers (id INT, name TEXT)"}
     ])
-    monkeypatch.setattr("src.pipeline.schema_ingestion.run_readonly_query", mock_run)
+    monkeypatch.setattr("src.sql.schema_retrieval.run_readonly_query", mock_run)
 
     call_order = []
 

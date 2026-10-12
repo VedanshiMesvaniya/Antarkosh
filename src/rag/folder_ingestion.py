@@ -1,6 +1,6 @@
 """Folder auto-ingestion — watch a drop-folder and ingest new files.
 
-This is the "automation" layer over :class:`~src.pipeline.ingestion.IngestionPipeline`.
+This is the "automation" layer over :class:`~src.rag.ingestion.IngestionPipeline`.
 Drop files into the watched folder (``settings.auto_ingest_dir``) and a scan
 runs each one through the full pipeline. Identity is content-addressed, so the
 scan is **idempotent**: files already ingested are skipped, and files may safely

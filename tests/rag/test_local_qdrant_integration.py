@@ -55,7 +55,7 @@ class _BagOfWordsM3:
 
 @pytest.fixture
 def local_stack(monkeypatch):
-    from src.stages import s11_vector_store as s11
+    from src.rag.stages import s11_vector_store as s11
 
     fake = types.ModuleType("FlagEmbedding")
     fake.BGEM3FlagModel = _BagOfWordsM3
@@ -88,9 +88,9 @@ def _chunks() -> list[Chunk]:
 
 
 async def test_local_qdrant_roundtrip_hybrid_search(local_stack):
-    from src.stages.s10_embeddings import EmbeddingService
-    from src.stages.s11_vector_store import QdrantStore
-    from src.stages.s12_s13_s14_retrieval import Retriever
+    from src.rag.stages.s10_embeddings import EmbeddingService
+    from src.rag.stages.s11_vector_store import QdrantStore
+    from src.rag.retrieval import Retriever
 
     svc = EmbeddingService()
     store = QdrantStore(collection_name=local_stack, embedding_service=svc)
@@ -123,9 +123,9 @@ async def test_local_qdrant_roundtrip_hybrid_search(local_stack):
 
 
 async def test_model_mismatch_warning_on_reused_collection(local_stack, caplog):
-    from src.stages import s11_vector_store as s11
-    from src.stages.s10_embeddings import EmbeddingService
-    from src.stages.s11_vector_store import QdrantStore
+    from src.rag.stages import s11_vector_store as s11
+    from src.rag.stages.s10_embeddings import EmbeddingService
+    from src.rag.stages.s11_vector_store import QdrantStore
 
     svc = EmbeddingService()
     store = QdrantStore(collection_name=local_stack, embedding_service=svc)
@@ -158,7 +158,7 @@ async def test_model_mismatch_warning_on_reused_collection(local_stack, caplog):
 
 async def test_metadata_backend_works_against_local_server(local_stack, monkeypatch, tmp_path):
     """The ingestion registry's Qdrant backend must also accept a key-less local server."""
-    from src.core import metadata_store
+    from src.rag import metadata_store
 
     backend = metadata_store.create_metadata_backend(tmp_path / "registry.json")
     assert isinstance(backend, metadata_store.QdrantMetadataBackend)
@@ -171,10 +171,10 @@ async def test_figure_flows_from_parsed_document_to_qdrant_payload(local_stack):
     from qdrant_client import QdrantClient
 
     from src.models.schemas import FigureData, FileCategory, PageContent, ParsedDocument
-    from src.stages.s09_chunking import chunk_document
-    from src.stages.s10_embeddings import EmbeddingService
-    from src.stages.s11_vector_store import QdrantStore
-    from src.stages.s12_s13_s14_retrieval import Retriever
+    from src.rag.stages.s09_chunking import chunk_document
+    from src.rag.stages.s10_embeddings import EmbeddingService
+    from src.rag.stages.s11_vector_store import QdrantStore
+    from src.rag.retrieval import Retriever
 
     document = ParsedDocument(
         file_path="/tmp/manual.pdf", file_category=FileCategory.PDF, total_pages=1,

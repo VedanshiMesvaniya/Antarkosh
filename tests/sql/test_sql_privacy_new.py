@@ -5,7 +5,7 @@ import pytest
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
 from src.pipeline.query import _format_history
-from src.stages.s12_s13_s14_retrieval import Generator
+from src.rag.retrieval import Generator
 
 
 TABLE = "SQL Query Executed: `SELECT region, SUM(amount) FROM sales GROUP BY region`\n\n| region | total |\n|---|---|\n| North | 900000 |\n| South | 600000 |"
@@ -58,7 +58,7 @@ async def test_aggregate_no_llm_when_flag_off():
     router.usage = MagicMock(model_copy=MagicMock(return_value={}))
     router.chat = AsyncMock(return_value="x")
     real = lambda name: name == "fast_path_enabled"
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", side_effect=real):
+    with patch("src.rag.retrieval.is_feature_enabled", side_effect=real):
         result = await Generator(router=router).generate("What is the total revenue by region?", [_chunk()])
     assert router.chat.await_count == 0
     assert result.model_used == "sql/direct" and "| North | 900000 |" in result.answer
@@ -70,7 +70,7 @@ async def test_aggregate_stream_no_llm_when_flag_off():
     router.usage = MagicMock(model_copy=MagicMock(return_value={}))
     router.chat = AsyncMock(return_value="x")
     real = lambda name: name == "fast_path_enabled"
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", side_effect=real):
+    with patch("src.rag.retrieval.is_feature_enabled", side_effect=real):
         items = [
             item
             async for item in Generator(router=router).generate_stream(

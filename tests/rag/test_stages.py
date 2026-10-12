@@ -25,8 +25,8 @@ from src.models.schemas import (
     PageStructure,
     ParsedDocument,
 )
-from src.stages.s01_file_detection import detect_file
-from src.stages.s09_chunking import chunk_document
+from src.rag.stages.s01_file_detection import detect_file
+from src.rag.stages.s09_chunking import chunk_document
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +88,7 @@ class TestParsing:
     """Test parsing of text-based formats (no external dependencies)."""
 
     def test_parse_json(self, tmp_path: Path) -> None:
-        from src.stages.s03_parsing import parse_document
+        from src.rag.stages.s03_parsing import parse_document
 
         f = tmp_path / "test.json"
         data = {"users": [{"name": "Alice"}, {"name": "Bob"}]}
@@ -109,7 +109,7 @@ class TestParsing:
         assert "Bob" in result.pages[0].text
 
     def test_parse_csv(self, tmp_path: Path) -> None:
-        from src.stages.s03_parsing import parse_document
+        from src.rag.stages.s03_parsing import parse_document
 
         f = tmp_path / "data.csv"
         f.write_text("name,age,city\nAlice,30,NYC\nBob,25,LA")
@@ -129,7 +129,7 @@ class TestParsing:
         assert result.pages[0].ocr_confidence == 1.0
 
     def test_parse_html(self, tmp_path: Path) -> None:
-        from src.stages.s03_parsing import parse_document
+        from src.rag.stages.s03_parsing import parse_document
 
         f = tmp_path / "page.html"
         f.write_text("""
@@ -156,7 +156,7 @@ class TestParsing:
         assert "var x=1" not in result.pages[0].text  # Script should be stripped
 
     def test_parse_plaintext(self, tmp_path: Path) -> None:
-        from src.stages.s03_parsing import parse_document
+        from src.rag.stages.s03_parsing import parse_document
 
         f = tmp_path / "notes.txt"
         content = "Line 1\nLine 2\nLine 3"

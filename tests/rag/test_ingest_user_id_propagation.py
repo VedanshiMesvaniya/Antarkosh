@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.pipeline.ingestion import IngestionPipeline
+from src.rag.ingestion import IngestionPipeline
 
 
 def _pipeline():

@@ -20,7 +20,7 @@ import pytest
 pytest.importorskip("pdfplumber")
 
 from src.rag.ingestion_registry import IngestionRegistry  # noqa: E402
-from src.pipeline.ingestion import (  # noqa: E402
+from src.rag.ingestion import (  # noqa: E402
     IngestionPipeline,
     IngestionResult,
     _INGEST_LOCKS,

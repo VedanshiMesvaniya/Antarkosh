@@ -17,8 +17,8 @@ pytest.importorskip("pdfplumber")
 
 from src.rag.ingestion_registry import IngestionRegistry, RegistryStatus  # noqa: E402
 from src.core.embeddings import SparseVector  # noqa: E402
-from src.pipeline.ingestion import IngestionPipeline, IngestionResult, _INGEST_LOCKS  # noqa: E402
-from src.stages.s10_embeddings import EmbeddingService  # noqa: E402
+from src.rag.ingestion import IngestionPipeline, IngestionResult, _INGEST_LOCKS  # noqa: E402
+from src.rag.stages.s10_embeddings import EmbeddingService  # noqa: E402
 
 MODEL = "bge-m3"
 

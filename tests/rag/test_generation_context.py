@@ -6,10 +6,10 @@
 """
 
 from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
-from src.stages.s12_s13_s14_retrieval import (
+from src.rag.retrieval import (
     _ANSWER_RULES,
-    _build_system_prompt,
     _build_context,
+    _build_system_prompt,
     _extract_sql_table,
     _limit_context_chunks,
 )

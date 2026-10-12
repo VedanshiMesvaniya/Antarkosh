@@ -63,8 +63,8 @@ async def run_nl_question(question: str) -> None:
 
     # 2. Generate SQL
     console.print("\n[bold magenta]2. Generating SQL via LLM & Semantic Layer...[/bold magenta]")
-    from src.stages.s10_embeddings import EmbeddingService
-    from src.stages.s11_vector_store import QdrantStore
+    from src.rag.stages.s10_embeddings import EmbeddingService
+    from src.rag.stages.s11_vector_store import QdrantStore
 
     router = ProviderRouter()
     embed_svc = EmbeddingService()

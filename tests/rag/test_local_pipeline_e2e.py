@@ -65,7 +65,7 @@ class _FakeGemini:
 
 @pytest.fixture
 def local_world(monkeypatch, tmp_path):
-    from src.stages import s11_vector_store as s11
+    from src.rag.stages import s11_vector_store as s11
 
     fake = types.ModuleType("FlagEmbedding")
     fake.BGEM3FlagModel = _BagOfWordsM3
@@ -108,10 +108,10 @@ def _make_pdf(tmp_path):
 
 
 async def test_pdf_ingests_locally_and_is_retrievable(local_world, tmp_path):
-    from src.pipeline.ingestion import IngestionPipeline, _INGEST_LOCKS
-    from src.stages.s10_embeddings import EmbeddingService
-    from src.stages.s11_vector_store import QdrantStore
-    from src.stages.s12_s13_s14_retrieval import Retriever
+    from src.rag.ingestion import IngestionPipeline, _INGEST_LOCKS
+    from src.rag.stages.s10_embeddings import EmbeddingService
+    from src.rag.stages.s11_vector_store import QdrantStore
+    from src.rag.retrieval import Retriever
 
     pdf = _make_pdf(tmp_path)
     registry = IngestionRegistry(registry_path=tmp_path / "registry.json")

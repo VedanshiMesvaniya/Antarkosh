@@ -17,8 +17,8 @@ import pytest
 from src.core import local_models
 from src.core.config import settings
 from src.models.schemas import Chunk, ChunkType
-from src.stages.s10_embeddings import EmbeddingService
-from src.stages.s11_vector_store import QdrantStore
+from src.rag.stages.s10_embeddings import EmbeddingService
+from src.rag.stages.s11_vector_store import QdrantStore
 from src.stages.s12b_sql_retrieval import SQLRetriever
 
 
@@ -55,7 +55,7 @@ class _BagOfWordsM3:
 @pytest.fixture
 def local_qdrant_env(monkeypatch: pytest.MonkeyPatch):
     """Set up an in-memory Qdrant instance and deterministic embeddings."""
-    from src.stages import s11_vector_store as s11
+    from src.rag.stages import s11_vector_store as s11
 
     SQLRetriever.clear_schema_cache()
     SQLRetriever.clear_result_cache()
@@ -175,12 +175,12 @@ async def test_legacy_schema_chunk_transition_rule(local_qdrant_env):
 @pytest.mark.asyncio
 async def test_sync_live_schema_tags_document_id_and_db_id(monkeypatch: pytest.MonkeyPatch, local_qdrant_env):
     """sync_live_schema tags chunks with payload db_id and document_id schema:<db_id>."""
-    from src.pipeline.schema_ingestion import sync_live_schema
+    from src.sql.schema_retrieval import sync_live_schema
 
     mock_run = AsyncMock(return_value=[
         {"name": "orders", "sql": "CREATE TABLE orders (id INT, total FLOAT)"}
     ])
-    monkeypatch.setattr("src.pipeline.schema_ingestion.run_readonly_query", mock_run)
+    monkeypatch.setattr("src.sql.schema_retrieval.run_readonly_query", mock_run)
 
     captured_chunks: list[Chunk] = []
     mock_store = AsyncMock()

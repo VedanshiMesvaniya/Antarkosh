@@ -21,9 +21,9 @@ from src.core import local_models
 from src.core.config import settings
 from src.core.embeddings import EmbeddingAdapter, SparseVector
 from src.models.schemas import FigureData, PageContent, ParsedDocument, FileCategory
-from src.stages import s07_s08_visuals as visuals
-from src.stages.s09_chunking import _figure_to_text
-from src.stages.s10_embeddings import BGEM3EmbeddingAdapter, EmbeddingService
+from src.rag.stages import s07_s08_visuals as visuals
+from src.rag.stages.s09_chunking import _figure_to_text
+from src.rag.stages.s10_embeddings import BGEM3EmbeddingAdapter, EmbeddingService
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +118,7 @@ def test_lexical_weights_edge_cases():
 
 
 async def test_query_embedding_goes_through_cache_with_bge(fake_flag):
-    from src.stages.s10_embeddings import get_query_embedding_cache
+    from src.rag.stages.s10_embeddings import get_query_embedding_cache
     get_query_embedding_cache().clear()
     svc = EmbeddingService()
     d1, s1 = await svc.embed_query("what is x")
@@ -142,7 +142,7 @@ def _retrieved(texts: list[str]):
 
 
 async def test_local_reranker_orders_and_truncates(fake_flag):
-    from src.stages.s12_s13_s14_retrieval import Reranker
+    from src.rag.retrieval import Reranker
     chunks = _retrieved(["junk " * 30, "the needle is here", "other filler text", "more filler"])
     out = await Reranker().rerank("where is the needle", chunks, top_k=2)
     assert len(out) == 2 and out[0].chunk.content == "the needle is here"
@@ -151,13 +151,13 @@ async def test_local_reranker_orders_and_truncates(fake_flag):
 
 
 async def test_local_reranker_single_chunk_bare_float(fake_flag):
-    from src.stages.s12_s13_s14_retrieval import Reranker
+    from src.rag.retrieval import Reranker
     out = await Reranker().rerank("q", _retrieved(["needle"]), top_k=5)
     assert len(out) == 1
 
 
 async def test_local_reranker_failure_falls_back_to_lexical(monkeypatch):
-    from src.stages.s12_s13_s14_retrieval import Reranker
+    from src.rag.retrieval import Reranker
     monkeypatch.setitem(sys.modules, "FlagEmbedding", None)
     local_models.reset_cache()
     chunks = _retrieved(["totally unrelated words", "iphone price list"])
@@ -191,7 +191,7 @@ def test_ingestion_tasks_cover_every_stage_that_calls_a_model():
 
 def test_pipeline_default_router_is_the_gemini_first_ingestion_router(tmp_path):
     from src.rag.ingestion_registry import IngestionRegistry
-    from src.pipeline.ingestion import IngestionPipeline
+    from src.rag.ingestion import IngestionPipeline
     pipe = IngestionPipeline(
         embedding_service=EmbeddingService(primary=BGEM3EmbeddingAdapter()),
         vector_store=object(),  # type: ignore[arg-type]
@@ -233,7 +233,7 @@ def test_removed_cloud_settings_are_gone_and_old_env_files_still_load(tmp_path):
 
 
 async def test_ocr_stage_goes_through_the_vision_router_only():
-    from src.stages import s04_ocr
+    from src.rag.stages import s04_ocr
 
     class _Router:
         def __init__(self):

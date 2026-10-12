@@ -34,7 +34,7 @@ from src.core.provider_client import (
     ProviderRouter,
     TaskRoute,
 )
-from src.stages.s12_s13_s14_retrieval import Generator
+from src.rag.retrieval import Generator
 from src.utils.circuit_breaker import get_shared_circuit_breaker
 from src.sql.query_classifier import LIST_QUERY, classify_query_intent
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk
@@ -65,7 +65,7 @@ async def test_1_fast_path_and_phase_11_harmony():
         score=1.0,
     )
 
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", return_value=True):
+    with patch("src.rag.retrieval.is_feature_enabled", return_value=True):
         res = await generator.generate(list_query, [table_chunk])
 
     # Assert: Fast Path returned table directly with 0 LLM synthesis calls
@@ -86,7 +86,7 @@ async def test_1_fast_path_and_phase_11_harmony():
         score=1.0,
     )
 
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", return_value=True):
+    with patch("src.rag.retrieval.is_feature_enabled", return_value=True):
         empty_res = await generator.generate(list_query, [empty_chunk])
 
     # Assert: Fast Path was bypassed (Phase 11 empty-result handling). SQL-only results are

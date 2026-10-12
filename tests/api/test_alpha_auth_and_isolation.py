@@ -29,7 +29,7 @@ from unittest.mock import patch
 from src.main import app
 from src.core.state import state_manager
 from src.rag.ingestion_registry import IngestionRegistry, RegistryStatus
-from src.stages.s11_vector_store import QdrantStore
+from src.rag.stages.s11_vector_store import QdrantStore
 from qdrant_client.models import IsEmptyCondition
 
 
@@ -387,7 +387,7 @@ async def test_only_admin_can_upload_update_delete_documents(tmp_path):
 @pytest.mark.asyncio
 async def test_user_cannot_get_answer_from_unauthorized_document(tmp_path):
     """Verify retrieval excludes documents a user does not have permission to access."""
-    from src.stages.s12_s13_s14_retrieval import Retriever
+    from src.rag.retrieval import Retriever
     from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
 
     registry_file = tmp_path / "test_reg_retrieval.json"

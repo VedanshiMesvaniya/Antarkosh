@@ -17,7 +17,7 @@ import pytest
 
 from src.core.provider_client import ProviderOption, ProviderRouter, TaskRoute
 from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
-from src.stages.s12_s13_s14_retrieval import Generator
+from src.rag.retrieval import Generator
 from src.stages.s12b_sql_retrieval import SQLRetriever
 from src.utils.circuit_breaker import get_shared_circuit_breaker
 from src.utils.feature_flags import DEFAULT_FLAGS
@@ -91,8 +91,8 @@ async def test_1_list_query_fast_path_zero_synthesis_tokens():
     def mock_log(query_id, stage, **kwargs):
         logged_telemetry.append({"stage": stage, **kwargs})
 
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", return_value=True), \
-         patch("src.stages.s12_s13_s14_retrieval.log_telemetry", side_effect=mock_log):
+    with patch("src.rag.retrieval.is_feature_enabled", return_value=True), \
+         patch("src.rag.retrieval.log_telemetry", side_effect=mock_log):
 
         result = await generator.generate(question, [table_chunk])
 
@@ -139,8 +139,8 @@ async def test_2_aggregate_query_micro_synthesis():
     def mock_log(query_id, stage, **kwargs):
         logged_telemetry.append({"stage": stage, **kwargs})
 
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", return_value=True), \
-         patch("src.stages.s12_s13_s14_retrieval.log_telemetry", side_effect=mock_log):
+    with patch("src.rag.retrieval.is_feature_enabled", return_value=True), \
+         patch("src.rag.retrieval.log_telemetry", side_effect=mock_log):
 
         result = await generator.generate(question, [table_chunk])
 
@@ -190,8 +190,8 @@ async def test_3_explanation_query_full_synthesis():
     def mock_log(query_id, stage, **kwargs):
         logged_telemetry.append({"stage": stage, **kwargs})
 
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", return_value=True), \
-         patch("src.stages.s12_s13_s14_retrieval.log_telemetry", side_effect=mock_log):
+    with patch("src.rag.retrieval.is_feature_enabled", return_value=True), \
+         patch("src.rag.retrieval.log_telemetry", side_effect=mock_log):
 
         result = await generator.generate(question, [table_chunk])
 
@@ -326,7 +326,7 @@ async def test_5_full_chain_e2e_phases_0_to_13():
 
     generator = Generator(router=mock_router)
 
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", side_effect=lambda flag: flags.get(flag, False)):
+    with patch("src.rag.retrieval.is_feature_enabled", side_effect=lambda flag: flags.get(flag, False)):
         result = await generator.generate(user_query, [table_chunk])
 
         # PROOF OF LIFE: Stage 14 synthesis LLM was bypassed (0 chat calls)

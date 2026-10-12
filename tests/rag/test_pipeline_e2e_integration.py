@@ -12,9 +12,9 @@ import pymupdf as fitz  # PyMuPDF
 from src.core.config import settings
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import FileCategory, PageStructure
-from src.pipeline.ingestion import IngestionPipeline
+from src.rag.ingestion import IngestionPipeline
 from src.pipeline.query import QueryPipeline
-from src.stages.s11_vector_store import QdrantStore
+from src.rag.stages.s11_vector_store import QdrantStore
 
 # Set up logging for the test run
 logger = logging.getLogger(__name__)

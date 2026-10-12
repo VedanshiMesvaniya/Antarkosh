@@ -16,8 +16,8 @@ from rich.console import Console
 from rich.table import Table
 
 from src.core.provider_client import ProviderRouter
-from src.stages.s10_embeddings import EmbeddingService
-from src.stages.s11_vector_store import QdrantStore
+from src.rag.stages.s10_embeddings import EmbeddingService
+from src.rag.stages.s11_vector_store import QdrantStore
 from src.stages.s12b_sql_retrieval import SQLRetriever
 
 import sys

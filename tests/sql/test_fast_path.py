@@ -8,7 +8,7 @@ import pytest
 
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
-from src.stages.s12_s13_s14_retrieval import Generator
+from src.rag.retrieval import Generator
 from src.sql.fast_path import (
     DISABLED_TEMPLATES,
     FAIL_RATE_THRESHOLD,
@@ -122,7 +122,7 @@ async def test_list_query_bypasses_synthesis_llm():
         score=1.0,
     )
 
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", return_value=True):
+    with patch("src.rag.retrieval.is_feature_enabled", return_value=True):
         result = await generator.generate(
             query="list all customers",
             chunks=[table_chunk],
@@ -154,7 +154,7 @@ async def test_aggregate_query_uses_micro_prompt():
         score=1.0,
     )
 
-    with patch("src.stages.s12_s13_s14_retrieval.is_feature_enabled", return_value=True):
+    with patch("src.rag.retrieval.is_feature_enabled", return_value=True):
         result = await generator.generate(
             query="how many customers are there?",
             chunks=[table_chunk],
