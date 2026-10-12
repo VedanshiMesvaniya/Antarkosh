@@ -149,7 +149,7 @@ def test_golden_cases_schema_budget_selection():
 @pytest.mark.asyncio
 async def test_shadow_mode_and_feature_flag_integration():
     """Test that s12b_sql_retrieval correctly logs shadow telemetry and respects feature flag."""
-    from src.stages.s12b_sql_retrieval import _build_scoped_schema_fallback
+    from src.sql.schema_retrieval import _build_scoped_schema_fallback
 
     full_schema = """
     CREATE TABLE sales_order (id INTEGER PRIMARY KEY, customer_id INTEGER, total_amount REAL);

@@ -16,7 +16,7 @@ import pytest
 from src.core import config, db_client
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import ChunkType
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.sql.safety.empty_result_classifier import (
     SUSPICIOUS_EMPTY,
     VALID_EMPTY,
@@ -149,8 +149,8 @@ async def test_2_safety_layer_interception_and_repair_routing(tmp_path, monkeypa
             return True
         return False
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=flag_override), \
-         patch("src.stages.s12b_sql_retrieval.capture_sql_failure", side_effect=mock_capture):
+    with patch("src.sql.generation.is_feature_enabled", side_effect=flag_override), \
+         patch("src.sql.generation.capture_sql_failure", side_effect=mock_capture):
         retriever = SQLRetriever(router=mock_router)
         chunks = await retriever.retrieve("Cancel pending orders")
 
@@ -199,8 +199,8 @@ async def test_3_valid_empty_bypass_zero_llm_repairs(tmp_path, monkeypatch):
             return True
         return False
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=flag_override), \
-         patch("src.stages.s12b_sql_retrieval.capture_sql_failure", side_effect=mock_capture):
+    with patch("src.sql.generation.is_feature_enabled", side_effect=flag_override), \
+         patch("src.sql.generation.capture_sql_failure", side_effect=mock_capture):
         retriever = SQLRetriever(router=mock_router)
         chunks = await retriever.retrieve("Show orders in Antarctica")
 
@@ -249,7 +249,7 @@ async def test_4_suspicious_empty_triggers_single_repair(tmp_path, monkeypatch):
             return True
         return False
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=flag_override):
+    with patch("src.sql.generation.is_feature_enabled", side_effect=flag_override):
         retriever = SQLRetriever(router=mock_router)
         chunks = await retriever.retrieve("Show all orders with customer names")
 

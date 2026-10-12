@@ -9,57 +9,8 @@ from unittest.mock import AsyncMock
 import pytest
 
 import src.sql.generation as gen
-import src.stages.s12b_sql_retrieval as s12b
 from src.sql.dialects.mysql import MYSQL_PROFILE
 from src.sql.dialects.sqlite import SQLITE_PROFILE
-
-
-def test_reexport_object_identity():
-    """All symbols in s12b must point to the identical objects in src.sql.generation."""
-    symbols = [
-        "UnsafeQueryError",
-        "DISPLAY_HIDDEN_COLS",
-        "_DISPLAY_HIDDEN_COLS",
-        "filter_display_rows",
-        "_filter_display_rows",
-        "sanitize_cell_value",
-        "_sanitize_cell_value",
-        "sanitize_rows",
-        "_sanitize_rows",
-        "format_schema_rows",
-        "format_fk_rows",
-        "ABSTAIN_RE",
-        "_ABSTAIN_RE",
-        "FENCE_RE",
-        "_FENCE_RE",
-        "SQL_START_RE",
-        "_SQL_START_RE",
-        "unwrap_sql",
-        "_unwrap_sql",
-        "extract_cot_and_sql",
-        "is_all_null",
-        "_is_all_null",
-        "is_aggregate_over_zero_rows",
-        "_is_aggregate_over_zero_rows",
-        "extract_table_names",
-        "_extract_table_names",
-        "MAX_DISPLAY_ROWS",
-        "_MAX_DISPLAY_ROWS",
-        "format_rows_as_markdown",
-        "_format_rows_as_markdown",
-        "DANGEROUS_FUNCTIONS",
-        "_DANGEROUS_FUNCTIONS",
-        "is_safe_read_query",
-        "_is_safe_read_query",
-        "fetch_sqlite_foreign_keys",
-        "generate_sql",
-        "execute_with_retry",
-        "execute_with_delta_repair",
-    ]
-    for sym in symbols:
-        assert hasattr(s12b, sym), f"s12b missing {sym}"
-        assert hasattr(gen, sym), f"gen missing {sym}"
-        assert getattr(s12b, sym) is getattr(gen, sym), f"{sym} identity mismatch"
 
 
 def test_unwrap_sql_and_extract_cot():

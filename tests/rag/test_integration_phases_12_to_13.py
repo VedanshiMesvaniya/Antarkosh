@@ -18,7 +18,7 @@ import pytest
 from src.core.provider_client import ProviderOption, ProviderRouter, TaskRoute
 from src.models.schemas import Chunk, ChunkType, DocumentType, RetrievedChunk
 from src.rag.retrieval import Generator
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.utils.circuit_breaker import get_shared_circuit_breaker
 from src.utils.feature_flags import DEFAULT_FLAGS
 from src.utils.query_budget import QueryBudgetController, set_current_budget_controller

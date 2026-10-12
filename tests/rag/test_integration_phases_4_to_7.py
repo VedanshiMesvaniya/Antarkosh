@@ -17,7 +17,7 @@ from src.core import config, db_client
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import ChunkType
 from src.sql.repair.delta_repair import build_delta_repair_payload, count_tokens, MAX_TOTAL_REPAIR_TOKENS
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.sql.repair.sql_repair import MAX_DELTA_REPAIR_ATTEMPTS
 from src.utils.circuit_breaker import (
     CircuitBreakerOpenError,
@@ -83,7 +83,7 @@ async def test_audit_1_successful_delta_repair_within_budget(audit_test_db, monk
     set_current_budget_controller(budget)
 
     try:
-        with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", return_value=True):
+        with patch("src.sql.generation.is_feature_enabled", return_value=True):
             retriever = SQLRetriever(router=mock_router)
             chunks = await retriever.retrieve("Show all customer names")
 
@@ -130,7 +130,7 @@ async def test_audit_2_budget_exhaustion_max_repairs_exceeded(audit_test_db, mon
     set_current_budget_controller(budget)
 
     try:
-        with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", return_value=True):
+        with patch("src.sql.generation.is_feature_enabled", return_value=True):
             retriever = SQLRetriever(router=mock_router)
             chunks = await retriever.retrieve("Show customer names")
 

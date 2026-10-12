@@ -13,7 +13,7 @@ import pytest
 import asyncio
 from src.core.provider_client import ProviderRouter
 from src.pipeline.query import _decompose_hybrid_query, _classify_auto_mode
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.core.db_client import run_readonly_query
 
 
@@ -214,7 +214,7 @@ def test_enable_deep_rerank_config_toggle():
 
 
 def test_detect_soft_delete_intent():
-    from src.stages.s12b_sql_retrieval import detect_soft_delete_intent
+    from src.sql.soft_delete import detect_soft_delete_intent
     assert detect_soft_delete_intent("What is the sales order due date for HM TOOLS?") == "ACTIVE_ONLY"
     assert detect_soft_delete_intent("Show me active products") == "ACTIVE_ONLY"
     assert detect_soft_delete_intent("Show me deleted invoices for party X.") == "DELETED_ONLY"
@@ -227,7 +227,8 @@ def test_detect_soft_delete_intent():
 
 
 def test_soft_delete_prompt_scoping():
-    from src.stages.s12b_sql_retrieval import SQLRetriever, _build_behavioral_atlas_for_query
+    from src.sql.pipeline import SQLRetriever
+    from src.sql.prompt_builder import _build_behavioral_atlas_for_query
     
     # Active query prompt rules
     active_rules = SQLRetriever._get_scoped_readability_rules("What is the sales order due date for HM TOOLS?", ["sales_order", "party"])
@@ -256,7 +257,7 @@ def test_soft_delete_prompt_scoping():
 @pytest.mark.asyncio
 async def test_soft_delete_active_sql_gen():
     from src.core.provider_client import ProviderRouter
-    from src.stages.s12b_sql_retrieval import SQLRetriever
+    from src.sql.pipeline import SQLRetriever
     from src.utils.query_budget import get_or_create_budget_controller
     get_or_create_budget_controller(query_id="test_active_sql", force_new=True)
     router = ProviderRouter()
@@ -271,7 +272,7 @@ async def test_soft_delete_active_sql_gen():
 @pytest.mark.asyncio
 async def test_soft_delete_deleted_sql_gen():
     from src.core.provider_client import ProviderRouter
-    from src.stages.s12b_sql_retrieval import SQLRetriever
+    from src.sql.pipeline import SQLRetriever
     from src.utils.query_budget import get_or_create_budget_controller
     get_or_create_budget_controller(query_id="test_deleted_sql", force_new=True)
     router = ProviderRouter()
@@ -286,7 +287,7 @@ async def test_soft_delete_deleted_sql_gen():
 @pytest.mark.asyncio
 async def test_soft_delete_history_sql_gen():
     from src.core.provider_client import ProviderRouter
-    from src.stages.s12b_sql_retrieval import SQLRetriever
+    from src.sql.pipeline import SQLRetriever
     from src.utils.query_budget import get_or_create_budget_controller
     get_or_create_budget_controller(query_id="test_history_sql", force_new=True)
     router = ProviderRouter()
@@ -300,7 +301,7 @@ async def test_soft_delete_history_sql_gen():
 
 def test_enforce_soft_delete_sanitizer():
     """Verify code-level defense-in-depth SQL sanitizer enforces soft-delete deterministically."""
-    from src.stages.s12b_sql_retrieval import (
+    from src.sql.soft_delete import (
         enforce_soft_delete_filter,
         _get_tables_with_soft_delete,
     )

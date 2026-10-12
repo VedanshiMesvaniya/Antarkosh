@@ -6,43 +6,11 @@ import pytest
 
 from src.sql.table_router import (
     _ROUTING_HINTS_CACHE as DIRECT_CACHE,
-)
-from src.sql.table_router import (
     _clear_routing_hints_cache as direct_clear_cache,
-)
-from src.sql.table_router import (
     load_routing_hints as direct_load_hints,
-)
-from src.sql.table_router import (
     route_anchor_tables as direct_route_anchors,
-)
-from src.sql.table_router import (
     route_tables_for_query as direct_route_query,
 )
-from src.stages.s12b_sql_retrieval import (
-    _ROUTING_HINTS_CACHE as REEXPORT_CACHE,
-)
-from src.stages.s12b_sql_retrieval import (
-    _clear_routing_hints_cache as reexport_clear_cache,
-)
-from src.stages.s12b_sql_retrieval import (
-    load_routing_hints as reexport_load_hints,
-)
-from src.stages.s12b_sql_retrieval import (
-    route_anchor_tables as reexport_route_anchors,
-)
-from src.stages.s12b_sql_retrieval import (
-    route_tables_for_query as reexport_route_query,
-)
-
-
-def test_reexports_identity():
-    """Verify that s12b re-exports the exact objects from src.sql.table_router."""
-    assert direct_load_hints is reexport_load_hints
-    assert direct_route_anchors is reexport_route_anchors
-    assert direct_route_query is reexport_route_query
-    assert direct_clear_cache is reexport_clear_cache
-    assert DIRECT_CACHE is REEXPORT_CACHE
 
 
 def test_no_hardcoded_table_names_in_router_code():
@@ -201,14 +169,10 @@ def test_no_hardcoded_table_names_in_router_code():
 )
 def test_table_routing_golden_parity(query: str, expected_anchors: list[str], expected_domain: list[str]):
     anchors_direct = sorted(direct_route_anchors(query))
-    anchors_reexport = sorted(reexport_route_anchors(query))
     assert anchors_direct == expected_anchors
-    assert anchors_reexport == expected_anchors
 
     domain_direct = direct_route_query(query, section="fallback_rules")
-    domain_reexport = reexport_route_query(query, section="fallback_rules")
     assert domain_direct == expected_domain
-    assert domain_reexport == expected_domain
 
 
 def test_cache_and_clear_routing_hints():
@@ -221,6 +185,6 @@ def test_cache_and_clear_routing_hints():
     assert direct_load_hints("erp_main") is hints1
 
     # Clear
-    reexport_load_hints.cache_clear("erp_main")
-    hints2 = reexport_load_hints("erp_main")
+    direct_load_hints.cache_clear("erp_main")
+    hints2 = direct_load_hints("erp_main")
     assert hints2 == hints1

@@ -17,7 +17,7 @@ from src.sql.query_classifier import QueryType
 from src.sql.registry import save_connection
 from src.sql.safety.column_registry import ColumnRegistry
 from src.sql.semantic_cache import SemanticCache, get_semantic_cache
-from src.stages.s12b_sql_retrieval import (
+from src.sql.pipeline import (
     SQLRetriever,
     clear_knowledge_caches,
 )
@@ -131,7 +131,7 @@ def test_change_connection_db_a_caches_survive_db_b(tmp_path: Path, monkeypatch)
     cache.store("query_shared", emb, res_b, scope_key="team", query_type=QueryType.SUM, db_id=db_b)
 
     # 4. Populate Knowledge caches
-    from src.stages.s12b_sql_retrieval import (
+    from src.sql.prompt_builder import (
         _BEHAVIORAL_ATLAS_CACHE,
         _LOAD_GLOSSARY_CACHE,
         _RAW_RELATIONSHIPS_CACHE,

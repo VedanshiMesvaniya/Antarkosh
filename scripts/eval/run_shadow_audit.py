@@ -20,7 +20,7 @@ from typing import Any
 from src.guards.citation_guard import evaluate_rag_citations
 from src.guards.schema_guard import evaluate_schema_sufficiency
 from src.guards.temporal_guard import evaluate_temporal_filter
-from src.stages.s12b_sql_retrieval import _extract_table_names
+from src.sql.generation import _extract_table_names
 
 import sys
 

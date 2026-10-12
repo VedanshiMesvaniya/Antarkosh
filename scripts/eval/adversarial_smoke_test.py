@@ -9,7 +9,7 @@ if str(_repo_root) not in sys.path:
 from scripts._paths import REPO_ROOT
 
 from src.pipeline.query import QueryPipeline
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.core.db_client import run_readonly_query
 from src.core.provider_client import ProviderRouter
 

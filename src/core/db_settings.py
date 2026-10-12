@@ -152,7 +152,7 @@ def _apply_runtime(cfg: dict[str, Any], db_id: str = DEFAULT_DB_ID) -> None:
     # Invalidate ONLY this db_id's schema, column registry, result, semantic and knowledge caches
     import sys
 
-    from src.stages.s12b_sql_retrieval import SQLRetriever
+    from src.sql.pipeline import SQLRetriever
     if "src.sql.semantic_cache" in sys.modules and hasattr(sys.modules["src.sql.semantic_cache"], "SemanticCache"):
         SemanticCache = sys.modules["src.sql.semantic_cache"].SemanticCache
     else:
@@ -174,7 +174,7 @@ def _apply_runtime(cfg: dict[str, Any], db_id: str = DEFAULT_DB_ID) -> None:
         SemanticCache.reset()
 
     try:
-        from src.stages.s12b_sql_retrieval import clear_knowledge_caches
+        from src.sql.pipeline import clear_knowledge_caches
         clear_knowledge_caches(target_db_id)
     except (ImportError, AttributeError):
         pass

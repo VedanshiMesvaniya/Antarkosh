@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock
 
 import src.sql.prompt_builder as pb
-import src.stages.s12b_sql_retrieval as s12b
 from src.sql.knowledge.loaders import DEFAULT_DB_ID
 from src.sql.prompt_builder import (
     _BEHAVIORAL_ATLAS_CACHE,
@@ -15,62 +14,6 @@ from src.sql.prompt_builder import (
     matches_glossary_candidate,
     stem_word,
 )
-
-
-def test_reexport_identities():
-    """Verify that all prompt builder symbols re-exported in s12b are exact object identities."""
-    symbols = [
-        "build_sql_prompt",
-        "_build_sql_prompt",
-        "get_scoped_readability_rules",
-        "_get_scoped_readability_rules",
-        "OUTPUT_READABILITY_RULES",
-        "_OUTPUT_READABILITY_RULES",
-        "build_column_glossary_for_query",
-        "_build_column_glossary_for_query",
-        "build_behavioral_atlas_for_query",
-        "_build_behavioral_atlas_for_query",
-        "get_raw_relationships",
-        "_get_raw_relationships",
-        "load_relationships",
-        "_load_relationships",
-        "load_glossary",
-        "_load_glossary",
-        "get_raw_column_glossary",
-        "_get_raw_column_glossary",
-        "get_raw_behavioral_atlas",
-        "_get_raw_behavioral_atlas",
-        "stem_word",
-        "_stem_word",
-        "matches_glossary_candidate",
-        "_matches_glossary_candidate",
-        "GLOSSARY_STOP_WORDS",
-        "_GLOSSARY_STOP_WORDS",
-        "clear_prompt_caches",
-        "_clear_prompt_caches",
-        "clear_raw_relationships_cache",
-        "_clear_raw_relationships_cache",
-        "clear_relationships_cache",
-        "_clear_relationships_cache",
-        "clear_glossary_cache",
-        "_clear_glossary_cache",
-        "clear_raw_column_glossary_cache",
-        "_clear_raw_column_glossary_cache",
-        "clear_behavioral_atlas_cache",
-        "_clear_behavioral_atlas_cache",
-        "RAW_RELATIONSHIPS_CACHE",
-        "_RAW_RELATIONSHIPS_CACHE",
-        "LOAD_RELATIONSHIPS_CACHE",
-        "_LOAD_RELATIONSHIPS_CACHE",
-        "LOAD_GLOSSARY_CACHE",
-        "_LOAD_GLOSSARY_CACHE",
-        "RAW_COLUMN_GLOSSARY_CACHE",
-        "_RAW_COLUMN_GLOSSARY_CACHE",
-        "BEHAVIORAL_ATLAS_CACHE",
-        "_BEHAVIORAL_ATLAS_CACHE",
-    ]
-    for name in symbols:
-        assert getattr(s12b, name) is getattr(pb, name), f"Mismatch for {name}"
 
 
 def test_stem_word_rules():
@@ -177,14 +120,16 @@ def test_cache_clearing_and_isolation():
     assert len(_LOAD_GLOSSARY_CACHE) == 0
 
 
-def test_s12b_clear_knowledge_caches_delegation():
-    """Verify that s12b.clear_knowledge_caches clears prompt caches."""
+def test_pipeline_clear_knowledge_caches_delegation():
+    """Verify that pipeline.clear_knowledge_caches clears prompt caches."""
+    from src.sql.pipeline import clear_knowledge_caches
+
     db_target = "target_test_db"
     _RAW_RELATIONSHIPS_CACHE[db_target] = [{"from": "a"}]
     _LOAD_GLOSSARY_CACHE[db_target] = "glossary_text"
     _BEHAVIORAL_ATLAS_CACHE[db_target] = {"tables": {}}
 
-    s12b.clear_knowledge_caches(db_target)
+    clear_knowledge_caches(db_target)
 
     assert db_target not in _RAW_RELATIONSHIPS_CACHE
     assert db_target not in _LOAD_GLOSSARY_CACHE

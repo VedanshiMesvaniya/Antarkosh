@@ -19,7 +19,7 @@ from src.core.config import settings
 from src.models.schemas import Chunk, ChunkType
 from src.rag.stages.s10_embeddings import EmbeddingService
 from src.rag.stages.s11_vector_store import QdrantStore
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 
 
 class _BagOfWordsM3:

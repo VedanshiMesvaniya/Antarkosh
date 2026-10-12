@@ -9,7 +9,7 @@ import pytest
 from src.core import config, db_client
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import ChunkType
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.sql.repair.sql_repair import (
     MAX_DELTA_REPAIR_ATTEMPTS,
     attempt_delta_repair,
@@ -156,7 +156,7 @@ async def test_pipeline_wiring_delta_repair_enabled(live_test_db, monkeypatch):
 
     monkeypatch.setenv("FEATURE_DELTA_REPAIR_ENABLED", "true")
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=lambda flag: flag == "delta_repair_enabled"):
+    with patch("src.sql.generation.is_feature_enabled", side_effect=lambda flag: flag == "delta_repair_enabled"):
         retriever = SQLRetriever(router=mock_router)
         chunks = await retriever.retrieve("Show all customer names")
 
@@ -174,7 +174,7 @@ async def test_pipeline_wiring_delta_repair_disabled_uses_old_path(live_test_db,
 
     monkeypatch.setenv("FEATURE_DELTA_REPAIR_ENABLED", "false")
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", return_value=False):
+    with patch("src.sql.generation.is_feature_enabled", return_value=False):
         retriever = SQLRetriever(router=mock_router)
         chunks = await retriever.retrieve("Show all customer names")
 
@@ -196,7 +196,7 @@ async def test_pipeline_budget_exhaustion_blocks_delta_repair(live_test_db, monk
     set_current_budget_controller(exhausted_budget)
 
     try:
-        with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", return_value=True):
+        with patch("src.sql.generation.is_feature_enabled", return_value=True):
             retriever = SQLRetriever(router=mock_router)
             chunks = await retriever.retrieve("Show all customer names")
 

@@ -6,20 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import src.stages.s12b_sql_retrieval as s12b
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk
 from src.sql import pipeline
-
-
-def test_reexport_object_identity():
-    """SQLRetriever and associated pipeline symbols in s12b must be identical to pipeline.py."""
-    assert s12b.SQLRetriever is pipeline.SQLRetriever
-    assert s12b._SQLRetriever is pipeline.SQLRetriever
-    assert s12b.clear_knowledge_caches is pipeline.clear_knowledge_caches
-    assert s12b._clear_knowledge_caches is pipeline.clear_knowledge_caches
-    assert s12b._MAX_RESULT_CACHE_ENTRIES == pipeline._MAX_RESULT_CACHE_ENTRIES
-    assert s12b.MAX_RESULT_CACHE_ENTRIES == pipeline.MAX_RESULT_CACHE_ENTRIES
 
 
 def test_retriever_initialization_and_properties():
@@ -91,9 +80,9 @@ async def test_access_control_disallowed_user():
 
 
 def test_feature_flag_check_honors_patches():
-    """_check_feature_enabled checks sys.modules['src.stages.s12b_sql_retrieval'] patches."""
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", return_value=True):
+    """_check_feature_enabled checks is_feature_enabled patches."""
+    with patch("src.sql.pipeline.is_feature_enabled", return_value=True):
         assert pipeline._check_feature_enabled("delta_repair_enabled") is True
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", return_value=False):
+    with patch("src.sql.pipeline.is_feature_enabled", return_value=False):
         assert pipeline._check_feature_enabled("delta_repair_enabled") is False

@@ -68,25 +68,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _check_feature_enabled(flag: str) -> bool:
-    """Check feature flag, honoring mock patches on s12b_sql_retrieval or generation."""
-    s12b = sys.modules.get("src.stages.s12b_sql_retrieval")
-    if s12b and hasattr(s12b, "is_feature_enabled") and s12b.is_feature_enabled is not _check_feature_enabled:
-        try:
-            return s12b.is_feature_enabled(flag)
-        except Exception:
-            pass
+    """Check feature flag."""
     return is_feature_enabled(flag)
 
 
 def _capture_failure(*args: Any, **kwargs: Any) -> None:
-    """Capture failure, honoring mock patches on s12b_sql_retrieval or generation."""
-    s12b = sys.modules.get("src.stages.s12b_sql_retrieval")
-    if s12b and hasattr(s12b, "capture_sql_failure") and s12b.capture_sql_failure is not _capture_failure:
-        try:
-            s12b.capture_sql_failure(*args, **kwargs)
-            return
-        except Exception:
-            pass
+    """Capture failure."""
     capture_sql_failure(*args, **kwargs)
 
 

@@ -20,58 +20,7 @@ from src.sql.schema_retrieval import (
     get_1hop_neighbors,
     retrieve_schema_from_qdrant,
 )
-from src.stages.s12b_sql_retrieval import (
-    _build_scoped_schema_fallback as s12b_fallback_under,
-)
-from src.stages.s12b_sql_retrieval import (
-    _extract_schema_table_names as s12b_extract_names_under,
-)
-from src.stages.s12b_sql_retrieval import (
-    _extract_table_ddl_map as s12b_extract_ddl_under,
-)
-from src.stages.s12b_sql_retrieval import (
-    _format_scoped_relationships as s12b_format_rels_under,
-)
-from src.stages.s12b_sql_retrieval import (
-    _get_1hop_neighbors as s12b_1hop_under,
-)
-from src.stages.s12b_sql_retrieval import (
-    _retrieve_schema_from_qdrant as s12b_retrieve_qdrant_under,
-)
-from src.stages.s12b_sql_retrieval import (
-    build_scoped_schema_fallback as s12b_fallback,
-)
-from src.stages.s12b_sql_retrieval import (
-    extract_schema_table_names as s12b_extract_names,
-)
-from src.stages.s12b_sql_retrieval import (
-    extract_table_ddl_map as s12b_extract_ddl,
-)
-from src.stages.s12b_sql_retrieval import (
-    format_scoped_relationships as s12b_format_rels,
-)
-from src.stages.s12b_sql_retrieval import (
-    get_1hop_neighbors as s12b_1hop,
-)
-from src.stages.s12b_sql_retrieval import (
-    retrieve_schema_from_qdrant as s12b_retrieve_qdrant,
-)
 
-
-def test_reexport_object_identity():
-    """Verify that s12b re-exports the exact functions and aliases from src.sql.schema_retrieval."""
-    assert extract_schema_table_names is s12b_extract_names
-    assert _extract_schema_table_names is s12b_extract_names_under
-    assert extract_table_ddl_map is s12b_extract_ddl
-    assert _extract_table_ddl_map is s12b_extract_ddl_under
-    assert get_1hop_neighbors is s12b_1hop
-    assert _get_1hop_neighbors is s12b_1hop_under
-    assert format_scoped_relationships is s12b_format_rels
-    assert _format_scoped_relationships is s12b_format_rels_under
-    assert build_scoped_schema_fallback is s12b_fallback
-    assert _build_scoped_schema_fallback is s12b_fallback_under
-    assert retrieve_schema_from_qdrant is s12b_retrieve_qdrant
-    assert _retrieve_schema_from_qdrant is s12b_retrieve_qdrant_under
 
 
 SAMPLE_DDL = """
@@ -184,12 +133,11 @@ REPRESENTATIVE_QUERIES = [
 ]
 
 
-def test_golden_fallback_schema_parity():
-    """Verify golden parity across representative queries between direct and re-exported APIs."""
+def test_golden_fallback_schema_generation():
+    """Verify scoped schema fallback successfully builds schemas across representative queries."""
     for query in REPRESENTATIVE_QUERIES:
         direct_out = build_scoped_schema_fallback(SAMPLE_DDL, query, db_id=DEFAULT_DB_ID)
-        reexport_out = s12b_fallback(SAMPLE_DDL, query, db_id=DEFAULT_DB_ID)
-        assert direct_out == reexport_out, f"Mismatch for query: {query}"
+        assert direct_out != "", f"Empty schema generated for query: {query}"
 
 
 @pytest.mark.asyncio

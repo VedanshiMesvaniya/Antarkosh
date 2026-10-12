@@ -63,13 +63,7 @@ MAX_RESULT_CACHE_ENTRIES = _MAX_RESULT_CACHE_ENTRIES
 
 
 def _check_feature_enabled(flag: str) -> bool:
-    """Check feature flag, honoring mock patches on s12b_sql_retrieval or pipeline."""
-    s12b = sys.modules.get("src.stages.s12b_sql_retrieval")
-    if s12b and hasattr(s12b, "is_feature_enabled"):
-        try:
-            return s12b.is_feature_enabled(flag)
-        except Exception:
-            pass
+    """Check feature flag."""
     return is_feature_enabled(flag)
 
 

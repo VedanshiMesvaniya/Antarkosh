@@ -9,7 +9,7 @@ import pytest
 from src.core import config, db_client
 from src.core.provider_client import ProviderRouter
 from src.models.schemas import ChunkType
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.sql.safety.empty_result_classifier import (
     SUSPICIOUS_EMPTY,
     VALID_EMPTY,
@@ -98,7 +98,7 @@ async def test_valid_empty_bypasses_delta_repair_loop(tmp_path, monkeypatch):
             return True
         return False
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=flag_override):
+    with patch("src.sql.generation.is_feature_enabled", side_effect=flag_override):
         retriever = SQLRetriever(router=mock_router)
         chunks = await retriever.retrieve("Show all shipped orders")
 
@@ -144,7 +144,7 @@ async def test_suspicious_empty_triggers_single_targeted_delta_repair(tmp_path, 
             return True
         return False
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=flag_override):
+    with patch("src.sql.generation.is_feature_enabled", side_effect=flag_override):
         retriever = SQLRetriever(router=mock_router)
         chunks = await retriever.retrieve("Show orders with customer names")
 

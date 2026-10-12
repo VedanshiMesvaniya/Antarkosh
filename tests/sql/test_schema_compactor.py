@@ -147,7 +147,7 @@ def test_golden_cases_columns_preserved_after_compaction():
 @pytest.mark.asyncio
 async def test_schema_compaction_feature_flag_pipeline_integration():
     """Test 5: Integration with s12b_sql_retrieval schema builder."""
-    from src.stages.s12b_sql_retrieval import _build_scoped_schema_fallback
+    from src.sql.schema_retrieval import _build_scoped_schema_fallback
 
     full_schema = """
     CREATE TABLE sales_order (

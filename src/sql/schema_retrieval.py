@@ -563,7 +563,7 @@ async def sync_live_schema(
         if dialect.fk_query:  # MySQL / PostgreSQL / SQL Server / Oracle: one query covers all FKs
             fk_rows = await _query_runner(dialect.fk_query, max_rows=20000)
         elif dialect.key == Engine.SQLITE:
-            from src.stages.s12b_sql_retrieval import fetch_sqlite_foreign_keys
+            from src.sql.generation import fetch_sqlite_foreign_keys
             fk_rows = await fetch_sqlite_foreign_keys()
         else:
             fk_rows = []
@@ -635,7 +635,7 @@ async def sync_live_schema(
 
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
-        from src.stages.s12b_sql_retrieval import SQLRetriever
+        from src.sql.pipeline import SQLRetriever
         SQLRetriever.clear_schema_cache(db_id=db_id)
     except Exception as e:  # noqa: BLE001
         logger.warning("Could not clear SQLRetriever schema cache: %s", e)

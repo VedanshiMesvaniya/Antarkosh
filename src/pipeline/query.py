@@ -27,7 +27,7 @@ from src.rag.retrieval import (
 )
 from src.sql.context import DEFAULT_DB_ID
 from src.sql.knowledge.loaders import validate_db_id
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.sql.query_classifier import QueryType, classify_query
 from src.sql.semantic_cache import get_semantic_cache
 from src.sql.safety.sql_privacy import sanitize_assistant_turn

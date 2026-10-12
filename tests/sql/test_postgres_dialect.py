@@ -17,7 +17,8 @@ import pytest
 from src.sql.safety.column_registry import ColumnRegistry
 from src.core.sql_dialects import DIALECTS, get_dialect_profile
 from src.sql.schema_retrieval import _split_schema_by_table
-from src.stages.s12b_sql_retrieval import SQLRetriever, format_schema_rows
+from src.sql.pipeline import SQLRetriever
+from src.sql.generation import format_schema_rows
 from src.utils.error_classification import classify_error
 from src.sql.safety.sql_safety import check_cartesian_explosion, is_destructive_sql
 
@@ -200,7 +201,7 @@ class TestLivePostgres:
     async def test_select_limit_and_json_safe_types(self, live_pg) -> None:
         import json
         from src.core.db_client import run_readonly_query
-        from src.stages.s12b_sql_retrieval import _sanitize_rows
+        from src.sql.generation import _sanitize_rows
         rows = await run_readonly_query("SELECT * FROM atk_sales ORDER BY id", max_rows=1)
         assert len(rows) == 1                                     # LIMIT injected for PostgreSQL
         json.dumps(_sanitize_rows(rows))                          # uuid/numeric/timestamptz/array/jsonb

@@ -7,14 +7,14 @@ from pathlib import Path
 import pytest
 
 from src.core.config import DATABASES_DIR
-from src.stages.s12b_sql_retrieval import (
+from src.sql.prompt_builder import (
     _get_raw_behavioral_atlas,
     _get_raw_column_glossary,
     _get_raw_relationships,
-    _get_tables_with_soft_delete,
     _load_glossary,
     _load_relationships,
 )
+from src.sql.soft_delete import _get_tables_with_soft_delete
 
 
 @pytest.fixture(autouse=True)

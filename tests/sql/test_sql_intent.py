@@ -3,12 +3,6 @@
 import pytest
 
 from src.sql.intent import extract_analytical_intent as direct_extract_intent
-from src.stages.s12b_sql_retrieval import extract_analytical_intent as reexport_extract_intent
-
-
-def test_reexport_identity():
-    """Verify that s12b re-exports the exact object from src.sql.intent."""
-    assert direct_extract_intent is reexport_extract_intent
 
 
 @pytest.mark.parametrize(
@@ -80,8 +74,6 @@ def test_extract_analytical_intent_golden(
     expected_soft: str,
 ):
     direct_res = direct_extract_intent(query)
-    reexport_res = reexport_extract_intent(query)
-    assert direct_res == reexport_res
 
     assert direct_res["metrics"] == expected_metrics
     assert direct_res["dimensions"] == expected_dims

@@ -18,12 +18,9 @@ import pytest
 
 from src.models.schemas import ChunkType
 from src.sql.knowledge.loaders import get_knowledge_path
-from src.stages.s12b_sql_retrieval import (
-    SQLRetriever,
-    _is_all_null,
-    _load_relationships,
-    _unwrap_sql,
-)
+from src.sql.pipeline import SQLRetriever
+from src.sql.generation import _is_all_null, _unwrap_sql
+from src.sql.prompt_builder import _load_relationships
 
 # ---------------------------------------------------------------------------
 # Pure helpers
@@ -324,7 +321,7 @@ async def test_empty_schema_not_cached_permanently(tmp_path: Path, monkeypatch: 
 
 def test_column_glossary_synonyms_and_stop_words():
     """Glossary filter matches synonyms and ignores stop words to prevent false positives."""
-    from src.stages.s12b_sql_retrieval import _build_column_glossary_for_query
+    from src.sql.prompt_builder import _build_column_glossary_for_query
 
     # Query with synonym 'total sales' -> should match revenue
     out_sales = _build_column_glossary_for_query("What is our total sales this year?")
@@ -399,7 +396,7 @@ def test_glossary_and_relationships_no_drift():
 
 def test_scoped_relationships_filters_unrelated_tables():
     """Verify that scoped relationship formatting only includes join paths for active tables."""
-    from src.stages.s12b_sql_retrieval import _format_scoped_relationships
+    from src.sql.schema_retrieval import _format_scoped_relationships
 
     sample_rels = [
         {"from_table": "sales_order", "from_column": "party_id", "to_table": "party", "to_column": "id"},
@@ -418,7 +415,7 @@ def test_scoped_relationships_filters_unrelated_tables():
 
 def test_1hop_graph_expansion():
     """Verify 1-hop graph expansion finds directly connected tables while skipping audit noise."""
-    from src.stages.s12b_sql_retrieval import _get_1hop_neighbors
+    from src.sql.schema_retrieval import _get_1hop_neighbors
 
     sample_rels = [
         {"from_table": "sales_order", "from_column": "party_id", "to_table": "party", "to_column": "id"},

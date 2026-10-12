@@ -31,7 +31,7 @@ def env(tmp_path, monkeypatch):
     class _Cache:
         reset = classmethod(lambda c: calls.append("semantic"))
 
-    monkeypatch.setitem(sys.modules, "src.stages.s12b_sql_retrieval",
+    monkeypatch.setitem(sys.modules, "src.sql.pipeline",
                         types.SimpleNamespace(SQLRetriever=_Retriever))
     monkeypatch.setitem(sys.modules, "src.sql.semantic_cache",
                         types.SimpleNamespace(SemanticCache=_Cache))

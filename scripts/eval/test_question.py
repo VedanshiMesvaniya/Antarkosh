@@ -23,7 +23,8 @@ from rich.table import Table
 
 from src.core.provider_client import ProviderRouter
 from src.core.db_client import run_readonly_query
-from src.stages.s12b_sql_retrieval import SQLRetriever, extract_analytical_intent
+from src.sql.pipeline import SQLRetriever
+from src.sql.intent import extract_analytical_intent
 
 
 console = Console()

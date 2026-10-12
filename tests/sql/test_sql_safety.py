@@ -14,7 +14,7 @@ from src.sql.safety.sql_safety import (
     is_destructive_sql,
     validate_tables_and_columns,
 )
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 from src.utils.golden_models import GoldenCase
 
 GOLDEN_CASES_PATH = Path(__file__).resolve().parent.parent / "golden" / "sql_repair" / "cases.json"
@@ -182,7 +182,7 @@ async def test_sql_safety_pipeline_delta_repair_routing(tmp_path, monkeypatch):
             return True
         return False
 
-    with patch("src.stages.s12b_sql_retrieval.is_feature_enabled", side_effect=flag_override):
+    with patch("src.sql.generation.is_feature_enabled", side_effect=flag_override):
         retriever = SQLRetriever(router=mock_router)
         chunks = await retriever.retrieve("Show all customer records")
 

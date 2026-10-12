@@ -28,7 +28,7 @@ from src.sql.registry import (
     list_databases,
     update_database_access,
 )
-from src.stages.s12b_sql_retrieval import SQLRetriever
+from src.sql.pipeline import SQLRetriever
 
 
 def _client() -> AsyncClient:
