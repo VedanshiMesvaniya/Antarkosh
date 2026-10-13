@@ -70,6 +70,13 @@ qdrant/
 data/sessions.json
 data/sqlite/
 
+# Multi-database: ignore any NEW database directories except the demo & template
+# Only erp_main (demo) and _template are tracked in git.
+databases/*/
+!databases/erp_main/
+!databases/_template/
+!databases/README.md
+
 # Multi-database learned state
 databases/*/learned/*
 !databases/*/learned/.gitkeep
