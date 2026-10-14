@@ -20,3 +20,17 @@ features:
   guard_rag_citation_shadow: true
   guard_rag_citation_enforce: true
   enable_fallback_on_guard_failure: true
+
+# Per-database flags for automatic schema intelligence. All off by default.
+# erp_main is pinned off in code regardless of this file.
+db_features:
+  _example_db:
+    auto_catalog: false
+    auto_procedures: false
+    auto_relationships: false
+    auto_table_profiles: false
+    auto_join_paths: false
+    auto_column_meaning: false
+    auto_prompt_shadow: false
+    auto_prompt_inject: false
+    auto_learning: false
