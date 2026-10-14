@@ -559,9 +559,19 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | I-8 | Legacy knowledge files | databases/erp_main/ | delete | Deleted config/sql_*.json, config/behavioral_schema_atlas.json, evals/Antarkosh/Antarkosh_schema.json; removed loader fallback in src/sql/knowledge/loaders.py; updated tests | a-g pass | 01f5905 |
 | I-9 | src/core/db_config_file.py | src/sql/registry.py | delete | Removed db_config_file.py shim and tests/sql/test_db_config_file.py; wired apply_to directly into src.sql.registry | a-g pass | fb3cd6f |
 
+---
 
+## Phase 0 — Per-DB Flags & Regression Harness (auto_eval)
 
-
+| # | old path / module | new path / module | kind | description | verified | commit |
+|---|---|---|---|---|---|---|
+| P0-1 | .github/workflows/ci.yml | .github/workflows/ci.yml | config | Added `auto_eval` to push and PR branch lists | 23 tests pass | 226af3d |
+| P0-2 | src/utils/feature_flags.py | src/utils/feature_flags.py | code | Appended `is_db_feature_enabled()`, `DB_FEATURE_FLAGS`, `_PINNED_DB_IDS`, YAML loader | 23 tests pass | 33a4bcb |
+| P0-3 | config/feature_flags.yaml | config/feature_flags.yaml | config | Added `db_features:` block with 9 flags (all false) under `_example_db` | 23 tests pass | 33a4bcb |
+| P0-4 | (new) | scripts/eval/erp_regression.py | code | Regression harness: validate, record, replay modes | 23 tests pass | 226af3d |
+| P0-5 | (new) | databases/erp_main/evals/regression/question_ids.json | data | Fixed 21-question set for regression baseline | 23 tests pass | 226af3d |
+| P0-6 | (new) | tests/core/test_db_feature_flags.py | test | 7 tests for per-DB flag function | 23 tests pass | 33a4bcb |
+| P0-7 | (new) | tests/core/test_erp_regression_harness.py | test | 16 tests for harness logic (no DB/LLM/Qdrant) | 23 tests pass | 226af3d |
 
 
 

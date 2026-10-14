@@ -1,0 +1,10 @@
+{
+  "db_id": "erp_main",
+  "purpose": "Fixed question set for the Phase 0 regression baseline (prompt, generated SQL, result). Do not edit without re-recording baseline.jsonl.",
+  "selection_rule": "First question in questions.jsonl per route/difficulty/type bucket, then gm-005, gm-047 and gm-049 added for 'not ordered in 6 months', duplicates and soft-deleted-rows coverage.",
+  "question_ids": [
+    "gm-001", "gm-002", "gm-004", "gm-005", "gm-011", "gm-013", "gm-014",
+    "gm-015", "gm-020", "gm-026", "gm-027", "gm-033", "gm-034", "gm-047",
+    "gm-049", "gm-053", "gm-097", "gm-098", "gm-101", "gm-109", "gm-115"
+  ]
+}

@@ -3,9 +3,9 @@ name: CI
 # Runs on every push to the long-lived branches and on pull requests into main.
 on:
   push:
-    branches: [main, master, sql_update]
+    branches: [main, master, sql_update, auto_eval]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, auto_eval]
   workflow_dispatch:
 
 # A newer push to the same branch/PR cancels the run it supersedes.
