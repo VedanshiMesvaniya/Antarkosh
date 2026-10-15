@@ -1,17 +1,70 @@
-"""Oracle dialect profile stub.
+"""Oracle dialect profile.
 
-Origin: new (no previous file)
+Introspection reads the ALL_* catalog views for the CURRENT schema of the session
+(``SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')``): the connected user's own objects plus
+anything that schema owns that the user may see. Identifiers come back uppercase, as
+stored; unquoted Oracle identifiers are case-insensitive so generated SQL still works.
+Queries touch catalog metadata only.
+
+Status: the SQL parses and round-trips through sqlglot (tests/sql/test_dialect_profiles_mssql_oracle.py)
+but has not yet been run against a live Oracle instance. Requires Oracle 12c+ for
+``FETCH FIRST`` (added by the executor's row cap).
 """
 
 from __future__ import annotations
 
 from src.sql.dialects.base import SQLDialectProfile
 
+ORACLE_PROFILE = SQLDialectProfile(
+    key="oracle",
+    name="Oracle",
+    sqlglot_dialect="oracle",
+    # One row per column, same shape as the MySQL/PostgreSQL profiles. Oracle's connector
+    # lower-cases result column names, so the aliases below match the other engines.
+    # ALL_TAB_COLUMNS omits hidden columns; BIN$ objects are recycle-bin leftovers.
+    schema_query="""
+        SELECT c.table_name AS table_name,
+               c.column_name AS column_name,
+               c.data_type AS data_type,
+               cc.comments AS column_comment
+        FROM all_tab_columns c
+        LEFT JOIN all_col_comments cc
+          ON cc.owner = c.owner AND cc.table_name = c.table_name AND cc.column_name = c.column_name
+        WHERE c.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')
+          AND c.table_name NOT LIKE 'BIN$%'
+        ORDER BY c.table_name, c.column_id
+    """,
+    # Child column joined to the parent column at the same constraint position, so composite
+    # keys pair up column-for-column. The parent table may live in another schema.
+    fk_query="""
+        SELECT ac.table_name AS table_name,
+               acc.column_name AS column_name,
+               pk.table_name AS referenced_table_name,
+               pkc.column_name AS referenced_column_name
+        FROM all_constraints ac
+        JOIN all_cons_columns acc
+          ON acc.owner = ac.owner AND acc.constraint_name = ac.constraint_name
+        JOIN all_constraints pk
+          ON pk.owner = ac.r_owner AND pk.constraint_name = ac.r_constraint_name
+        JOIN all_cons_columns pkc
+          ON pkc.owner = pk.owner AND pkc.constraint_name = pk.constraint_name
+         AND pkc.position = acc.position
+        WHERE ac.constraint_type = 'R'
+          AND ac.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')
+        ORDER BY ac.table_name, ac.constraint_name, acc.position
+    """,
+    date_functions="""
+    Today: TRUNC(SYSDATE)
+    This month: TO_CHAR(SYSDATE, 'YYYY-MM')
+    Last N days: TRUNC(SYSDATE) - N
+    Last month: ADD_MONTHS(TRUNC(SYSDATE), -1)
+    This year: EXTRACT(YEAR FROM SYSDATE)
+    Between two dates: column BETWEEN ADD_MONTHS(TRUNC(SYSDATE), -1) AND TRUNC(SYSDATE)
+    Limit rows: FETCH FIRST n ROWS ONLY (Oracle has no LIMIT clause)
+    """,
+)
+
 
 def get_profile() -> SQLDialectProfile:
-    """Build Oracle dialect profile.
-
-    Raises:
-        NotImplementedError: Always, as Oracle profile needs validation against a real instance.
-    """
-    raise NotImplementedError("needs validation against a real instance")
+    """Return the Oracle dialect profile."""
+    return ORACLE_PROFILE

@@ -549,11 +549,15 @@ async def sync_live_schema(
     embeddings = embedding_service or EmbeddingService()
     store = vector_store or QdrantStore(embedding_service=embeddings)
 
-    dialect = get_dialect_profile(settings.db_engine)
+    # Use the TARGET database's engine and connection (not the process-wide default),
+    # the same way SQLRetriever and run_readonly_query resolve them.
+    from src.sql.registry import resolve_db_engine
+
+    dialect = get_dialect_profile(resolve_db_engine(db_id))
     _query_runner = run_readonly_query
 
     # 1. Fetch schema rows from the live database
-    schema_rows = await _query_runner(dialect.schema_query, max_rows=20000)
+    schema_rows = await _query_runner(dialect.schema_query, max_rows=20000, db_id=db_id)
     if not schema_rows:
         return {"status": "error", "message": "No schema rows returned from database"}
 
@@ -564,10 +568,10 @@ async def sync_live_schema(
     fk_map: dict[str, list[str]] = {}
     try:
         if dialect.fk_query:  # MySQL / PostgreSQL / SQL Server / Oracle: one query covers all FKs
-            fk_rows = await _query_runner(dialect.fk_query, max_rows=20000)
+            fk_rows = await _query_runner(dialect.fk_query, max_rows=20000, db_id=db_id)
         elif dialect.key == Engine.SQLITE:
             from src.sql.generation import fetch_sqlite_foreign_keys
-            fk_rows = await fetch_sqlite_foreign_keys()
+            fk_rows = await fetch_sqlite_foreign_keys(db_id=db_id)
         else:
             fk_rows = []
 

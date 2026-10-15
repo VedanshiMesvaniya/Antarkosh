@@ -472,6 +472,28 @@ def apply_to(target: Any, db_id: str = DEFAULT_DB_ID) -> list[str]:
     return applied
 
 
+def resolve_db_engine(db_id: str = DEFAULT_DB_ID) -> str:
+    """Return the engine key for ``db_id``.
+
+    Order: connection config ``engine``, then ``databases/<db_id>/db.yaml``
+    ``engine``, then the process-wide ``settings.db_engine``. This is the same
+    order ``SQLRetriever.__init__`` and ``run_readonly_query`` already use, so
+    schema sync talks to a database with the same dialect that queries do.
+    """
+    target = (db_id or DEFAULT_DB_ID).strip()
+    engine = get_connection(target).get("engine")
+    if not engine:
+        try:
+            engine = get_database(target).get("engine")
+        except Exception:  # noqa: BLE001 - missing/invalid db.yaml falls through to the default
+            engine = None
+    if not engine:
+        from src.core.config import settings
+
+        engine = settings.db_engine
+    return engine
+
+
 __all__ = [
     "CANONICAL_TO_LEGACY_KEYS",
     "KNOWN_CONNECTION_KEYS",
@@ -485,6 +507,7 @@ __all__ = [
     "get_database",
     "get_database_access",
     "list_databases",
+    "resolve_db_engine",
     "save_connection",
     "update_database_access",
 ]

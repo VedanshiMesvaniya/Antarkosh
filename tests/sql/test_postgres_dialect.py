@@ -47,10 +47,10 @@ class TestProfile:
 
     def test_registry_key_matches(self) -> None:
         assert all(p.key == k for k, p in DIALECTS.items())
-        assert set(DIALECTS) == {"sqlite", "mysql", "postgresql"}
+        assert set(DIALECTS) == {"sqlite", "mysql", "postgresql", "mssql", "oracle"}
 
     def test_unsupported_engines_still_raise(self) -> None:
-        for engine in ("oracle", "mssql"):
+        for engine in ("cockroachdb", "db2"):
             with pytest.raises(ValueError, match="Unsupported db_engine"):
                 get_dialect_profile(engine)
 

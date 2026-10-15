@@ -191,7 +191,7 @@ def format_schema_rows(profile: SQLDialectProfile, rows: list[dict[str, Any]]) -
             row["sql"] for row in rows if row["name"] != "sqlite_sequence"
         )
 
-    if profile.key in (Engine.MYSQL, Engine.POSTGRESQL):
+    if profile.key in (Engine.MYSQL, Engine.POSTGRESQL, Engine.MSSQL, Engine.ORACLE):
         tables: dict[str, list[str]] = {}
         for row in rows:
             comment = row.get("column_comment") or ""

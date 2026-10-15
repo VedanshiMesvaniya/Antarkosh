@@ -6,7 +6,9 @@ Origin: extracted from src/core/sql_dialects.py (DIALECTS, get_dialect_profile)
 from __future__ import annotations
 
 from src.sql.dialects.base import SQLDialectProfile
+from src.sql.dialects.mssql import MSSQL_PROFILE
 from src.sql.dialects.mysql import MYSQL_PROFILE
+from src.sql.dialects.oracle import ORACLE_PROFILE
 from src.sql.dialects.postgresql import POSTGRESQL_PROFILE
 from src.sql.dialects.sqlite import SQLITE_PROFILE
 
@@ -20,6 +22,8 @@ DIALECTS: dict[str, SQLDialectProfile] = {
     "sqlite": SQLITE_PROFILE,
     "mysql": MYSQL_PROFILE,
     "postgresql": POSTGRESQL_PROFILE,
+    "mssql": MSSQL_PROFILE,
+    "oracle": ORACLE_PROFILE,
 }
 
 

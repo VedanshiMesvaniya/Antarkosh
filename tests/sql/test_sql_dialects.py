@@ -117,35 +117,34 @@ class TestDialectProfiles:
 
     def test_unknown_engine_raises(self) -> None:
         with pytest.raises(ValueError, match="Unsupported db_engine"):
-            get_dialect_profile("oracle")
+            get_dialect_profile("cockroachdb")
 
-    def test_mssql_not_registered_in_dialects_raises_value_error(self) -> None:
-        # Step E2 pin: MSSQL must not be registered in DIALECTS yet.
-        assert "mssql" not in DIALECTS
-        with pytest.raises(ValueError, match="Unsupported db_engine 'mssql'"):
-            get_dialect_profile("mssql")
+    def test_mssql_profile_registered(self) -> None:
+        profile = get_dialect_profile("mssql")
+        assert profile.key == "mssql"
+        assert profile.sqlglot_dialect == "tsql"
+        assert "sys.columns" in profile.schema_query
+        assert "sys.foreign_key_columns" in profile.fk_query
 
-    def test_oracle_not_registered_in_dialects_raises_value_error(self) -> None:
-        # Step E2 pin: Oracle must not be registered in DIALECTS yet.
-        assert "oracle" not in DIALECTS
-        with pytest.raises(ValueError, match="Unsupported db_engine 'oracle'"):
-            get_dialect_profile("oracle")
+    def test_oracle_profile_registered(self) -> None:
+        profile = get_dialect_profile("oracle")
+        assert profile.key == "oracle"
+        assert profile.sqlglot_dialect == "oracle"
+        assert "all_tab_columns" in profile.schema_query
+        assert "all_constraints" in profile.fk_query
 
-    def test_mssql_stub_raises_not_implemented_error(self) -> None:
-        from src.sql.dialects.mssql import get_profile
-        with pytest.raises(NotImplementedError, match="needs validation against a real instance"):
-            get_profile()
+    def test_mssql_and_oracle_get_profile_return_registered_profile(self) -> None:
+        from src.sql.dialects.mssql import get_profile as mssql_profile
+        from src.sql.dialects.oracle import get_profile as oracle_profile
 
-    def test_oracle_stub_raises_not_implemented_error(self) -> None:
-        from src.sql.dialects.oracle import get_profile
-        with pytest.raises(NotImplementedError, match="needs validation against a real instance"):
-            get_profile()
+        assert mssql_profile() is DIALECTS["mssql"]
+        assert oracle_profile() is DIALECTS["oracle"]
 
     def test_every_profile_key_matches_its_registry_key(self) -> None:
         # Guards against copy-paste drift if a new dialect is added later.
         for registry_key, profile in DIALECTS.items():
             assert profile.key == registry_key
-        assert set(DIALECTS.keys()) == {"sqlite", "mysql", "postgresql"}
+        assert set(DIALECTS.keys()) == {"sqlite", "mysql", "postgresql", "mssql", "oracle"}
 
 
 class TestFormatSchemaRows:
@@ -185,7 +184,7 @@ class TestFormatSchemaRows:
 
     def test_unsupported_dialect_key_raises(self) -> None:
         bogus = SQLDialectProfile(
-            key="oracle", name="Oracle", sqlglot_dialect="oracle", schema_query="", date_functions="", fk_query="",
+            key="db2", name="DB2", sqlglot_dialect="db2", schema_query="", date_functions="", fk_query="",
         )
         with pytest.raises(ValueError, match="Unsupported dialect key"):
             format_schema_rows(bogus, [])
