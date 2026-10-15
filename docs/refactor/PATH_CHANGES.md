@@ -586,3 +586,16 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | P1-5 | (new) | tests/sql/test_dialect_profiles_mssql_oracle.py | test | Offline tests for catalog queries, row cap rewrite, format_schema_rows, and mocked sync | 761 tests pass | 0caf8dc |
 | P1-6 | (new) | tests/sql/test_sync_live_schema_db_scoping.py | test | Tests for resolve_db_engine, target engine resolution, and db_id propagation in sync | 761 tests pass | 0caf8dc |
 | P1-7 | tests/sql/{test_postgres_dialect.py, test_sql_dialects.py} | tests/sql/{test_postgres_dialect.py, test_sql_dialects.py} | test | Updated dialect tests to expect 5-engine set (sqlite, mysql, postgresql, mssql, oracle) | 761 tests pass | 0caf8dc |
+
+---
+
+## Phase 2 — Database Scaffolding, Activation Gate, and Connection Isolation
+
+| # | old path / module | new path / module | kind | description | verified | commit |
+|---|---|---|---|---|---|---|
+| P2-1 | src/utils/feature_flags.py, config/feature_flags.yaml | src/utils/feature_flags.py, config/feature_flags.yaml | config | Added `auto_scaffold` per-DB flag (default false) | 819 tests pass | 80be5a4 |
+| P2-2 | (new) | src/sql/introspection/__init__.py, src/sql/introspection/scaffold.py | code | ensure_db_folder atomic scaffold from _template/, scaffold_if_enabled, activate_after_sync | 819 tests pass | 80be5a4 |
+| P2-3 | src/sql/registry.py | src/sql/registry.py | behavior | Added is_database_active gatekeeper (default erp_main always active; fails closed on corrupt config) | 819 tests pass | 80be5a4 |
+| P2-4 | src/sql/schema_retrieval.py | src/sql/schema_retrieval.py | behavior | Pre-sync scaffold_if_enabled hook and post-sync activate_after_sync | 819 tests pass | 80be5a4 |
+| P2-5 | src/core/db_client.py, src/api/query.py, src/api/ui/chats.py, src/api/ui/databases.py | src/core/db_client.py, src/api/query.py, src/api/ui/chats.py, src/api/ui/databases.py | security | Refuse non-default db without complete connection; 409 gate on inactive dbs; list_databases filters inactive for non-admins | 819 tests pass | 80be5a4 |
+| P2-6 | (new) | tests/sql/test_scaffold.py, tests/sql/test_database_activation_and_isolation.py | test | 58 tests verifying atomic scaffolding, isolation, API 409 gates, activation on sync | 819 tests pass | 80be5a4 |
