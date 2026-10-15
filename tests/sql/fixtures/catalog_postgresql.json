@@ -1,0 +1,307 @@
+{
+ "_source": "Recorded from a real PostgreSQL 16.2 (embedded via pgserver) on 2026-10-15. Regenerate: see tests/sql/fixtures/README.md",
+ "schema_query": [
+  {
+   "table_name": "Order Items",
+   "column_name": "order_id",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "Order Items",
+   "column_name": "line_no",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "Order Items",
+   "column_name": "sku",
+   "data_type": "text",
+   "column_comment": null
+  },
+  {
+   "table_name": "Order Items",
+   "column_name": "qty",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "composite_child",
+   "column_name": "a",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "composite_child",
+   "column_name": "b",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "composite_parent",
+   "column_name": "a",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "composite_parent",
+   "column_name": "b",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "customer",
+   "column_name": "id",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "customer",
+   "column_name": "email",
+   "data_type": "text",
+   "column_comment": "Login e-mail"
+  },
+  {
+   "table_name": "customer",
+   "column_name": "name",
+   "data_type": "text",
+   "column_comment": null
+  },
+  {
+   "table_name": "customer",
+   "column_name": "created_at",
+   "data_type": "timestamp without time zone",
+   "column_comment": null
+  },
+  {
+   "table_name": "feeling",
+   "column_name": "m",
+   "data_type": "mood",
+   "column_comment": null
+  },
+  {
+   "table_name": "feeling",
+   "column_name": "tags",
+   "data_type": "text[]",
+   "column_comment": null
+  },
+  {
+   "table_name": "orders",
+   "column_name": "id",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "orders",
+   "column_name": "customer_id",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "orders",
+   "column_name": "total",
+   "data_type": "numeric",
+   "column_comment": null
+  },
+  {
+   "table_name": "part",
+   "column_name": "id",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "part",
+   "column_name": "d",
+   "data_type": "date",
+   "column_comment": null
+  },
+  {
+   "table_name": "part_2024",
+   "column_name": "id",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "part_2024",
+   "column_name": "d",
+   "data_type": "date",
+   "column_comment": null
+  },
+  {
+   "table_name": "v_orders",
+   "column_name": "id",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "v_orders",
+   "column_name": "customer_id",
+   "data_type": "integer",
+   "column_comment": null
+  },
+  {
+   "table_name": "v_orders",
+   "column_name": "total",
+   "data_type": "numeric",
+   "column_comment": null
+  }
+ ],
+ "fk_query": [
+  {
+   "table_name": "Order Items",
+   "column_name": "order_id",
+   "referenced_table_name": "orders",
+   "referenced_column_name": "id"
+  },
+  {
+   "table_name": "composite_child",
+   "column_name": "a",
+   "referenced_table_name": "composite_parent",
+   "referenced_column_name": "a"
+  },
+  {
+   "table_name": "composite_child",
+   "column_name": "b",
+   "referenced_table_name": "composite_parent",
+   "referenced_column_name": "b"
+  },
+  {
+   "table_name": "orders",
+   "column_name": "customer_id",
+   "referenced_table_name": "customer",
+   "referenced_column_name": "id"
+  }
+ ],
+ "table_query": [
+  {
+   "table_name": "Order Items",
+   "table_type": "BASE TABLE",
+   "table_comment": null
+  },
+  {
+   "table_name": "composite_child",
+   "table_type": "BASE TABLE",
+   "table_comment": null
+  },
+  {
+   "table_name": "composite_parent",
+   "table_type": "BASE TABLE",
+   "table_comment": null
+  },
+  {
+   "table_name": "customer",
+   "table_type": "BASE TABLE",
+   "table_comment": "People who buy"
+  },
+  {
+   "table_name": "feeling",
+   "table_type": "BASE TABLE",
+   "table_comment": null
+  },
+  {
+   "table_name": "orders",
+   "table_type": "BASE TABLE",
+   "table_comment": null
+  },
+  {
+   "table_name": "part",
+   "table_type": "BASE TABLE",
+   "table_comment": null
+  },
+  {
+   "table_name": "part_2024",
+   "table_type": "BASE TABLE",
+   "table_comment": null
+  },
+  {
+   "table_name": "v_orders",
+   "table_type": "VIEW",
+   "table_comment": null
+  }
+ ],
+ "key_query": [
+  {
+   "table_name": "Order Items",
+   "constraint_type": "PRIMARY KEY",
+   "constraint_name": "Order Items_pkey",
+   "column_name": "order_id",
+   "ordinal_position": 1
+  },
+  {
+   "table_name": "Order Items",
+   "constraint_type": "PRIMARY KEY",
+   "constraint_name": "Order Items_pkey",
+   "column_name": "line_no",
+   "ordinal_position": 2
+  },
+  {
+   "table_name": "composite_parent",
+   "constraint_type": "UNIQUE",
+   "constraint_name": "composite_parent_a_b_key",
+   "column_name": "a",
+   "ordinal_position": 1
+  },
+  {
+   "table_name": "composite_parent",
+   "constraint_type": "UNIQUE",
+   "constraint_name": "composite_parent_a_b_key",
+   "column_name": "b",
+   "ordinal_position": 2
+  },
+  {
+   "table_name": "customer",
+   "constraint_type": "UNIQUE",
+   "constraint_name": "customer_email_key",
+   "column_name": "email",
+   "ordinal_position": 1
+  },
+  {
+   "table_name": "customer",
+   "constraint_type": "PRIMARY KEY",
+   "constraint_name": "customer_pkey",
+   "column_name": "id",
+   "ordinal_position": 1
+  },
+  {
+   "table_name": "orders",
+   "constraint_type": "PRIMARY KEY",
+   "constraint_name": "orders_pkey",
+   "column_name": "id",
+   "ordinal_position": 1
+  }
+ ],
+ "row_estimate_query": [
+  {
+   "table_name": "part",
+   "row_estimate": 0
+  },
+  {
+   "table_name": "customer",
+   "row_estimate": 500
+  },
+  {
+   "table_name": "orders",
+   "row_estimate": 0
+  },
+  {
+   "table_name": "Order Items",
+   "row_estimate": 0
+  },
+  {
+   "table_name": "composite_parent",
+   "row_estimate": 0
+  },
+  {
+   "table_name": "composite_child",
+   "row_estimate": 0
+  },
+  {
+   "table_name": "feeling",
+   "row_estimate": 0
+  },
+  {
+   "table_name": "part_2024",
+   "row_estimate": 0
+  }
+ ]
+}

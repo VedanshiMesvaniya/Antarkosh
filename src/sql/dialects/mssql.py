@@ -51,6 +51,39 @@ MSSQL_PROFILE = SQLDialectProfile(
         WHERE pt.schema_id = SCHEMA_ID()
         ORDER BY pt.name, fkc.constraint_object_id, fkc.constraint_column_id
     """,
+    # Catalog extras (auto-schema Phase 3), same default-schema scope as schema_query.
+    table_query="""
+        SELECT t.name AS table_name,
+               CASE t.type WHEN 'V' THEN 'VIEW' ELSE 'BASE TABLE' END AS table_type,
+               CAST(ep.value AS NVARCHAR(4000)) AS table_comment
+        FROM sys.objects AS t
+        LEFT JOIN sys.extended_properties AS ep
+          ON ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.name = 'MS_Description' AND ep.[class] = 1
+        WHERE t.type IN ('U', 'V') AND t.is_ms_shipped = 0 AND t.schema_id = SCHEMA_ID()
+        ORDER BY t.name
+    """,
+    key_query="""
+        SELECT t.name AS table_name,
+               CASE WHEN i.is_primary_key = 1 THEN 'PRIMARY KEY' ELSE 'UNIQUE' END AS constraint_type,
+               i.name AS constraint_name,
+               c.name AS column_name,
+               ic.key_ordinal AS ordinal_position
+        FROM sys.indexes AS i
+        JOIN sys.index_columns AS ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+        JOIN sys.columns AS c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+        JOIN sys.tables AS t ON t.object_id = i.object_id
+        WHERE (i.is_primary_key = 1 OR i.is_unique_constraint = 1)
+          AND ic.is_included_column = 0 AND t.is_ms_shipped = 0 AND t.schema_id = SCHEMA_ID()
+        ORDER BY t.name, i.name, ic.key_ordinal
+    """,
+    # sys.partitions.rows is approximate and needs only metadata visibility (unlike the DMVs).
+    row_estimate_query="""
+        SELECT t.name AS table_name, SUM(p.rows) AS row_estimate
+        FROM sys.tables AS t
+        JOIN sys.partitions AS p ON p.object_id = t.object_id AND p.index_id IN (0, 1)
+        WHERE t.is_ms_shipped = 0 AND t.schema_id = SCHEMA_ID()
+        GROUP BY t.name
+    """,
     date_functions="""
     Today: CAST(GETDATE() AS DATE)
     This month: FORMAT(GETDATE(), 'yyyy-MM')

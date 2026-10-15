@@ -599,3 +599,17 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | P2-4 | src/sql/schema_retrieval.py | src/sql/schema_retrieval.py | behavior | Pre-sync scaffold_if_enabled hook and post-sync activate_after_sync | 819 tests pass | 80be5a4 |
 | P2-5 | src/core/db_client.py, src/api/query.py, src/api/ui/chats.py, src/api/ui/databases.py | src/core/db_client.py, src/api/query.py, src/api/ui/chats.py, src/api/ui/databases.py | security | Refuse non-default db without complete connection; 409 gate on inactive dbs; list_databases filters inactive for non-admins | 819 tests pass | 80be5a4 |
 | P2-6 | (new) | tests/sql/test_scaffold.py, tests/sql/test_database_activation_and_isolation.py | test | 58 tests verifying atomic scaffolding, isolation, API 409 gates, activation on sync | 819 tests pass | 80be5a4 |
+
+---
+
+## Phase 3 — Auto-Catalog Extraction, Table Inventory & Consistency Gate
+
+| # | old path / module | new path / module | kind | description | verified | commit |
+|---|---|---|---|---|---|---|
+| P3-1 | src/sql/dialects/base.py | src/sql/dialects/base.py | code | Added optional catalog query attributes to SQLDialectProfile (column_query, table_query, key_query, row_estimate_query) | 56 tests pass | Phase 3 |
+| P3-2 | src/sql/dialects/{mssql.py, mysql.py, oracle.py, postgresql.py, sqlite.py} | src/sql/dialects/{mssql.py, mysql.py, oracle.py, postgresql.py, sqlite.py} | code | Implemented catalog queries (table, key, row_estimate, column) for all 5 dialect profiles | 56 tests pass | Phase 3 |
+| P3-3 | (new) | src/sql/introspection/catalog.py | code | Pure catalog extraction, document formatting (schema.json, table_inventory.json), consistency gate, atomic file writer, and phase runner | 56 tests pass | Phase 3 |
+| P3-4 | src/sql/schema_retrieval.py | src/sql/schema_retrieval.py | behavior | Hooked run_catalog_phase into sync_live_schema guarded by auto_catalog per-DB feature flag | 56 tests pass | Phase 3 |
+| P3-5 | (new) | tests/sql/fixtures/{README.md, catalog_postgresql.json} | data | Real PostgreSQL catalog fixture recorded from live instance | 56 tests pass | Phase 3 |
+| P3-6 | (new) | tests/sql/test_catalog_extraction.py, tests/sql/test_database_activation_and_isolation.py | test | 56 unit/integration tests for queries, AST read-only validation, gate consistency, safety, degradation, and sync | 56 tests pass | Phase 3 |
+

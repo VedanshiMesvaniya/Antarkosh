@@ -52,7 +52,8 @@ def _meta(base: Path, db_id: str) -> dict[str, Any]:
 
 
 def _flag(monkeypatch, on: bool = True):
-    monkeypatch.setattr("src.utils.feature_flags.is_db_feature_enabled", lambda flag, db: on)
+    """Turn the Phase 2 flag on/off; every other per-DB flag stays off so these tests stay about Phase 2."""
+    monkeypatch.setattr("src.utils.feature_flags.is_db_feature_enabled", lambda flag, db: on and flag == "auto_scaffold")
 
 
 # ------------------------------------------------------------------ is_database_active

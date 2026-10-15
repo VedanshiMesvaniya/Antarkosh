@@ -53,6 +53,31 @@ ORACLE_PROFILE = SQLDialectProfile(
           AND ac.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')
         ORDER BY ac.table_name, ac.constraint_name, acc.position
     """,
+    # Catalog extras (auto-schema Phase 3), same current-schema scope as schema_query.
+    table_query="""
+        SELECT tc.table_name AS table_name, tc.table_type AS table_type, tc.comments AS table_comment
+        FROM all_tab_comments tc
+        WHERE tc.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')
+          AND tc.table_name NOT LIKE 'BIN$%'
+        ORDER BY tc.table_name
+    """,
+    key_query="""
+        SELECT ac.table_name AS table_name,
+               CASE ac.constraint_type WHEN 'P' THEN 'PRIMARY KEY' ELSE 'UNIQUE' END AS constraint_type,
+               ac.constraint_name AS constraint_name,
+               acc.column_name AS column_name,
+               acc.position AS ordinal_position
+        FROM all_constraints ac
+        JOIN all_cons_columns acc ON acc.owner = ac.owner AND acc.constraint_name = ac.constraint_name
+        WHERE ac.constraint_type IN ('P', 'U') AND ac.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')
+        ORDER BY ac.table_name, ac.constraint_name, acc.position
+    """,
+    # num_rows comes from optimizer statistics and is NULL until statistics are gathered.
+    row_estimate_query="""
+        SELECT t.table_name AS table_name, t.num_rows AS row_estimate
+        FROM all_tables t
+        WHERE t.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')
+    """,
     date_functions="""
     Today: TRUNC(SYSDATE)
     This month: TO_CHAR(SYSDATE, 'YYYY-MM')

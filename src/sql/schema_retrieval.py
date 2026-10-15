@@ -573,6 +573,7 @@ async def sync_live_schema(
 
     # 3. Fetch FK info and attach to relevant tables
     fk_map: dict[str, list[str]] = {}
+    fk_rows: list[dict[str, Any]] = []
     try:
         if dialect.fk_query:  # MySQL / PostgreSQL / SQL Server / Oracle: one query covers all FKs
             fk_rows = await _query_runner(dialect.fk_query, max_rows=20000, db_id=db_id)
@@ -647,6 +648,27 @@ async def sync_live_schema(
     # are atomically updated in place with zero downtime or empty-store window
     await store.upsert(chunks, vectors, sparse_vectors)
 
+    # Auto-schema Phase 3: write schema.json and table_inventory.json from the catalog and check
+    # they agree with what was just embedded. Per-DB flag, off by default; never fails the sync.
+    catalog_report: dict[str, Any] | None = None
+    from src.utils.feature_flags import is_db_feature_enabled
+
+    if is_db_feature_enabled("auto_catalog", db_id):
+        from src.sql.introspection.catalog import run_catalog_phase
+
+        try:
+            catalog_report = await run_catalog_phase(
+                db_id=db_id,
+                dialect=dialect,
+                runner=_query_runner,
+                schema_rows=schema_rows,
+                fk_rows=fk_rows,
+                chunk_names=set(table_schemas),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Catalog extraction failed for %s: %s", db_id, exc)
+            catalog_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.sql.pipeline import SQLRetriever
@@ -666,11 +688,14 @@ async def sync_live_schema(
 
     activate_after_sync(db_id)
 
-    return {
+    result: dict[str, Any] = {
         "status": "ok",
         "db_id": db_id,
         "document_id": doc_id,
         "tables_synced": len(chunks),
         "table_names": sorted(table_schemas.keys()),
     }
+    if catalog_report is not None:
+        result["catalog"] = catalog_report
+    return result
 

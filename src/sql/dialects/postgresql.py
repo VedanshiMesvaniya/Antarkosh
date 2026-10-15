@@ -47,6 +47,40 @@ POSTGRESQL_PROFILE = SQLDialectProfile(
         WHERE c.contype = 'f' AND n.nspname = current_schema()
         ORDER BY cl.relname, a.attname;
     """,
+    # Catalog extras (auto-schema Phase 3). Same scope as schema_query: current_schema().
+    # Materialized views are not listed: information_schema.columns (schema_query) cannot see them.
+    table_query="""
+        SELECT c.relname AS table_name,
+               CASE c.relkind WHEN 'v' THEN 'VIEW' WHEN 'f' THEN 'FOREIGN TABLE' ELSE 'BASE TABLE' END AS table_type,
+               pg_catalog.obj_description(c.oid, 'pg_class') AS table_comment
+        FROM pg_catalog.pg_class AS c
+        JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p', 'v', 'f')
+        ORDER BY c.relname;
+    """,
+    # pg_constraint + WITH ORDINALITY so composite keys keep their column order. JOIN LATERAL ... ON TRUE
+    # (not CROSS JOIN) so db_client's Cartesian guard does not clamp the result to 100 rows.
+    key_query="""
+        SELECT cl.relname AS table_name,
+               CASE c.contype WHEN 'p' THEN 'PRIMARY KEY' ELSE 'UNIQUE' END AS constraint_type,
+               c.conname AS constraint_name,
+               a.attname AS column_name,
+               k.ord AS ordinal_position
+        FROM pg_catalog.pg_constraint AS c
+        JOIN pg_catalog.pg_class AS cl ON cl.oid = c.conrelid
+        JOIN pg_catalog.pg_namespace AS n ON n.oid = cl.relnamespace
+        JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord) ON TRUE
+        JOIN pg_catalog.pg_attribute AS a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+        WHERE c.contype IN ('p', 'u') AND n.nspname = current_schema()
+        ORDER BY cl.relname, c.conname, k.ord;
+    """,
+    # reltuples is the planner's estimate (-1 before the first ANALYZE on PostgreSQL 14+).
+    row_estimate_query="""
+        SELECT c.relname AS table_name, c.reltuples::bigint AS row_estimate
+        FROM pg_catalog.pg_class AS c
+        JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p', 'f');
+    """,
     date_functions="""
     Today: CURRENT_DATE
     This month: TO_CHAR(CURRENT_DATE, 'YYYY-MM')
