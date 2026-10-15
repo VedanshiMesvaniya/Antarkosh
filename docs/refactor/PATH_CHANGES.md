@@ -565,14 +565,24 @@ Format: | # | old path / module | new path / module | kind | references updated 
 
 | # | old path / module | new path / module | kind | description | verified | commit |
 |---|---|---|---|---|---|---|
-| P0-1 | .github/workflows/ci.yml | .github/workflows/ci.yml | config | Added `auto_eval` to push and PR branch lists | 23 tests pass | 226af3d |
+| P0-1 | .github/workflows/ci.yml | .github/workflows/ci.yml | config | Added `auto_eval` to push and PR branch lists | 23 tests pass | d24cc0a |
 | P0-2 | src/utils/feature_flags.py | src/utils/feature_flags.py | code | Appended `is_db_feature_enabled()`, `DB_FEATURE_FLAGS`, `_PINNED_DB_IDS`, YAML loader | 23 tests pass | 33a4bcb |
 | P0-3 | config/feature_flags.yaml | config/feature_flags.yaml | config | Added `db_features:` block with 9 flags (all false) under `_example_db` | 23 tests pass | 33a4bcb |
-| P0-4 | (new) | scripts/eval/erp_regression.py | code | Regression harness: validate, record, replay modes | 23 tests pass | 226af3d |
-| P0-5 | (new) | databases/erp_main/evals/regression/question_ids.json | data | Fixed 21-question set for regression baseline | 23 tests pass | 226af3d |
+| P0-4 | (new) | scripts/eval/erp_regression.py | code | Regression harness: validate, record, replay modes | 23 tests pass | d24cc0a |
+| P0-5 | (new) | databases/erp_main/evals/regression/question_ids.json | data | Fixed 21-question set for regression baseline | 23 tests pass | d24cc0a |
 | P0-6 | (new) | tests/core/test_db_feature_flags.py | test | 7 tests for per-DB flag function | 23 tests pass | 33a4bcb |
-| P0-7 | (new) | tests/core/test_erp_regression_harness.py | test | 16 tests for harness logic (no DB/LLM/Qdrant) | 23 tests pass | 226af3d |
+| P0-7 | (new) | tests/core/test_erp_regression_harness.py | test | 16 tests for harness logic (no DB/LLM/Qdrant) | 23 tests pass | d24cc0a |
 
+---
 
+## Phase 1 — Database Scoping in Schema Sync & Dialect Profiles (MSSQL, Oracle)
 
-
+| # | old path / module | new path / module | kind | description | verified | commit |
+|---|---|---|---|---|---|---|
+| P1-1 | src/sql/dialects/__init__.py | src/sql/dialects/__init__.py | wire | Register mssql and oracle dialect profiles in DIALECTS | 761 tests pass | 0caf8dc |
+| P1-2 | src/sql/dialects/{mssql.py, oracle.py} | src/sql/dialects/{mssql.py, oracle.py} | code | Full T-SQL and Oracle dialect profiles with catalog schema/fk queries and date functions | 761 tests pass | 0caf8dc |
+| P1-3 | src/sql/generation.py | src/sql/generation.py | wire | format_schema_rows supports mssql and oracle | 761 tests pass | 0caf8dc |
+| P1-4 | src/sql/registry.py, src/sql/schema_retrieval.py | src/sql/registry.py, src/sql/schema_retrieval.py | code | resolve_db_engine helper; sync_live_schema resolves target dialect and passes db_id to queries | 761 tests pass | 0caf8dc |
+| P1-5 | (new) | tests/sql/test_dialect_profiles_mssql_oracle.py | test | Offline tests for catalog queries, row cap rewrite, format_schema_rows, and mocked sync | 761 tests pass | 0caf8dc |
+| P1-6 | (new) | tests/sql/test_sync_live_schema_db_scoping.py | test | Tests for resolve_db_engine, target engine resolution, and db_id propagation in sync | 761 tests pass | 0caf8dc |
+| P1-7 | tests/sql/{test_postgres_dialect.py, test_sql_dialects.py} | tests/sql/{test_postgres_dialect.py, test_sql_dialects.py} | test | Updated dialect tests to expect 5-engine set (sqlite, mysql, postgresql, mssql, oracle) | 761 tests pass | 0caf8dc |
