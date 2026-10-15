@@ -472,6 +472,35 @@ def apply_to(target: Any, db_id: str = DEFAULT_DB_ID) -> list[str]:
     return applied
 
 
+_INACTIVE_STRINGS = frozenset({"false", "no", "off", "0"})
+
+
+def is_database_active(db_id: str, databases_dir: Path | None = None) -> bool:
+    """Whether questions may be answered from ``db_id``.
+
+    A database is inactive only when its ``databases/<db_id>/db.yaml`` says ``enabled: false``
+    (the template default, which a successful first schema sync turns to ``true``). So:
+
+    * the default database (``erp_main``) is always active;
+    * a database with no ``db.yaml`` keeps today's behaviour (active);
+    * a ``db.yaml`` without an ``enabled`` key is active;
+    * an unreadable or invalid ``db.yaml`` is treated as inactive (fail closed).
+    """
+    target = (db_id or DEFAULT_DB_ID).strip()
+    if target == DEFAULT_DB_ID:
+        return True
+    try:
+        meta = get_database(target, databases_dir=databases_dir)
+    except FileNotFoundError:
+        return True
+    except (ValueError, TypeError, OSError):
+        return False
+    enabled = meta.get("enabled", True)
+    if isinstance(enabled, str):
+        return enabled.strip().lower() not in _INACTIVE_STRINGS
+    return enabled is not False
+
+
 def resolve_db_engine(db_id: str = DEFAULT_DB_ID) -> str:
     """Return the engine key for ``db_id``.
 
@@ -506,6 +535,7 @@ __all__ = [
     "get_connection",
     "get_database",
     "get_database_access",
+    "is_database_active",
     "list_databases",
     "resolve_db_engine",
     "save_connection",

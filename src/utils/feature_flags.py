@@ -90,6 +90,7 @@ def is_feature_enabled(flag_name: str) -> bool:
 # ---------------------------------------------------------------------------
 
 DB_FEATURE_FLAGS: tuple[str, ...] = (
+    "auto_scaffold",
     "auto_catalog",
     "auto_procedures",
     "auto_relationships",

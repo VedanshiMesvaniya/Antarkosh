@@ -338,6 +338,14 @@ async def send_message(
         if not can_access_database(target_db_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this database")
 
+        from src.sql.registry import is_database_active
+
+        if not is_database_active(target_db_id):
+            raise HTTPException(
+                status_code=409,
+                detail="This database is not active yet. An admin must sync its schema first.",
+            )
+
     try:
         pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider), db_id=target_db_id)
         filters = {"user_id": current_user}
@@ -405,6 +413,14 @@ async def send_message_stream(
 
         if not can_access_database(target_db_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this database")
+
+        from src.sql.registry import is_database_active
+
+        if not is_database_active(target_db_id):
+            raise HTTPException(
+                status_code=409,
+                detail="This database is not active yet. An admin must sync its schema first.",
+            )
 
     pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider), db_id=target_db_id)
     filters = {"user_id": current_user}

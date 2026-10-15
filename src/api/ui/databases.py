@@ -45,11 +45,15 @@ async def list_databases_endpoint(
     current_user: str = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """List databases accessible to the current user (admins see all)."""
-    from src.sql.registry import can_access_database, list_databases
+    from src.sql.registry import can_access_database, is_database_active, list_databases
 
     dbs = list_databases()
     if current_user not in ("*", "all", "admin"):
-        dbs = [db for db in dbs if can_access_database(db.get("id", ""), current_user)]
+        dbs = [
+            db
+            for db in dbs
+            if can_access_database(db.get("id", ""), current_user) and is_database_active(db.get("id", ""))
+        ]
     return [
         {
             "id": db.get("id"),

@@ -32,6 +32,33 @@ MAX_ROWS = 500
 from src.sql.knowledge.loaders import DEFAULT_DB_ID
 
 
+class DatabaseNotConfiguredError(RuntimeError):
+    """A non-default database has no complete connection saved for it."""
+
+
+def _require_own_connection(db_id: str, engine: str, cfg: dict[str, Any]) -> None:
+    """Refuse to run a query for ``db_id`` on connection fields it does not have itself.
+
+    The connectors fall back to the process-wide settings (the default database's host,
+    user, password and name) for any field a config lacks. For a non-default database that
+    would silently answer from the DEFAULT database, so it is refused up front. The message
+    names only the missing field names, never values.
+    """
+    from src.sql.engine import REQUIRED_FIELDS
+
+    def has(field: str) -> bool:
+        if field == "service_name":  # Oracle's connector also accepts it as "database"
+            return bool(cfg.get("service_name") or cfg.get("database"))
+        return bool(cfg.get(field))
+
+    missing = [f for f in REQUIRED_FIELDS.get(engine, []) if not has(f)]
+    if missing:
+        raise DatabaseNotConfiguredError(
+            f"Database {db_id!r} has no complete connection configured (missing: {', '.join(missing)}). "
+            "Save its connection first; it will not fall back to another database's settings."
+        )
+
+
 async def run_readonly_query(
     sql: str,
     params: dict | None = None,
@@ -66,6 +93,9 @@ async def run_readonly_query(
             pass
     if not engine:
         engine = settings.db_engine
+
+    if engine != "sqlite" and target_db_id != DEFAULT_DB_ID:
+        _require_own_connection(target_db_id, engine, conn_cfg)
 
     profile = get_dialect_profile(engine)
     row_cap = max_rows if max_rows is not None else MAX_ROWS

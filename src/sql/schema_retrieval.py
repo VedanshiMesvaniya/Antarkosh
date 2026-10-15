@@ -546,6 +546,13 @@ async def sync_live_schema(
     Returns a summary dict with table count and status.
     """
     validate_db_id(db_id)
+
+    # Auto-schema Phase 2: give a new database its folder first (per-DB flag, off by default;
+    # never raises, so a scaffolding problem cannot stop the sync).
+    from src.sql.introspection.scaffold import scaffold_if_enabled
+
+    scaffold_if_enabled(db_id)
+
     embeddings = embedding_service or EmbeddingService()
     store = vector_store or QdrantStore(embedding_service=embeddings)
 
@@ -652,6 +659,12 @@ async def sync_live_schema(
         len(chunks),
         db_id,
     )
+
+    # Auto-schema Phase 2: a database that was scaffolded inactive becomes active only now,
+    # after its first successful sync. Flag-gated, never raises.
+    from src.sql.introspection.scaffold import activate_after_sync
+
+    activate_after_sync(db_id)
 
     return {
         "status": "ok",

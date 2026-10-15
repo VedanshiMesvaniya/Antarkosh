@@ -52,6 +52,14 @@ async def query_documents(
         if not can_access_database(target_db_id, current_user):
             raise HTTPException(status_code=403, detail="Access denied to this database")
 
+        from src.sql.registry import is_database_active
+
+        if not is_database_active(target_db_id):
+            raise HTTPException(
+                status_code=409,
+                detail="This database is not active yet. An admin must sync its schema first.",
+            )
+
 
     query_filters = dict(request.filters or {})
     # Identity and access scope are decided by the server, never by the client.

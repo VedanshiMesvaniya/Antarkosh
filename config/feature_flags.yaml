@@ -25,6 +25,7 @@ features:
 # erp_main is pinned off in code regardless of this file.
 db_features:
   _example_db:
+    auto_scaffold: false
     auto_catalog: false
     auto_procedures: false
     auto_relationships: false
