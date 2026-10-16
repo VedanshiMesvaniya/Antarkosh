@@ -27,6 +27,7 @@ db_features:
   _example_db:
     auto_scaffold: false
     auto_catalog: false
+    auto_sqlalchemy: false
     auto_procedures: false
     auto_relationships: false
     auto_table_profiles: false
@@ -35,3 +36,7 @@ db_features:
     auto_prompt_shadow: false
     auto_prompt_inject: false
     auto_learning: false
+  northwind:
+    auto_scaffold: true
+    auto_catalog: true
+    auto_sqlalchemy: true

@@ -10,7 +10,7 @@ import logging
 from typing import Any
 
 from src.core.config import settings
-from src.sql.engine import ENGINES
+from src.sql.engine import ENGINES, SCHEMA_ENGINES, validate_schema_name
 from src.sql.engine import REQUIRED_FIELDS as _REQUIRED
 from src.sql.knowledge.loaders import DEFAULT_DB_ID
 
@@ -25,7 +25,14 @@ class DBSettingsError(ValueError):
 
 def current_config() -> dict[str, Any]:
     """What the UI may see. The password is never returned, only whether one is set."""
+    try:
+        from src.sql.registry import get_connection
+
+        schema_name = get_connection(DEFAULT_DB_ID).get("schema_name", "") or ""
+    except Exception:  # noqa: BLE001 - the page must still load if the connections file is unreadable
+        schema_name = ""
     return {
+        "schema_name": schema_name,
         "engine": settings.db_engine,
         "host": settings.db_host,
         "port": settings.db_port,
@@ -66,6 +73,15 @@ def _clean(payload: dict[str, Any]) -> dict[str, Any]:
         out["port"] = int(payload.get("port") or spec["default_port"] or 0)
     except (TypeError, ValueError):
         raise DBSettingsError("Port must be a number.") from None
+
+    if payload.get("schema_name") is not None:      # None / missing = keep the stored value
+        try:
+            schema = validate_schema_name(payload["schema_name"])
+        except ValueError as e:
+            raise DBSettingsError(str(e)) from None
+        if schema and engine not in SCHEMA_ENGINES:
+            raise DBSettingsError("Schema is only supported for PostgreSQL and Oracle.")
+        out["schema_name"] = schema
 
     pw = payload.get("password")         # None = keep the stored password
     if pw is None:
@@ -194,6 +210,10 @@ async def save(payload: dict[str, Any], db_id: str = DEFAULT_DB_ID) -> dict[str,
             )
             if cfg["engine"] == "mssql" and cfg.get("odbc_driver"):
                 updates["db_odbc_driver"] = cfg["odbc_driver"]
+            if cfg["engine"] not in SCHEMA_ENGINES:
+                updates["schema_name"] = ""           # switching to an engine without schemas: drop the old one
+            elif "schema_name" in cfg:
+                updates["schema_name"] = cfg["schema_name"]
         try:                                          # 2. persist (atomic; old file kept on failure)
             from src.sql import registry
             registry.save_connection(target_db_id, updates)

@@ -26,6 +26,7 @@ class DBConnectionPayload(BaseModel):
     database: str = ""
     service_name: str = ""     # Oracle: used instead of "database"
     odbc_driver: str = ""      # SQL Server: ODBC driver name installed on the server
+    schema_name: str | None = None  # PostgreSQL/Oracle: schema to work in. None = keep stored, "" = clear
     username: str = ""
     password: str | None = None
     path: str | None = None
@@ -202,6 +203,20 @@ async def test_database_connection_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    from src.sql.engine import SCHEMA_ENGINES, validate_schema_name
+
+    if fields.get("schema_name") is None:  # not sent: the form is about the stored connection
+        stored_schema = get_connection(db_id).get("schema_name")
+        if stored_schema:
+            fields["schema_name"] = stored_schema
+    if fields.get("schema_name") is not None:
+        try:
+            fields["schema_name"] = validate_schema_name(fields["schema_name"])
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        if fields["schema_name"] and engine.value not in SCHEMA_ENGINES:
+            raise HTTPException(status_code=422, detail="Schema is only supported for PostgreSQL and Oracle.")
+
     try:
         connector = get_connector(engine, cfg=fields)
         await connector.test()
@@ -241,12 +256,29 @@ async def save_database_connection_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    from src.sql.engine import SCHEMA_ENGINES, validate_schema_name
+
+    if fields.get("schema_name") is None:  # not sent: the form is about the stored connection
+        stored_schema = get_connection(db_id).get("schema_name")
+        if stored_schema:
+            fields["schema_name"] = stored_schema
+    if fields.get("schema_name") is not None:
+        try:
+            fields["schema_name"] = validate_schema_name(fields["schema_name"])
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        if fields["schema_name"] and engine.value not in SCHEMA_ENGINES:
+            raise HTTPException(status_code=422, detail="Schema is only supported for PostgreSQL and Oracle.")
+
     # Test before saving — nothing written if test fails
     try:
         connector = get_connector(engine, cfg=fields)
         await connector.test()
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=422, detail=str(e))
+
+    if engine.value not in SCHEMA_ENGINES:
+        fields["schema_name"] = ""  # an engine without schemas must not keep an old schema setting
 
     save_connection(db_id, fields)
 

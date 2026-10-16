@@ -41,15 +41,31 @@ QueryRunner = Callable[..., Awaitable[list[dict[str, Any]]]]
 # Model
 # ---------------------------------------------------------------------------
 
+def _qualify(schema: str | None, name: str) -> str:
+    return f"{schema}.{name}" if schema else name
+
+
 @dataclass
 class CatalogTable:
     name: str
-    kind: str = "table"  # "table" | "view"
+    kind: str = "table"  # "table" | "view" | "materialized_view"
     comment: str | None = None
     row_estimate: int | None = None
-    columns: list[dict[str, Any]] = field(default_factory=list)  # {"name", "type", "comment"}
+    columns: list[dict[str, Any]] = field(default_factory=list)  # {"name", "type", "comment", ...}
     primary_key: list[str] = field(default_factory=list)
     unique_keys: list[list[str]] = field(default_factory=list)
+    # Filled by the SQLAlchemy reader only; None / empty for the single-schema native extractor.
+    schema: str | None = None
+    check_constraints: list[dict[str, Any]] = field(default_factory=list)
+    indexes: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def qualified_name(self) -> str:
+        return _qualify(self.schema, self.name)
+
+    @property
+    def is_view(self) -> bool:
+        return self.kind in ("view", "materialized_view")
 
 
 @dataclass
@@ -60,6 +76,12 @@ class Catalog:
     foreign_keys: list[dict[str, str]] = field(default_factory=list)  # one entry per key COLUMN pair
     warnings: list[str] = field(default_factory=list)
     unavailable: list[str] = field(default_factory=list)  # optional parts that were not obtained
+    # Multi-schema information (SQLAlchemy reader only).
+    source: str = "native"  # "native" | "sqlalchemy"
+    default_schema: str | None = None
+    answering_schema: str | None = None  # the one schema question answering currently covers
+    schemas: dict[str, dict[str, int]] = field(default_factory=dict)  # schema -> {"tables": n, "views": m}
+    name_collisions: dict[str, list[str]] = field(default_factory=dict)  # bare name -> schemas holding it
 
 
 def _lower_keys(rows: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
@@ -200,6 +222,77 @@ def build_catalog(
     return cat
 
 
+def catalog_from_reflection(
+    db_id: str,
+    dialect_key: str,
+    reflection: dict[str, Any],
+    *,
+    estimates: list[dict[str, Any]] | None = None,
+    answering_schema: str | None = None,
+    warnings: list[str] | None = None,
+    unavailable: list[str] | None = None,
+) -> Catalog:
+    """Build a multi-schema Catalog from ``reflect_database`` output (pure: data in, Catalog out).
+
+    Tables are keyed by their qualified name ``schema.table`` (plain ``table`` for SQLite, which has
+    one schema). Foreign keys carry both schemas; a key with no stated schema points at the default schema.
+    """
+    flat = dialect_key == "sqlite"
+    default_schema = reflection.get("default_schema")
+    cat = Catalog(
+        db_id=db_id,
+        engine=dialect_key,
+        source="sqlalchemy",
+        default_schema=None if flat else default_schema,
+        answering_schema=None if flat else answering_schema,
+        warnings=[*reflection.get("warnings", []), *(warnings or [])],
+        unavailable=list(unavailable or []),
+    )
+
+    estimate_by_name: dict[tuple[str, str], int | None] = {}
+    for row in _lower_keys(estimates):
+        schema, table = row.get("table_schema"), row.get("table_name")
+        if schema is not None and table is not None:
+            estimate_by_name[(str(schema).lower(), str(table).lower())] = _to_int(row.get("row_estimate"))
+
+    holders: dict[str, list[str]] = {}
+    for schema, sdata in sorted(reflection.get("schemas", {}).items()):
+        counts = {"tables": 0, "views": 0}
+        for name, t in sorted(sdata.get("tables", {}).items()):
+            qschema = None if flat else schema
+            table = CatalogTable(
+                name=name,
+                schema=qschema,
+                kind=t.get("kind", "table"),
+                comment=_clean_text(t.get("comment")),
+                primary_key=list(t.get("primary_key", [])),
+                unique_keys=[list(u.get("columns", [])) for u in t.get("unique_keys", []) if u.get("columns")],
+                check_constraints=[dict(c) for c in t.get("check_constraints", [])],
+                indexes=[dict(i) for i in t.get("indexes", [])],
+                row_estimate=estimate_by_name.get((schema.lower(), name.lower())),
+            )
+            for c in t.get("columns", []):
+                col = {k: c[k] for k in ("name", "type", "nullable", "default", "auto_increment", "comment") if k in c}
+                if c.get("enum_values"):
+                    col["enum_values"] = list(c["enum_values"])
+                table.columns.append(col)
+            cat.tables[table.qualified_name] = table
+            counts["views" if table.is_view else "tables"] += 1
+            holders.setdefault(name, []).append(schema)
+
+            for fk in t.get("foreign_keys", []):
+                to_schema = None if flat else (fk.get("referred_schema") or default_schema or schema)
+                for from_col, to_col in zip(fk.get("columns", []), fk.get("referred_columns", [])):
+                    if fk.get("referred_table") and from_col and to_col:
+                        entry = {"from_table": name, "from_column": from_col, "to_table": fk["referred_table"], "to_column": to_col}
+                        if not flat:
+                            entry = {"from_schema": schema, **entry, "to_schema": to_schema}
+                        cat.foreign_keys.append(entry)
+        cat.schemas[schema] = counts
+    cat.name_collisions = {n: sorted(s) for n, s in holders.items() if len(s) > 1}
+    return cat
+
+
 # ---------------------------------------------------------------------------
 # Documents
 # ---------------------------------------------------------------------------
@@ -212,34 +305,43 @@ def schema_document(cat: Catalog) -> dict[str, Any]:
     """Same top-level shape as the curated erp_main schema.json (extra keys are additive)."""
     fk_cols: dict[str, set[str]] = {}
     for fk in cat.foreign_keys:
-        fk_cols.setdefault(fk["from_table"], set()).add(fk["from_column"])
+        fk_cols.setdefault(_qualify(fk.get("from_schema"), fk["from_table"]), set()).add(fk["from_column"])
     tables = []
-    for name in sorted(cat.tables):
-        t = cat.tables[name]
-        tables.append(
-            {
-                "name": t.name,
-                "domain": None,
-                "is_view": t.kind == "view",
-                "comment": t.comment,
-                "primary_key": list(t.primary_key),
-                "unique_keys": [list(u) for u in t.unique_keys],
-                "columns": [
-                    {
-                        "name": c["name"],
-                        "type": c["type"],
-                        "nullable": None,  # not read by the catalog queries
-                        "auto_increment": None,
-                        "comment": c["comment"],
-                        "is_primary_key": c["name"] in t.primary_key,
-                        "is_foreign_key": c["name"] in fk_cols.get(t.name, set()),
-                    }
-                    for c in t.columns
-                ],
+    for qname in sorted(cat.tables):
+        t = cat.tables[qname]
+        entry: dict[str, Any] = {
+            "name": t.name,
+            "domain": None,
+            "is_view": t.is_view,
+            "comment": t.comment,
+            "primary_key": list(t.primary_key),
+            "unique_keys": [list(u) for u in t.unique_keys],
+            "columns": [],
+        }
+        for c in t.columns:
+            col_entry: dict[str, Any] = {
+                "name": c["name"],
+                "type": c["type"],
+                "nullable": c.get("nullable"),  # None where the engine's catalog query did not report it
+                "auto_increment": c.get("auto_increment"),
+                "comment": c.get("comment"),
+                "is_primary_key": c["name"] in t.primary_key,
+                "is_foreign_key": c["name"] in fk_cols.get(qname, set()),
             }
-        )
+            if c.get("default") is not None:
+                col_entry["default"] = c["default"]
+            if c.get("enum_values"):
+                col_entry["enum_values"] = list(c["enum_values"])
+            entry["columns"].append(col_entry)
+        if t.schema:  # additive keys, only when the table's schema is known
+            entry["schema"] = t.schema
+            entry["qualified_name"] = t.qualified_name
+            entry["kind"] = t.kind
+            entry["check_constraints"] = [dict(c) for c in t.check_constraints]
+            entry["indexes"] = [dict(i) for i in t.indexes]
+        tables.append(entry)
     relationships = [{**fk, "type": "fk"} for fk in cat.foreign_keys]
-    return {
+    doc: dict[str, Any] = {
         "generated_by": GENERATED_BY,
         "database": cat.db_id,
         "engine": cat.engine,
@@ -251,26 +353,37 @@ def schema_document(cat: Catalog) -> dict[str, Any]:
         "tables": tables,
         "relationships": relationships,
     }
+    if cat.source == "sqlalchemy":
+        doc["source"] = "sqlalchemy"
+        doc["default_schema"] = cat.default_schema
+        doc["schemas"] = [{"name": s, **counts} for s, counts in sorted(cat.schemas.items())]
+        doc["multi_schema"] = len(cat.schemas) > 1
+    return doc
 
 
 def inventory_document(cat: Catalog) -> dict[str, Any]:
     fk_count: dict[str, int] = {}
     for fk in cat.foreign_keys:
-        fk_count[fk["from_table"]] = fk_count.get(fk["from_table"], 0) + 1
-    entries = [
-        {
+        key = _qualify(fk.get("from_schema"), fk["from_table"])
+        fk_count[key] = fk_count.get(key, 0) + 1
+    entries = []
+    for qname in sorted(cat.tables):
+        t = cat.tables[qname]
+        entry: dict[str, Any] = {
             "name": t.name,
             "kind": t.kind,
             "column_count": len(t.columns),
             "primary_key": list(t.primary_key),
-            "foreign_key_count": fk_count.get(t.name, 0),
+            "foreign_key_count": fk_count.get(qname, 0),
             "row_estimate": t.row_estimate,
             "comment": t.comment,
         }
-        for t in (cat.tables[n] for n in sorted(cat.tables))
-    ]
-    views = sum(1 for e in entries if e["kind"] == "view")
-    return {
+        if t.schema:
+            entry["schema"] = t.schema
+            entry["qualified_name"] = t.qualified_name
+        entries.append(entry)
+    views = sum(1 for e in entries if e["kind"] in ("view", "materialized_view"))
+    doc: dict[str, Any] = {
         "generated_by": GENERATED_BY,
         "db_id": cat.db_id,
         "engine": cat.engine,
@@ -279,6 +392,16 @@ def inventory_document(cat: Catalog) -> dict[str, Any]:
         "unavailable": sorted(set(cat.unavailable)),
         "tables": entries,
     }
+    if cat.source == "sqlalchemy":
+        doc["source"] = "sqlalchemy"
+        doc["default_schema"] = cat.default_schema
+        doc["schemas"] = {s: dict(counts) for s, counts in sorted(cat.schemas.items())}
+        doc["name_collisions"] = {n: list(s) for n, s in sorted(cat.name_collisions.items())}
+        doc["answering_scope"] = {
+            "schema": cat.answering_schema,
+            "tables_outside_scope": sum(1 for t in cat.tables.values() if t.schema and t.schema != cat.answering_schema),
+        }
+    return doc
 
 
 def check_consistency(
@@ -288,10 +411,13 @@ def check_consistency(
     chunk_names: set[str] | None = None,
 ) -> dict[str, Any]:
     """The Phase 3 gate: catalog, inventory, schema.json and the embedded schema chunks list the same tables."""
+    def doc_key(entry: dict[str, Any]) -> str:
+        return entry.get("qualified_name") or entry["name"]
+
     sets: dict[str, set[str]] = {
         "catalog": set(cat.tables),
-        "inventory": {t["name"] for t in inventory_doc.get("tables", [])},
-        "schema.json": {t["name"] for t in schema_doc.get("tables", [])},
+        "inventory": {doc_key(t) for t in inventory_doc.get("tables", [])},
+        "schema.json": {doc_key(t) for t in schema_doc.get("tables", [])},
     }
     if chunk_names is not None:
         sets["schema chunks"] = set(chunk_names)

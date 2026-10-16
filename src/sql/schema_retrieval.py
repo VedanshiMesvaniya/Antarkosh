@@ -566,7 +566,15 @@ async def sync_live_schema(
     # 1. Fetch schema rows from the live database
     schema_rows = await _query_runner(dialect.schema_query, max_rows=20000, db_id=db_id)
     if not schema_rows:
-        return {"status": "error", "message": "No schema rows returned from database"}
+        from src.sql.engine import SCHEMA_ENGINES
+
+        message = "No schema rows returned from database"
+        if dialect.key in SCHEMA_ENGINES:
+            message += (
+                ". If your tables are in a schema other than the default one, "
+                "set the connection's Schema field and sync again"
+            )
+        return {"status": "error", "message": message}
 
     # 2. Split into per-table chunks
     table_schemas = _split_schema_by_table(dialect, schema_rows)
@@ -656,18 +664,32 @@ async def sync_live_schema(
     if is_db_feature_enabled("auto_catalog", db_id):
         from src.sql.introspection.catalog import run_catalog_phase
 
-        try:
-            catalog_report = await run_catalog_phase(
-                db_id=db_id,
-                dialect=dialect,
-                runner=_query_runner,
-                schema_rows=schema_rows,
-                fk_rows=fk_rows,
-                chunk_names=set(table_schemas),
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Catalog extraction failed for %s: %s", db_id, exc)
-            catalog_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+        sa_failure: str | None = None
+        if is_db_feature_enabled("auto_sqlalchemy", db_id):
+            # SQLAlchemy reader: every readable schema, not just the default one.
+            try:
+                from src.sql.sa.catalog_phase import run_catalog_phase_sa
+
+                catalog_report = await run_catalog_phase_sa(db_id=db_id, dialect=dialect, chunk_names=set(table_schemas))
+            except Exception as exc:  # noqa: BLE001 - fall back to the single-schema extractor below
+                sa_failure = f"{type(exc).__name__}: {str(exc)[:200]}"
+                logger.warning("SQLAlchemy catalog reader failed for %s, using the native extractor: %s", db_id, sa_failure)
+
+        if catalog_report is None:
+            try:
+                catalog_report = await run_catalog_phase(
+                    db_id=db_id,
+                    dialect=dialect,
+                    runner=_query_runner,
+                    schema_rows=schema_rows,
+                    fk_rows=fk_rows,
+                    chunk_names=set(table_schemas),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Catalog extraction failed for %s: %s", db_id, exc)
+                catalog_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+            if sa_failure is not None:
+                catalog_report["sqlalchemy_fallback"] = sa_failure
 
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:

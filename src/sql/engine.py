@@ -6,6 +6,7 @@ Origin: extracted from src/core/db_settings.py (ENGINES, REQUIRED_FIELDS)
 
 from __future__ import annotations
 
+import re
 from enum import Enum
 from typing import Any
 
@@ -72,7 +73,7 @@ ENGINES: dict[str, dict[str, Any]] = {
         "label": "PostgreSQL",
         "ready": True,
         "default_port": 5432,
-        "fields": ["host", "port", "database", "username", "password"],
+        "fields": ["host", "port", "database", "schema_name", "username", "password"],
     },
     "sqlite": {
         "label": "SQLite",
@@ -90,7 +91,7 @@ ENGINES: dict[str, dict[str, Any]] = {
         "label": "Oracle",
         "ready": True,
         "default_port": 1521,
-        "fields": ["host", "port", "service_name", "username", "password"],
+        "fields": ["host", "port", "service_name", "schema_name", "username", "password"],
     },
 }
 
@@ -102,8 +103,38 @@ REQUIRED_FIELDS: dict[str, list[str]] = {
     "oracle": ["host", "service_name", "username"],
 }
 
+# Engines whose connection can pin the schema the app works in (PostgreSQL search_path, Oracle
+# CURRENT_SCHEMA). SQL Server has no per-session default schema and MySQL's schema IS the database.
+SCHEMA_ENGINES: frozenset[str] = frozenset({"postgresql", "oracle"})
+
+_SCHEMA_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$#]{0,62}$")
+
+
+def validate_schema_name(value: Any) -> str:
+    """Return the cleaned schema name ('' when blank); raise ValueError if it is not a plain identifier.
+
+    Strict on purpose: the name ends up in a connection setting (PostgreSQL) or an
+    ALTER SESSION statement (Oracle), so only letters, digits, _, $ and # are accepted.
+    """
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError("Schema must be text.")
+    name = value.strip()
+    if not name:
+        return ""
+    if not _SCHEMA_NAME_RE.match(name):
+        raise ValueError(
+            "Schema may contain only letters, digits, underscore, $ and #, must start with a letter "
+            "or underscore, and be at most 63 characters."
+        )
+    return name
+
+
 __all__ = [
     "ENGINES",
     "REQUIRED_FIELDS",
+    "SCHEMA_ENGINES",
     "Engine",
+    "validate_schema_name",
 ]

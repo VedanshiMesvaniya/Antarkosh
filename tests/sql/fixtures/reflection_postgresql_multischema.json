@@ -1,0 +1,541 @@
+{
+ "_source": "Recorded from a real PostgreSQL 16.2 (embedded via pgserver) as a read-only role with USAGE/SELECT on some schemas only. 'locked' has no USAGE, 'sales.hidden_t' has no SELECT, 'empty_one' is empty. See README.md.",
+ "all_schemas": {
+  "dialect": "postgresql",
+  "default_schema": "public",
+  "schemas": {
+   "Mixed Case": {
+    "tables": {
+     "Order Lines": {
+      "kind": "table",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [
+       "id"
+      ],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+     }
+    }
+   },
+   "hr": {
+    "tables": {
+     "employee": {
+      "kind": "table",
+      "comment": "Staff",
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('hr.employee_id_seq'::regclass)",
+        "auto_increment": true,
+        "comment": null
+       },
+       {
+        "name": "name",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "auto_increment": false,
+        "comment": "Full name"
+       },
+       {
+        "name": "dept",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [
+       "id"
+      ],
+      "unique_keys": [],
+      "check_constraints": [
+       {
+        "name": "employee_dept_check",
+        "sqltext": "dept = ANY (ARRAY['A'::text, 'B'::text])"
+       }
+      ],
+      "foreign_keys": [],
+      "indexes": []
+     }
+    }
+   },
+   "public": {
+    "tables": {
+     "p1": {
+      "kind": "table",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+     }
+    }
+   },
+   "sales": {
+    "tables": {
+     "customer": {
+      "kind": "table",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('sales.customer_id_seq'::regclass)",
+        "auto_increment": true,
+        "comment": null
+       },
+       {
+        "name": "name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       },
+       {
+        "name": "mood",
+        "type": "sales.mood",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null,
+        "enum_values": [
+         "ok",
+         "bad"
+        ]
+       },
+       {
+        "name": "hr_owner",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [
+       "id"
+      ],
+      "unique_keys": [
+       {
+        "name": "customer_name_key",
+        "columns": [
+         "name"
+        ]
+       }
+      ],
+      "check_constraints": [],
+      "foreign_keys": [
+       {
+        "name": "customer_hr_owner_fkey",
+        "columns": [
+         "hr_owner"
+        ],
+        "referred_schema": "hr",
+        "referred_table": "employee",
+        "referred_columns": [
+         "id"
+        ]
+       }
+      ],
+      "indexes": [
+       {
+        "name": "customer_name_key",
+        "columns": [
+         "name"
+        ],
+        "unique": true
+       }
+      ]
+     },
+     "employee": {
+      "kind": "table",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+     },
+     "mv": {
+      "kind": "materialized_view",
+      "comment": null,
+      "columns": [
+       {
+        "name": "x",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+     },
+     "orders": {
+      "kind": "table",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('sales.orders_id_seq'::regclass)",
+        "auto_increment": true,
+        "comment": null
+       },
+       {
+        "name": "customer_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       },
+       {
+        "name": "total",
+        "type": "NUMERIC(10, 2)",
+        "nullable": true,
+        "default": "0",
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [
+       "id"
+      ],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [
+       {
+        "name": "orders_customer_id_fkey",
+        "columns": [
+         "customer_id"
+        ],
+        "referred_schema": "sales",
+        "referred_table": "customer",
+        "referred_columns": [
+         "id"
+        ]
+       }
+      ],
+      "indexes": [
+       {
+        "name": "ix_orders_cust",
+        "columns": [
+         "customer_id"
+        ],
+        "unique": false
+       }
+      ]
+     },
+     "v_orders": {
+      "kind": "view",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       },
+       {
+        "name": "customer_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       },
+       {
+        "name": "total",
+        "type": "NUMERIC(10, 2)",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+     }
+    }
+   }
+  },
+  "warnings": [],
+  "skipped_schemas": {
+   "information_schema": "system schema",
+   "empty_one": "no readable tables or views",
+   "locked": "no readable tables or views"
+  }
+ },
+ "pinned_sales": {
+  "dialect": "postgresql",
+  "default_schema": "public",
+  "schemas": {
+   "sales": {
+    "tables": {
+     "customer": {
+      "kind": "table",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('sales.customer_id_seq'::regclass)",
+        "auto_increment": true,
+        "comment": null
+       },
+       {
+        "name": "name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       },
+       {
+        "name": "mood",
+        "type": "sales.mood",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null,
+        "enum_values": [
+         "ok",
+         "bad"
+        ]
+       },
+       {
+        "name": "hr_owner",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [
+       "id"
+      ],
+      "unique_keys": [
+       {
+        "name": "customer_name_key",
+        "columns": [
+         "name"
+        ]
+       }
+      ],
+      "check_constraints": [],
+      "foreign_keys": [
+       {
+        "name": "customer_hr_owner_fkey",
+        "columns": [
+         "hr_owner"
+        ],
+        "referred_schema": "hr",
+        "referred_table": "employee",
+        "referred_columns": [
+         "id"
+        ]
+       }
+      ],
+      "indexes": [
+       {
+        "name": "customer_name_key",
+        "columns": [
+         "name"
+        ],
+        "unique": true
+       }
+      ]
+     },
+     "employee": {
+      "kind": "table",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+     },
+     "mv": {
+      "kind": "materialized_view",
+      "comment": null,
+      "columns": [
+       {
+        "name": "x",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+     },
+     "orders": {
+      "kind": "table",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": "nextval('sales.orders_id_seq'::regclass)",
+        "auto_increment": true,
+        "comment": null
+       },
+       {
+        "name": "customer_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       },
+       {
+        "name": "total",
+        "type": "NUMERIC(10, 2)",
+        "nullable": true,
+        "default": "0",
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [
+       "id"
+      ],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [
+       {
+        "name": "orders_customer_id_fkey",
+        "columns": [
+         "customer_id"
+        ],
+        "referred_schema": "sales",
+        "referred_table": "customer",
+        "referred_columns": [
+         "id"
+        ]
+       }
+      ],
+      "indexes": [
+       {
+        "name": "ix_orders_cust",
+        "columns": [
+         "customer_id"
+        ],
+        "unique": false
+       }
+      ]
+     },
+     "v_orders": {
+      "kind": "view",
+      "comment": null,
+      "columns": [
+       {
+        "name": "id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       },
+       {
+        "name": "customer_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       },
+       {
+        "name": "total",
+        "type": "NUMERIC(10, 2)",
+        "nullable": true,
+        "default": null,
+        "auto_increment": false,
+        "comment": null
+       }
+      ],
+      "primary_key": [],
+      "unique_keys": [],
+      "check_constraints": [],
+      "foreign_keys": [],
+      "indexes": []
+     }
+    }
+   }
+  },
+  "warnings": [
+   "sales: 1 object(s) hidden because this account cannot read them"
+  ],
+  "skipped_schemas": {
+   "information_schema": "system schema"
+  }
+ }
+}

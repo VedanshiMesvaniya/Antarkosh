@@ -17,7 +17,7 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 DATABASES_DIR = PROJECT_ROOT / "databases"
-from src.sql.engine import Engine
+from src.sql.engine import Engine, validate_schema_name
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,7 @@ KNOWN_CONNECTION_KEYS: tuple[str, ...] = (
     "password",
     "odbc_driver",
     "service_name",
+    "schema_name",
     "engine",
 )
 
@@ -104,6 +105,9 @@ def _coerce_field(key: str, value: Any) -> Any:
             return None
         engine = Engine.from_value(str(value))
         return engine.value
+    if key == "schema_name":
+        # None = not supplied: keep the stored value. "" = clear it.
+        return None if value is None else validate_schema_name(value)
     if not isinstance(value, str):
         if value is None:
             return ""

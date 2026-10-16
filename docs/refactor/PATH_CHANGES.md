@@ -611,5 +611,20 @@ Format: | # | old path / module | new path / module | kind | references updated 
 | P3-3 | (new) | src/sql/introspection/catalog.py | code | Pure catalog extraction, document formatting (schema.json, table_inventory.json), consistency gate, atomic file writer, and phase runner | 56 tests pass | Phase 3 |
 | P3-4 | src/sql/schema_retrieval.py | src/sql/schema_retrieval.py | behavior | Hooked run_catalog_phase into sync_live_schema guarded by auto_catalog per-DB feature flag | 56 tests pass | Phase 3 |
 | P3-5 | (new) | tests/sql/fixtures/{README.md, catalog_postgresql.json} | data | Real PostgreSQL catalog fixture recorded from live instance | 56 tests pass | Phase 3 |
-| P3-6 | (new) | tests/sql/test_catalog_extraction.py, tests/sql/test_database_activation_and_isolation.py | test | 56 unit/integration tests for queries, AST read-only validation, gate consistency, safety, degradation, and sync | 56 tests pass | Phase 3 |
+| P3-6 | (new) | tests/sql/test_catalog_extraction.py, tests/sql/test_database_activation_and_isolation.py | test | 56 unit/integration tests for queries, AST read-only validation, gate consistency, safety, degradation, and sync | 56 tests pass | 88deb28 |
+
+---
+
+## Phase 3c — SQLAlchemy Multi-Schema Catalog Extraction & Schema Pinning
+
+| # | old path / module | new path / module | kind | description | verified | commit |
+|---|---|---|---|---|---|---|
+| P3c-1 | src/sql/engine.py, src/core/db_settings.py, src/sql/registry.py, src/api/ui/databases.py, Antarkosh_UI/.../DatabaseConnectionCard.jsx | src/sql/engine.py, src/core/db_settings.py, src/sql/registry.py, src/api/ui/databases.py, Antarkosh_UI/.../DatabaseConnectionCard.jsx | code | Added schema_name support (SCHEMA_ENGINES, validate_schema_name, settings/API validation, UI field) | 98 tests pass | Phase 3c |
+| P3c-2 | src/sql/connectors/{postgresql.py, oracle.py} | src/sql/connectors/{postgresql.py, oracle.py} | behavior | PostgreSQL search_path and Oracle ALTER SESSION SET CURRENT_SCHEMA connection scoping | 98 tests pass | Phase 3c |
+| P3c-3 | (new) | src/sql/sa/{__init__.py, engine_factory.py, reflection.py, estimates.py, catalog_phase.py} | code | SQLAlchemy async engine factory (NullPool, 5 dialects) & multi-schema reflection with Inspector | 98 tests pass | Phase 3c |
+| P3c-4 | src/sql/introspection/catalog.py | src/sql/introspection/catalog.py | code | catalog_from_reflection, multi-schema schema_document/inventory_document, qualified names, collision tracking | 98 tests pass | Phase 3c |
+| P3c-5 | src/sql/schema_retrieval.py | src/sql/schema_retrieval.py | behavior | sync_live_schema integrates auto_sqlalchemy reader with graceful fallback to native extractor | 98 tests pass | Phase 3c |
+| P3c-6 | pyproject.toml, requirements.txt, uv.lock, src/utils/feature_flags.py, config/feature_flags.yaml | pyproject.toml, requirements.txt, uv.lock, src/utils/feature_flags.py, config/feature_flags.yaml | config | Added sqlalchemy[asyncio], aioodbc; registered auto_sqlalchemy flag; enabled for northwind | 98 tests pass | Phase 3c |
+| P3c-7 | (new) | tests/sql/{test_connection_schema.py, test_sa_layer.py, fixtures/reflection_postgresql_multischema.json} | test | 98 tests verifying connection schema pinning, SQLAlchemy URL creation, reflection, cross-schema FKs, and sync | 98 tests pass | Phase 3c |
+
 

@@ -14,6 +14,18 @@ from src.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _schema_from(cfg: dict[str, Any]) -> str:
+    """The connection's pinned schema ('' = none). Re-validated here: it goes into a server setting."""
+    from src.sql.engine import validate_schema_name
+
+    return validate_schema_name(cfg.get("schema_name"))
+
+
+def _search_path(schema: str) -> str:
+    """Quoted so a mixed-case schema keeps its case; the app never needs to prefix table names."""
+    return '"' + schema.replace('"', '""') + '"'
+
+
 class PostgreSQLConnector:
     """Read-only PostgreSQL database connector."""
 
@@ -36,6 +48,11 @@ class PostgreSQLConnector:
         password = c.get("password") or settings.db_readonly_password
         database = c.get("database") or settings.db_name
 
+        schema = _schema_from(c)
+        connect_kwargs: dict[str, Any] = {}
+        if schema:
+            connect_kwargs["server_settings"] = {"search_path": _search_path(schema)}
+
         conn = await asyncio.wait_for(
             asyncpg.connect(
                 host=host,
@@ -44,11 +61,22 @@ class PostgreSQLConnector:
                 password=password,
                 database=database,
                 timeout=5,
+                **connect_kwargs,
             ),
             timeout=8,
         )
         try:
             await conn.fetchval("SELECT 1")
+            if schema:
+                # information_schema.schemata lists only schemas this user owns or may USE, so a
+                # misspelt schema and a missing privilege both show up here, not as an empty sync later.
+                visible = await conn.fetchval(
+                    "SELECT 1 FROM information_schema.schemata WHERE schema_name = $1", schema
+                )
+                if not visible:
+                    raise RuntimeError(
+                        f"Schema {schema!r} was not found, or this user has no access to it (USAGE privilege)."
+                    )
         finally:
             await conn.close()
 
@@ -76,6 +104,17 @@ class PostgreSQLConnector:
         password = c.get("password") or settings.db_readonly_password
         database = c.get("database") or settings.db_name
 
+        server_settings = {
+            "application_name": "antarkosh",
+            # Server-side backstop for the asyncio.timeout in the caller.
+            "statement_timeout": str(int(timeout_seconds * 1000)),
+        }
+        schema = _schema_from(c)
+        if schema:
+            # Applies to every statement on this connection: the catalog queries (current_schema())
+            # and the generated SQL's bare table names both resolve inside the chosen schema.
+            server_settings["search_path"] = _search_path(schema)
+
         conn = await asyncpg.connect(
             host=host,
             port=port,
@@ -83,11 +122,7 @@ class PostgreSQLConnector:
             password=password,
             database=database,
             timeout=10,
-            server_settings={
-                "application_name": "antarkosh",
-                # Server-side backstop for the asyncio.timeout in the caller.
-                "statement_timeout": str(int(timeout_seconds * 1000)),
-            },
+            server_settings=server_settings,
         )
         try:
             async with conn.transaction(readonly=True):

@@ -10,6 +10,7 @@ const LABELS = {
   username: 'Username',
   password: 'Password',
   service_name: 'Service name',
+  schema_name: 'Schema (optional)',
   odbc_driver: 'ODBC driver',
 }
 
@@ -32,6 +33,7 @@ export default function DatabaseConnectionCard() {
           port: c.port,
           database: c.database,
           service_name: c.service_name || '',
+          schema_name: c.schema_name || '',
           odbc_driver: c.odbc_driver || '',
           username: c.username,
         })

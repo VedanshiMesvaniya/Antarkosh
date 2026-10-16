@@ -50,6 +50,8 @@ dependencies = [
     "asyncpg>=0.29",     # async PostgreSQL support for the live-data DB
     "pyodbc>=5.0",       # SQL Server support for the live-data DB (requires an OS ODBC driver)
     "oracledb>=2.0",     # Oracle support for the live-data DB (pure Python, "thin" mode)
+    "sqlalchemy[asyncio]>=2.0.36",  # engine layer + catalog reader for every database (auto-schema)
+    "aioodbc>=0.5",      # async SQL Server driver for SQLAlchemy (needs pyodbc + the OS ODBC driver)
 
     # API server
     "fastapi>=0.111",
@@ -79,6 +81,7 @@ postgresql = [
 ]
 mssql = [
     "pyodbc>=5.0",
+    "aioodbc>=0.5",
 ]
 oracle = [
     "oracledb>=2.0",

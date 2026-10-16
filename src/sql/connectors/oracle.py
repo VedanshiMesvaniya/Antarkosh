@@ -14,6 +14,24 @@ from src.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _schema_from(cfg: dict[str, Any]) -> str:
+    """The connection's pinned schema ('' = none). Re-validated: it is placed in an ALTER SESSION statement."""
+    from src.sql.engine import validate_schema_name
+
+    return validate_schema_name(cfg.get("schema_name"))
+
+
+def _select_schema(conn: Any, schema: str) -> None:
+    """Make ``schema`` the session's current schema so unqualified names and the catalog queries use it."""
+    if not schema:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f"ALTER SESSION SET CURRENT_SCHEMA = {schema}")  # identifier validated above
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(f"Schema {schema!r} could not be selected: {str(exc)[:160]}") from None
+
+
 class OracleConnector:
     """Read-only Oracle database connector."""
 
@@ -35,6 +53,7 @@ class OracleConnector:
         host = c.get("host") or settings.db_host
         port = int(c.get("port") or settings.db_port)
         svc = c.get("service_name") or c.get("database") or settings.db_name
+        schema = _schema_from(c)
 
         def _connect() -> None:
             with oracledb.connect(
@@ -45,6 +64,7 @@ class OracleConnector:
                 service_name=svc,
                 tcp_connect_timeout=5,
             ) as conn:
+                _select_schema(conn, schema)
                 with conn.cursor() as cur:
                     cur.execute("SELECT 1 FROM DUAL")
                     cur.fetchone()
@@ -66,6 +86,7 @@ class OracleConnector:
         port = int(c.get("port") or settings.db_port)
         svc = c.get("service_name") or c.get("database") or settings.db_name
         timeout = int(settings.db_query_timeout_seconds)
+        schema = _schema_from(c)
 
         def _run_oracle() -> list[dict[str, Any]]:
             with oracledb.connect(
@@ -76,6 +97,7 @@ class OracleConnector:
                 service_name=svc,
                 tcp_connect_timeout=timeout,
             ) as conn:
+                _select_schema(conn, schema)
                 with conn.cursor() as cursor:
                     if params:
                         cursor.execute(sql, params)

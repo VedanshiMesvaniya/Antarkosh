@@ -4,4 +4,6 @@ aiomysql>=0.2
 asyncpg>=0.29
 pyodbc>=5.0
 oracledb>=2.0
+sqlalchemy[asyncio]>=2.0.36
+aioodbc>=0.5
 portalocker>=2.8
