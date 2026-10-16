@@ -40,3 +40,8 @@ db_features:
     auto_scaffold: true
     auto_catalog: true
     auto_sqlalchemy: true
+  qts_ais:
+    auto_scaffold: true
+    auto_catalog: true
+    auto_sqlalchemy: true
+
