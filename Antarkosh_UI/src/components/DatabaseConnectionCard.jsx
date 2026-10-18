@@ -1,20 +1,17 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Database, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Database, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getDbConnection,
   testDbConnection,
   saveDbConnection,
-  listAdminDatabases,
   getDbConnectionFor,
   getEngineCatalog,
   testConnectDatabase,
   connectDatabase,
 } from '../services/api.js'
-import { useAppStore } from '../store/store.js'
 
 const MAIN_DB = 'erp_main'
-const DB_ID_RE = /^[a-z][a-z0-9_]{1,39}$/
 
 const LABELS = {
   host: 'Host',
@@ -27,105 +24,76 @@ const LABELS = {
   odbc_driver: 'ODBC driver',
 }
 
-// Admin-only card. The server is the real gate (403 for non-admins); if the GET
-// fails for any reason this component simply renders nothing.
+const connectionForm = (c) => ({
+  engine: c.engine,
+  host: c.host,
+  port: c.port,
+  database: c.database,
+  service_name: c.service_name || '',
+  schema_name: c.schema_name || '',
+  odbc_driver: c.odbc_driver || '',
+  username: c.username,
+})
+
+// Connection form for the Databases page (database admins only; the server is the real gate).
 //
-// Any database can be connected here. Leave "Database ID" empty and the server creates the ID from the
-// database's name, makes its folder and records you as its owner. It stays inactive until its first
-// successful sync, and only its owner (and users the owner shares it with) can use it. The main database
-// (erp_main) can still be edited by the main admin by typing its ID.
-export default function DatabaseConnectionCard() {
-  const [cfg, setCfg] = useState(null) // engine list (+ ODBC default); null = loading, false = unavailable
-  const [mainCfg, setMainCfg] = useState(null) // the main database's settings, only for the main admin
-  const [dbId, setDbId] = useState('')
-  const [source, setSource] = useState('') // which saved database the form currently holds ('' = blank/new)
-  const [databases, setDatabases] = useState([])
+// There is no Database ID to type. For a new database the server creates the ID from the database's name,
+// makes its folder and records you as the owner. To change a saved database, pick it in the list: this form
+// is remounted (key) with `editingId` set, and the ID is sent only so the SAME database is updated.
+// `onSaved(dbId)` tells the page to refresh its list.
+export default function DatabaseConnectionCard({ editingId = null, onSaved, onCancel }) {
+  const [cfg, setCfg] = useState(null) // engine list; null = loading, false = unavailable
   const [form, setForm] = useState({})
   const [passwordSet, setPasswordSet] = useState(false)
-  const [busy, setBusy] = useState(null) // 'test' | 'save' | 'sync' | null
+  const [busy, setBusy] = useState(null) // 'test' | 'save' | null
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const runSchemaSync = useAppStore((state) => state.runSchemaSync)
 
-  const isMain = !!mainCfg && dbId === MAIN_DB
-  const known = databases.some((d) => d.id === dbId)
-
-  const mainForm = (c) => ({
-    engine: c.engine,
-    host: c.host,
-    port: c.port,
-    database: c.database,
-    service_name: c.service_name || '',
-    schema_name: c.schema_name || '',
-    odbc_driver: c.odbc_driver || '',
-    username: c.username,
-  })
-
-  const blankForm = (c) => {
-    const engine = c.engines.find((e) => e.key === (mainCfg?.engine || 'postgresql')) || c.engines[0]
-    return {
-      engine: engine.key,
-      host: '',
-      port: engine.default_port ?? '',
-      database: '',
-      service_name: '',
-      schema_name: '',
-      odbc_driver: engine.key === 'mssql' ? c.odbc_driver || 'ODBC Driver 18 for SQL Server' : '',
-      username: '',
-    }
-  }
-
-  const refreshDatabases = useCallback(() => {
-    listAdminDatabases()
-      .then(setDatabases)
-      .catch(() => setDatabases([]))
-  }, [])
+  const isMain = editingId === MAIN_DB
 
   useEffect(() => {
-    getEngineCatalog()
-      .then((c) => {
-        setCfg(c)
-        setForm(blankForm({ ...c }))
-      })
-      .catch(() => setCfg(false))
-    // Only the main admin may read the main database's settings; everyone else just gets no erp_main option.
-    getDbConnection()
-      .then(setMainCfg)
-      .catch(() => setMainCfg(null))
-    refreshDatabases()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshDatabases])
-
-  // Choosing another database id: load its saved connection, or start a blank form for a new one.
-  // (Typing a brand-new id keeps what you have typed; only leaving a saved database clears the form,
-  // so one database's host or user can never be saved under another id by accident.)
-  const onDbId = (raw) => {
-    const id = raw.trim().toLowerCase()
-    setDbId(id)
-    setError('')
-    if (!cfg) return
-    if (id === MAIN_DB && mainCfg) {
-      setForm(mainForm(mainCfg))
-      setPasswordSet(!!mainCfg.password_set)
-      setSource(MAIN_DB)
-    } else if (databases.some((d) => d.id === id)) {
-      getDbConnectionFor(id)
-        .then((c) => {
-          setForm({ ...mainForm(c), engine: c.engine || cfg.engine })
-          setPasswordSet(!!c.password_set)
-          setSource(id)
+    let alive = true
+    const load = async () => {
+      let catalog
+      try {
+        catalog = await getEngineCatalog()
+      } catch {
+        if (alive) setCfg(false)
+        return
+      }
+      // Only the main admin may read the main database's settings (everyone else gets a 403, ignored).
+      const main = await getDbConnection().catch(() => null)
+      let saved = null
+      if (editingId === MAIN_DB) {
+        saved = main
+      } else if (editingId) {
+        saved = await getDbConnectionFor(editingId).catch(() => null)
+      }
+      if (!alive) return
+      if (saved) {
+        setForm({ ...connectionForm(saved), engine: saved.engine || catalog.engines[0].key })
+        setPasswordSet(!!saved.password_set)
+      } else {
+        const engine = catalog.engines.find((e) => e.key === main?.engine) || catalog.engines[0]
+        setForm({
+          engine: engine.key,
+          host: '',
+          port: engine.default_port ?? '',
+          database: '',
+          service_name: '',
+          schema_name: '',
+          odbc_driver: engine.key === 'mssql' ? catalog.odbc_driver || 'ODBC Driver 18 for SQL Server' : '',
+          username: '',
         })
-        .catch(() => {
-          setForm(blankForm(cfg))
-          setPasswordSet(false)
-          setSource('')
-        })
-    } else if (source) {
-      setForm(blankForm(cfg))
-      setPasswordSet(false)
-      setSource('')
+        setPasswordSet(false)
+      }
+      setCfg(catalog)
     }
-  }
+    load()
+    return () => {
+      alive = false
+    }
+  }, [editingId])
 
   if (!cfg) return null
 
@@ -142,41 +110,28 @@ export default function DatabaseConnectionCard() {
     })
   }
 
-  const idProblem = () =>
-    !isMain && dbId && !DB_ID_RE.test(dbId)
-      ? 'Database ID: use lowercase letters, numbers and underscores, start with a letter, 2 to 40 characters.'
-      : ''
-
   const run = async (kind) => {
-    const problem = idProblem()
-    if (problem) {
-      setError(problem)
-      return
-    }
     setBusy(kind)
     setError('')
     try {
-      const payload = { ...form, db_id: dbId || undefined }
+      const payload = { ...form, db_id: editingId && !isMain ? editingId : undefined }
       if (kind === 'test') {
         await (isMain ? testDbConnection(form) : testConnectDatabase(payload))
         toast.success('Connection works')
       } else if (isMain) {
-        const saved = await saveDbConnection(form)
-        setMainCfg(saved)
+        await saveDbConnection(form)
         set({ password: undefined }) // never keep the typed password around; omitted = "keep stored"
         toast.success('Database connection saved', {
-          description: 'Run "Sync database schema" so Antarkosh learns the new database.',
+          description: 'Run "Sync schema" so Antarkosh learns the new database.',
         })
+        onSaved?.(MAIN_DB)
       } else {
         const saved = await connectDatabase(payload)
-        setDbId(saved.db_id)
-        setSource(saved.db_id)
         set({ password: undefined })
-        setPasswordSet(true)
-        refreshDatabases()
-        toast.success(saved.folder_created ? `Database "${saved.db_id}" added` : `Database "${saved.db_id}" saved`, {
-          description: 'Now click "Sync schema". The database stays inactive until its first successful sync.',
+        toast.success(saved.existing ? 'Database connection updated' : 'Database added', {
+          description: 'Now click "Sync schema" on it. It stays inactive until its first successful sync.',
         })
+        onSaved?.(saved.db_id)
       }
     } catch (e) {
       setError(e.response?.data?.detail || e.message || 'Request failed')
@@ -185,55 +140,18 @@ export default function DatabaseConnectionCard() {
     }
   }
 
-  const sync = async () => {
-    setBusy('sync')
-    await runSchemaSync(dbId)
-    refreshDatabases()
-    setBusy(null)
-  }
-
-  const current = databases.find((d) => d.id === dbId)
-
   return (
     <section className="settings-card">
       <div className="settings-card__heading">
         <Database size={15} />
-        <h3 className="settings-card__title">Database Connection</h3>
+        <h3 className="settings-card__title">{editingId ? 'Edit connection' : 'Add a database'}</h3>
       </div>
       <p className="settings-card__desc">
-        Admin only. Credentials are tested first, then saved to the server&apos;s configuration file.
+        Credentials are tested first, then saved to the server&apos;s configuration file.
+        {editingId ? '' : ' The database gets its own ID and folder automatically.'}
       </p>
 
       <div className="db-form">
-        <label className="db-form__row">
-          <span>Database ID</span>
-          <input
-            className="dialog-card__input"
-            list="db-ids"
-            value={dbId}
-            placeholder="Automatic (from the database name)"
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(e) => onDbId(e.target.value)}
-          />
-          <datalist id="db-ids">
-            {databases.map((d) => d.id).map((id) => (
-              <option key={id} value={id} />
-            ))}
-          </datalist>
-        </label>
-        <p className="settings-card__desc">
-          {isMain
-            ? 'erp_main is the main database. Clear this field to connect a different database.'
-            : known
-              ? `Editing "${dbId}"${current ? (current.enabled ? ' (active)' : ' (not active until synced)') : ''}${
-                  current?.owner ? `, owner: ${current.owner}` : ''
-                }${current?.synced_by ? `, last synced by ${current.synced_by}` : ''}.`
-              : dbId
-                ? `New database "${dbId}": saving creates its own folder.`
-                : 'New database: its ID and folder are created automatically from the database name when you save.'}
-        </p>
-
         <label className="db-form__row">
           <span>Database type</span>
           <select
@@ -303,10 +221,9 @@ export default function DatabaseConnectionCard() {
             {busy === 'save' ? <Loader2 size={14} className="spin" /> : null}
             <span>Save connection</span>
           </button>
-          {!isMain && known ? (
-            <button type="button" className="sync-card__btn" disabled={!!busy} onClick={sync}>
-              {busy === 'sync' ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}
-              <span>Sync schema</span>
+          {editingId && onCancel ? (
+            <button type="button" className="secondary-button" disabled={!!busy} onClick={onCancel}>
+              Cancel
             </button>
           ) : null}
         </div>

@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { Layout } from './components/Layout.jsx'
+import Databases from './pages/Databases.jsx'
 import Documents from './pages/Documents.jsx'
 import Home from './pages/Home.jsx'
 import Settings from './pages/Settings.jsx'
@@ -22,6 +23,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="chat" element={<Home />} />
           <Route path="documents" element={<Documents />} />
+          <Route path="databases" element={<Databases />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

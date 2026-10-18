@@ -78,7 +78,7 @@ def choose_db_id(
 
     main_cfg = registry.get_connection(DEFAULT_DB_ID, conn_path=conn_path)
     if main_cfg and connection_fingerprint(main_cfg) == fingerprint:
-        raise ValueError("This is the main database. Edit it with Database ID erp_main.")
+        raise ValueError("This is the main database. Select it in the Databases list to edit it.")
 
     for existing_id in registry.list_connection_ids(conn_path=conn_path):
         if existing_id == DEFAULT_DB_ID:
