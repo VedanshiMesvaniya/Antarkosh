@@ -339,30 +339,91 @@ def atomic_write_yaml(path: Path, data: dict[str, Any], mode: int = 0o644) -> No
         raise
 
 
+SUPER_ADMIN = "admin"
+
+
+def _strict_ownership() -> bool:
+    """STRICT_DB_OWNERSHIP=1: even the super admin gets no data access to a database someone else owns."""
+    env = os.environ.get("STRICT_DB_OWNERSHIP")
+    if env is not None:
+        return env.strip().lower() in ("1", "true", "yes")
+    from src.core.config import settings
+
+    return bool(getattr(settings, "strict_db_ownership", False))  # from .env
+
+
+def get_database_owner(db_id: str, databases_dir: Path | None = None) -> str | None:
+    """The account that connected ``db_id`` (``owner`` in its db.yaml), or None for older databases."""
+    try:
+        meta = get_database(db_id, databases_dir=databases_dir)
+    except (FileNotFoundError, KeyError, ValueError, TypeError, OSError):
+        return None
+    owner = meta.get("owner")
+    return str(owner) if owner else None
+
+
 def can_access_database(
     db_id: str,
     user: str | None,
     databases_dir: Path | None = None,
 ) -> bool:
-    """Check if user has permission to access the specified database.
+    """Check if user has permission to read the specified database's data.
 
-    Admins ('admin') and wildcard callers ('*', 'all') are always allowed.
-    Regular users must be listed in databases/<db_id>/db.yaml['allowed_users'].
+    * Wildcard callers ('*', 'all') are always allowed.
+    * A database with an ``owner`` in its db.yaml (connected by a database admin) is open to that owner and
+      to the users the owner granted in ``allowed_users``; the super admin keeps access unless
+      STRICT_DB_OWNERSHIP is set.
+    * Any other database (``erp_main``, older ones) keeps the original rule: the super admin ('admin'),
+      or a user listed in ``allowed_users``.
     """
     if not user:
         return False
-    if user in ("admin", "*", "all"):
+    if user in ("*", "all"):
         return True
 
     try:
         db_meta = get_database(db_id, databases_dir=databases_dir)
     except (FileNotFoundError, KeyError, ValueError, TypeError, OSError):
-        return False
+        return user == SUPER_ADMIN  # no db.yaml: as before, only the super admin
+
+    owner = db_meta.get("owner")
+    if owner:
+        if user == owner:
+            return True
+        if user == SUPER_ADMIN and not _strict_ownership():
+            return True
+    elif user == SUPER_ADMIN:
+        return True
 
     allowed = db_meta.get("allowed_users") or []
     if isinstance(allowed, list):
         return user in allowed or "*" in allowed
     return False
+
+
+def can_manage_database(db_id: str, admin: str | None, databases_dir: Path | None = None) -> bool:
+    """May this database admin connect, edit, sync or share ``db_id``?
+
+    The super admin may manage any database. Any other database admin may manage a database they own, or
+    claim a brand-new id (no saved connection and no folder yet). The default database is super-admin only.
+    """
+    if not admin:
+        return False
+    if admin == SUPER_ADMIN:
+        return True
+    if db_id == DEFAULT_DB_ID:
+        return False
+    owner = get_database_owner(db_id, databases_dir=databases_dir)
+    if owner:
+        return owner == admin
+    base = databases_dir or DATABASES_DIR
+    folder_exists = (base / db_id).exists()
+    return not folder_exists and not get_connection(db_id)
+
+
+def list_connection_ids(conn_path: Path | None = None) -> list[str]:
+    """Every database id that has a saved connection."""
+    return sorted(_load_connections(conn_path=conn_path))
 
 
 def get_database_access(
@@ -385,7 +446,7 @@ def update_database_access(
 ) -> bool:
     """Update allowed_users in databases/<db_id>/db.yaml atomically.
 
-    Guarantees 'admin' is always included in allowed_users.
+    Guarantees the database owner (or 'admin' when there is none) is always included in allowed_users.
     """
     validate_db_id(db_id)
     base_dir = databases_dir or DATABASES_DIR
@@ -403,8 +464,9 @@ def update_database_access(
         raise TypeError(f"Database configuration {yaml_path} must be a mapping")
 
     clean_users = sorted({str(u).strip() for u in allowed_users if str(u).strip()})
-    if "admin" not in clean_users:
-        clean_users.insert(0, "admin")
+    keeper = str(data.get("owner") or "admin")  # an owned database always keeps its owner in the list
+    if keeper not in clean_users:
+        clean_users.insert(0, keeper)
 
     data["allowed_users"] = clean_users
     atomic_write_yaml(yaml_path, data)
@@ -539,6 +601,9 @@ __all__ = [
     "get_connection",
     "get_database",
     "get_database_access",
+    "get_database_owner",
+    "can_manage_database",
+    "list_connection_ids",
     "is_database_active",
     "list_databases",
     "resolve_db_engine",

@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from src.api.auth import require_admin
+from src.api.auth import require_admin, require_db_admin
 from src.api.ui.databases import DBConnectionPayload
 from src.core import db_settings
 from src.core.config import settings
@@ -147,19 +147,32 @@ async def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
 @router.post("/settings/sync-schema")
 async def sync_schema(
     db_id: str = "erp_main",
-    _admin: str = Depends(require_admin),
+    admin: str = Depends(require_db_admin),
 ) -> dict[str, Any]:
-    """Sync the live database schema into the vector store for Schema RAG."""
-    from src.sql.knowledge.loaders import validate_db_id
+    """Sync the live database schema into the vector store for Schema RAG.
+
+    Records which admin ran it, and on success makes that database the admin's current database.
+    """
+    from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
+    from src.sql.registry import can_manage_database
     from src.sql.schema_retrieval import sync_live_schema
 
     try:
         validate_db_id(db_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    if not can_manage_database(db_id, admin):
+        raise HTTPException(status_code=403, detail="This database belongs to another admin.")
 
     try:
-        result = await sync_live_schema(db_id=db_id)
+        result = await sync_live_schema(db_id=db_id, synced_by=admin)
+        if result.get("status") == "ok" and db_id != DEFAULT_DB_ID:
+            try:
+                from src.core.active_db import set_active_db
+
+                set_active_db(admin, db_id)
+            except Exception as e:  # noqa: BLE001 - never turn a good sync into an error
+                logger.warning("Could not set %s's current database to %s: %s", admin, db_id, e)
         return result
     except Exception as e:  # noqa: BLE001
         logger.error("Schema sync failed: %s", e)

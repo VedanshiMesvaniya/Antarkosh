@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, CheckCircle2, Database, Loader2, Palette } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppStore } from '../store/store.js'
+import ActiveDatabaseCard from '../components/ActiveDatabaseCard.jsx'
 import DatabaseConnectionCard from '../components/DatabaseConnectionCard.jsx'
 
 const THEME_OPTIONS = [
@@ -37,6 +38,7 @@ export default function Settings() {
   const updateSettings = useAppStore((state) => state.updateSettings)
   const runSchemaSync = useAppStore((state) => state.runSchemaSync)
   const currentUser = useAppStore((state) => state.currentUser)
+  const isDatabaseAdmin = useAppStore((state) => state.isDatabaseAdmin)
   const [schemaStatus, setSchemaStatus] = useState('idle')
   const [syncResult, setSyncResult] = useState(null)
 
@@ -184,9 +186,11 @@ export default function Settings() {
               </AnimatePresence>
             </div>
           </motion.section>
-          <DatabaseConnectionCard />
         </>
       )}
+
+      <ActiveDatabaseCard />
+      {isDatabaseAdmin && <DatabaseConnectionCard />}
     </section>
   )
 }

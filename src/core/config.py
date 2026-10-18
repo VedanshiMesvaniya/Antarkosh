@@ -170,6 +170,12 @@ class Settings(BaseSettings):
     # NOT the default — see the CORS note in main.py.
     cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # Accounts allowed to connect and sync their OWN databases, besides the main admin ("admin"),
+    # comma separated (e.g. ADMIN_USERS=vedanshi,pm). Read from .env or the process environment.
+    admin_users: str = ""
+    # When true, even the main admin gets no data access to a database another admin owns.
+    strict_db_ownership: bool = False
+
     model_config = {
         "env_file": str(PROJECT_ROOT / ".env"),
         "env_file_encoding": "utf-8",

@@ -9,6 +9,7 @@ The PostgreSQL path was also verified against a real server with a read-only rol
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import types
 from pathlib import Path
@@ -297,8 +298,12 @@ def _client():
 
 
 @pytest.fixture()
-def api(monkeypatch, conn_file):
+def api(monkeypatch, conn_file, tmp_path):
     monkeypatch.setenv("ALLOW_HEADER_AUTH", "1")
+    # saving a new database now creates its folder: keep that inside the test's temp dir
+    base = tmp_path / "databases"
+    shutil.copytree(Path(__file__).resolve().parents[2] / "databases" / "_template", base / "_template")
+    monkeypatch.setattr(registry, "DATABASES_DIR", base)
     tested: list[dict[str, Any]] = []
 
     class _Connector:

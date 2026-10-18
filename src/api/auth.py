@@ -17,6 +17,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
+from src.core.config import settings
+
 try:
     from config.alpha_users import ALPHA_USERS
 except ImportError:
@@ -178,7 +180,12 @@ async def login(form: LoginForm, response: Response) -> dict[str, Any]:
         secure=os.environ.get("COOKIE_SECURE", "").strip().lower() in ("1", "true", "yes"),
     )
     logger.info("Alpha user '%s' logged in successfully", username)
-    return {"status": "logged_in", "user": username, "user_id": username}
+    return {
+        "status": "logged_in",
+        "user": username,
+        "user_id": username,
+        "database_admin": username in database_admins(),
+    }
 
 
 @router.post("/logout")
@@ -209,8 +216,47 @@ def require_admin(user: str = Depends(get_current_user)) -> str:
     return user
 
 
+SUPER_ADMIN = "admin"
+
+
+def database_admins() -> frozenset[str]:
+    """Accounts that may connect and sync their OWN databases.
+
+    ``admin`` (the platform owner) is always one. More come from the ``ADMIN_USERS`` environment variable
+    (comma separated) or an optional ``ADMIN_USERS`` set in ``config/alpha_users.py``. They are NOT admins
+    anywhere else: every other admin-only endpoint still accepts only ``admin``.
+    """
+    names: set[str] = set()
+    env = os.environ.get("ADMIN_USERS")
+    if env is None:
+        env = getattr(settings, "admin_users", "")  # process env, else .env
+    if env.strip():
+        names |= {n.strip() for n in env.split(",") if n.strip()}
+    else:
+        try:
+            from config.alpha_users import ADMIN_USERS as configured  # type: ignore[attr-defined]
+
+            names |= {str(n) for n in configured}
+        except (ImportError, TypeError):
+            pass
+    names.add(SUPER_ADMIN)
+    return frozenset(names)
+
+
+def require_db_admin(user: str = Depends(get_current_user)) -> str:
+    """Dependency for the database connection / sync endpoints: ``admin`` or a configured database admin."""
+    if user not in database_admins():
+        raise HTTPException(status_code=403, detail="Access denied: Admin access required.")
+    return user
+
+
 @router.get("/me")
 async def get_me(user: str = Depends(get_current_user_optional)) -> dict[str, Any]:
     """Get currently logged-in user."""
     authenticated = user != "anonymous"
-    return {"user": user, "user_id": user, "authenticated": authenticated}
+    return {
+        "user": user,
+        "user_id": user,
+        "authenticated": authenticated,
+        "database_admin": authenticated and user in database_admins(),
+    }

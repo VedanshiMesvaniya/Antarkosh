@@ -258,8 +258,9 @@ export async function scanIngestFolder() {
   return response.data
 }
 
-export async function syncSchema() {
-  const response = await http.post('/settings/sync-schema')
+export async function syncSchema(dbId) {
+  // No id = the main database (erp_main), exactly as before.
+  const response = await http.post('/settings/sync-schema', null, { params: dbId ? { db_id: dbId } : {} })
   return response.data
 }
 
@@ -276,6 +277,55 @@ export async function testDbConnection(payload) {
 
 export async function saveDbConnection(payload) {
   const response = await http.post('/settings/database', payload)
+  return response.data
+}
+
+// Admin-only: any database by id. Saving a NEW id creates that database's folder.
+export async function listAdminDatabases() {
+  const response = await http.get('/admin/databases')
+  return response.data
+}
+
+export async function getDbConnectionFor(dbId) {
+  const response = await http.get(`/databases/${dbId}/connection`)
+  return response.data
+}
+
+export async function testDbConnectionFor(dbId, payload) {
+  const response = await http.post(`/databases/${dbId}/test`, payload)
+  return response.data
+}
+
+export async function saveDbConnectionFor(dbId, payload) {
+  const response = await http.post(`/databases/${dbId}/connection`, payload)
+  return response.data
+}
+
+// Database admins: the engine list for the form, and connect / test ANY database. Leave db_id empty and the
+// server derives the id from the database name, creates its folder and records you as the owner.
+export async function getEngineCatalog() {
+  const response = await http.get('/admin/database-engines')
+  return response.data
+}
+
+export async function testConnectDatabase(payload) {
+  const response = await http.post('/databases/connect/test', payload)
+  return response.data
+}
+
+export async function connectDatabase(payload) {
+  const response = await http.post('/databases/connect', payload)
+  return response.data
+}
+
+// Every user: which database my questions are answered from.
+export async function getMyDatabase() {
+  const response = await http.get('/me/database')
+  return response.data
+}
+
+export async function setMyDatabase(dbId) {
+  const response = await http.put('/me/database', { db_id: dbId || null })
   return response.data
 }
 

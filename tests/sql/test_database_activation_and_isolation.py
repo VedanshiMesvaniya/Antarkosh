@@ -133,13 +133,12 @@ def test_other_fields_survive_activation(dbs: Path, monkeypatch):
         assert after[key] == before[key], key
 
 
-def test_activation_is_off_when_flag_off_pinned_or_no_folder(dbs: Path, monkeypatch):
+def test_activation_needs_no_flag_but_never_touches_a_pinned_database_or_a_missing_folder(dbs: Path, monkeypatch):
     ensure_db_folder("fresh_db", engine="mysql")
-    _flag(monkeypatch, on=False)
-    assert activate_after_sync("fresh_db") is False
-    assert _meta(dbs, "fresh_db")["enabled"] is False
+    _flag(monkeypatch, on=False)  # no per-DB flag is needed: the folder only exists because an admin added the database
+    assert activate_after_sync("fresh_db") is True
+    assert _meta(dbs, "fresh_db")["enabled"] is True
 
-    _flag(monkeypatch, on=True)
     _write_db(dbs, "erp_main", enabled=False)
     before = (dbs / "erp_main" / "db.yaml").read_bytes()
     assert activate_after_sync("erp_main") is False

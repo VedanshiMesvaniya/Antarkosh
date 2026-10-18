@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from src.api.ui import active_database as active_db_mod
 from src.api.ui import chats
 from src.api.ui import databases as dbs_mod
 from src.api.ui import documents as docs_mod
@@ -38,6 +39,7 @@ from src.api.ui.databases import (
     DatabaseAccessPayload,
     DBConnectionPayload,
 )
+from src.api.ui.active_database import router as active_database_router
 from src.api.ui.databases import router as databases_router
 from src.api.ui.documents import (
     DocumentAccessPayload,
@@ -58,6 +60,7 @@ router.include_router(settings_router)
 router.include_router(chats_router)
 router.include_router(documents_router)
 router.include_router(databases_router)
+router.include_router(active_database_router)
 router.include_router(telemetry_router)
 
 __all__ = [
@@ -79,6 +82,7 @@ __all__ = [
     "_doc_view",
     "_fallback_title",
     "_resolve_provider",
+    "active_database_router",
     "chats_router",
     "databases_router",
     "documents_router",
@@ -94,7 +98,7 @@ __all__ = [
 class _UIModule(types.ModuleType):
     """Dynamic module proxy that forwards attribute access and monkeypatching to sub-routers."""
 
-    _SUBMODULES = (chats, docs_mod, dbs_mod, settings_mod, telem_mod)
+    _SUBMODULES = (chats, docs_mod, dbs_mod, settings_mod, telem_mod, active_db_mod)
 
     def __getattr__(self, name: str) -> Any:
         for sub in self._SUBMODULES:

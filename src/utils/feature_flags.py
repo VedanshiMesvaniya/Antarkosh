@@ -130,6 +130,10 @@ def _load_db_flags_from_yaml() -> dict[str, dict[str, bool]]:
                 if isinstance(flags, dict):
                     # Only a literal YAML true counts; "false"/1/"yes" never enable.
                     parsed[str(db_id)] = {str(k): (v is True) for k, v in flags.items()}
+        defaults = data.get("db_defaults") if isinstance(data, dict) else None
+        if isinstance(defaults, dict):
+            # "*" can never be a database id, so it safely holds the defaults for every other database.
+            parsed["*"] = {str(k): (v is True) for k, v in defaults.items()}
         _DB_FLAGS_CACHE = parsed
         _DB_CACHE_MTIME = mtime
         return parsed
@@ -139,7 +143,8 @@ def _load_db_flags_from_yaml() -> dict[str, dict[str, bool]]:
 
 
 def is_db_feature_enabled(flag_name: str, db_id: str | None) -> bool:
-    """True only if ``flag_name`` is literally ``true`` for ``db_id`` in the YAML.
+    """True only if ``flag_name`` is literally ``true`` for ``db_id`` in the YAML (its own entry under
+    ``db_features``, else the ``db_defaults`` block).
 
     Unknown flag, unknown/blank db_id, pinned db_id (erp_main), missing or
     unreadable file: all return False.
@@ -151,4 +156,8 @@ def is_db_feature_enabled(flag_name: str, db_id: str | None) -> bool:
     db_id = db_id.strip()
     if db_id in _PINNED_DB_IDS:
         return False
-    return _load_db_flags_from_yaml().get(db_id, {}).get(flag_name, False)
+    all_flags = _load_db_flags_from_yaml()
+    own = all_flags.get(db_id, {})
+    if flag_name in own:
+        return own[flag_name]
+    return all_flags.get("*", {}).get(flag_name, False)  # db_defaults, else off

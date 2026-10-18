@@ -75,6 +75,7 @@ def ensure_db_folder(
     *,
     engine: str | None = None,
     display_name: str | None = None,
+    owner: str | None = None,
     databases_dir: Path | None = None,
 ) -> ScaffoldResult:
     """Create ``databases/<db_id>/`` from the template if (and only if) it does not exist.
@@ -84,8 +85,11 @@ def ensure_db_folder(
       concurrent call can never leave a half-built folder under the real name.
     * ``db.yaml`` gets ``id``, ``display_name``, ``engine`` (explicit, else the database's own
       connection/default engine), ``connection`` (its key in config/connections.json) and an
-      empty ``description``. Everything else (``enabled``, ``allowed_users``, ``soft_delete``,
-      ``schema_sync``...) stays as the template defines it.
+      empty ``description``. Everything else (``enabled``, ``soft_delete``, ``schema_sync``...) stays as
+      the template defines it.
+    * With ``owner`` (the admin who connected the database) the folder also records ``owner``,
+      ``created_by`` and ``created_at``, and ``allowed_users`` starts as just that owner, so nobody else
+      can read this database's data unless the owner grants it.
 
     Raises ValueError for an invalid or pinned ``db_id`` or an unsupported engine, and
     FileNotFoundError if the template itself is missing. Nothing is left behind on failure.
@@ -125,6 +129,11 @@ def ensure_db_folder(
         meta["engine"] = resolved_engine
         meta["connection"] = db_id
         meta["description"] = ""
+        if owner:
+            meta["owner"] = owner
+            meta["created_by"] = owner
+            meta["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            meta["allowed_users"] = [owner]
         registry.atomic_write_yaml(tmp / "db.yaml", meta)
 
         try:
@@ -166,19 +175,18 @@ def scaffold_if_enabled(db_id: str) -> ScaffoldResult | None:
     return result
 
 
-def activate_after_sync(db_id: str) -> bool:
+def activate_after_sync(db_id: str, synced_by: str | None = None) -> bool:
     """After a SUCCESSFUL schema sync, record it in ``db.yaml`` and make the database active.
 
-    Only runs for databases whose per-DB ``auto_scaffold`` flag is on, never for a pinned
-    database, and only when ``databases/<db_id>/db.yaml`` exists. It always stamps
+    Never runs for a pinned database, and only when ``databases/<db_id>/db.yaml`` exists. A folder
+    only exists because an admin added the connection (or turned on ``auto_scaffold``), so no
+    flag is needed here. It always stamps
     ``schema_sync.last_synced_at``. It flips ``enabled`` from false to true ONLY on the first
     successful sync (``last_synced_at`` still empty), so an admin who later disables a database
     on purpose is not overridden by a re-sync. Never raises; returns True if it turned the
     database on.
     """
-    from src.utils.feature_flags import is_db_feature_enabled
-
-    if db_id in _PINNED_DB_IDS or not is_db_feature_enabled("auto_scaffold", db_id):
+    if db_id in _PINNED_DB_IDS:
         return False
     try:
         yaml_path = registry.DATABASES_DIR / db_id / "db.yaml"
@@ -195,6 +203,8 @@ def activate_after_sync(db_id: str) -> bool:
         first_sync = not sync_meta.get("last_synced_at")
         turned_on = first_sync and meta.get("enabled") is False
         sync_meta["last_synced_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        if synced_by:
+            sync_meta["synced_by"] = synced_by  # which admin ran the sync
         sync_meta.setdefault("schema_hash", None)
         meta["schema_sync"] = sync_meta
         if turned_on:

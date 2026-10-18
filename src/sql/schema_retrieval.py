@@ -540,6 +540,7 @@ async def sync_live_schema(
     embedding_service: EmbeddingService | None = None,
     vector_store: QdrantStore | None = None,
     db_id: str = DEFAULT_DB_ID,
+    synced_by: str | None = None,
 ) -> dict[str, Any]:
     """Fetch the live DB schema, chunk per table, embed, and upsert to Qdrant.
 
@@ -708,7 +709,7 @@ async def sync_live_schema(
     # after its first successful sync. Flag-gated, never raises.
     from src.sql.introspection.scaffold import activate_after_sync
 
-    activate_after_sync(db_id)
+    activate_after_sync(db_id, synced_by)
 
     result: dict[str, Any] = {
         "status": "ok",

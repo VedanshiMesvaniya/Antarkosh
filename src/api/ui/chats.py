@@ -326,25 +326,9 @@ async def send_message(
     }
     state_manager.add_message(chat_id, user_message)
 
-    target_db_id = DEFAULT_DB_ID
-    if msg.db_id is not None:
-        try:
-            validate_db_id(msg.db_id)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        target_db_id = msg.db_id.strip()
-        from src.sql.registry import can_access_database
+    from src.api.db_resolution import resolve_target_db
 
-        if not can_access_database(target_db_id, current_user):
-            raise HTTPException(status_code=403, detail="Access denied to this database")
-
-        from src.sql.registry import is_database_active
-
-        if not is_database_active(target_db_id):
-            raise HTTPException(
-                status_code=409,
-                detail="This database is not active yet. An admin must sync its schema first.",
-            )
+    target_db_id = resolve_target_db(msg.db_id, current_user)
 
     try:
         pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider), db_id=target_db_id)
@@ -402,25 +386,9 @@ async def send_message_stream(
     }
     state_manager.add_message(chat_id, user_message)
 
-    target_db_id = DEFAULT_DB_ID
-    if msg.db_id is not None:
-        try:
-            validate_db_id(msg.db_id)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        target_db_id = msg.db_id.strip()
-        from src.sql.registry import can_access_database
+    from src.api.db_resolution import resolve_target_db
 
-        if not can_access_database(target_db_id, current_user):
-            raise HTTPException(status_code=403, detail="Access denied to this database")
-
-        from src.sql.registry import is_database_active
-
-        if not is_database_active(target_db_id):
-            raise HTTPException(
-                status_code=409,
-                detail="This database is not active yet. An admin must sync its schema first.",
-            )
+    target_db_id = resolve_target_db(msg.db_id, current_user)
 
     pipeline = QueryPipeline(preferred_provider=_resolve_provider(msg.provider), db_id=target_db_id)
     filters = {"user_id": current_user}

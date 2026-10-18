@@ -23,6 +23,14 @@ class DBSettingsError(ValueError):
     """User-facing validation / connection error (never contains the password)."""
 
 
+def engine_catalog() -> dict[str, Any]:
+    """The engines the connection form offers. Nothing about any saved connection."""
+    return {
+        "odbc_driver": settings.db_odbc_driver,
+        "engines": [{"key": k, **{f: v for f, v in s.items()}} for k, s in ENGINES.items()],
+    }
+
+
 def current_config() -> dict[str, Any]:
     """What the UI may see. The password is never returned, only whether one is set."""
     try:

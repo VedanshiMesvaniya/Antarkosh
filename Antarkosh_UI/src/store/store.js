@@ -377,6 +377,7 @@ export const useAppStore = create((set, get) => ({
   // --- Authentication State ---
   currentUser: null,
   isAuthChecking: true,
+  isDatabaseAdmin: false,
   loginLoading: false,
   loginError: null,
 
@@ -385,7 +386,7 @@ export const useAppStore = create((set, get) => ({
     try {
       const data = await getMeApi()
       if (data && data.authenticated && data.user_id && data.user_id !== 'anonymous') {
-        set({ currentUser: data.user_id, isAuthChecking: false })
+        set({ currentUser: data.user_id, isDatabaseAdmin: !!data.database_admin, isAuthChecking: false })
         await get().initApp()
       } else {
         set({ currentUser: null, isAuthChecking: false, loading: false })
@@ -400,7 +401,7 @@ export const useAppStore = create((set, get) => ({
     try {
       const data = await loginApi(username, password)
       const user = data.user_id || data.user || username
-      set({ currentUser: user, loginLoading: false, loginError: null })
+      set({ currentUser: user, isDatabaseAdmin: !!data.database_admin, loginLoading: false, loginError: null })
       toast.success(`Welcome back, ${user}!`)
       await get().initApp()
       return true
@@ -420,6 +421,7 @@ export const useAppStore = create((set, get) => ({
     }
     set({
       currentUser: null,
+      isDatabaseAdmin: false,
       chats: [],
       messagesByChatId: {},
       activeChatId: null,
@@ -1037,15 +1039,29 @@ export const useAppStore = create((set, get) => ({
     }),
 
   // Sync the live database schema into Qdrant for Schema RAG.
-  runSchemaSync: async () => {
-    const toastId = toast.loading('Syncing database schema...')
+  runSchemaSync: async (dbId) => {
+    const toastId = toast.loading(dbId ? `Syncing schema for ${dbId}...` : 'Syncing database schema...')
     try {
-      const result = await syncSchema()
+      const result = await syncSchema(dbId)
+      if (result?.status === 'error') {
+        // The server answers 200 with status "error" when it found nothing to sync.
+        toast.error('Schema sync found nothing', {
+          id: toastId,
+          description: result.message || 'No tables were returned by the database.',
+          duration: 8000,
+        })
+        return { ok: false, error: new Error(result.message || 'No tables returned') }
+      }
       const tables = result?.tables_synced || 0
+      const catalog = result?.catalog
+      const schemaCount = catalog?.schemas ? Object.keys(catalog.schemas).length : 0
+      const extra = schemaCount
+        ? ` Catalog: ${catalog.tables} tables and ${catalog.views} views across ${schemaCount} schema${plural(schemaCount)}.`
+        : ''
 
       toast.success('Schema sync complete', {
         id: toastId,
-        description: `Successfully embedded ${tables} table${plural(tables)} into the vector store.`,
+        description: `Successfully embedded ${tables} table${plural(tables)} into the vector store.${extra}`,
         duration: 5000,
       })
       return { ok: true, tables }

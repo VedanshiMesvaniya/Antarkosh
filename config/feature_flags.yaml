@@ -23,6 +23,14 @@ features:
 
 # Per-database flags for automatic schema intelligence. All off by default.
 # erp_main is pinned off in code regardless of this file.
+# Applied to every database that has no entry of its own below (erp_main is always excluded).
+# Everything is off unless you turn it on. Set auto_catalog and auto_sqlalchemy to true here and every
+# database an admin connects gets its schema.json and table inventory on its first sync.
+db_defaults:
+  auto_scaffold: false
+  auto_catalog: false
+  auto_sqlalchemy: false
+
 db_features:
   _example_db:
     auto_scaffold: false

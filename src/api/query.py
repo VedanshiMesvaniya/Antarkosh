@@ -40,26 +40,9 @@ async def query_documents(
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
-    target_db_id = DEFAULT_DB_ID
-    if request.db_id is not None:
-        try:
-            validate_db_id(request.db_id)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        target_db_id = request.db_id.strip()
-        from src.sql.registry import can_access_database
+    from src.api.db_resolution import resolve_target_db
 
-        if not can_access_database(target_db_id, current_user):
-            raise HTTPException(status_code=403, detail="Access denied to this database")
-
-        from src.sql.registry import is_database_active
-
-        if not is_database_active(target_db_id):
-            raise HTTPException(
-                status_code=409,
-                detail="This database is not active yet. An admin must sync its schema first.",
-            )
-
+    target_db_id = resolve_target_db(request.db_id, current_user)
 
     query_filters = dict(request.filters or {})
     # Identity and access scope are decided by the server, never by the client.
