@@ -480,3 +480,49 @@ async def test_editing_a_saved_database_may_leave_the_password_blank(env: Path):
         await c.post("/api/databases/connect", json=BODY, headers=VED)
         res = await c.post("/api/databases/connect", json={**BODY, "password": "", "db_id": "qts_ais"}, headers=VED)
     assert res.status_code == 200 and registry.get_connection("qts_ais")["password"] == "pw"
+
+
+@pytest.mark.asyncio
+async def test_switching_saved_postgres_with_schema_to_mssql_does_not_fail_on_schema(env: Path):
+    pg_body = {
+        "engine": "postgresql",
+        "host": "10.0.0.1",
+        "port": 5432,
+        "database": "my_pg",
+        "username": "u",
+        "password": "pw",
+        "schema_name": "erp_food",
+    }
+    async with _client() as c:
+        # First save as PostgreSQL with schema
+        res = await c.post("/api/databases/connect", json=pg_body, headers=VED)
+        assert res.status_code == 200
+        assert registry.get_connection("my_pg")["schema_name"] == "erp_food"
+
+        # Now test and switch to MSSQL without specifying schema (omitted or blank)
+        mssql_body = {
+            "engine": "mssql",
+            "host": "10.0.0.2",
+            "port": 1433,
+            "database": "my_pg",
+            "username": "u",
+            "password": "pw",
+            "schema_name": "",
+        }
+        test_res = await c.post("/api/databases/my_pg/connection/test", json=mssql_body, headers=VED)
+        assert test_res.status_code == 200, test_res.text
+
+        save_res = await c.post("/api/databases/my_pg/connection", json=mssql_body, headers=VED)
+        assert save_res.status_code == 200, save_res.text
+
+        # Verify the saved connection is mssql and has dropped the schema
+        saved = registry.get_connection("my_pg")
+        assert saved["engine"] == "mssql" and saved.get("schema_name") == ""
+
+
+@pytest.mark.asyncio
+async def test_mssql_connect_test_with_blank_schema_succeeds(env: Path):
+    async with _client() as c:
+        res = await c.post("/api/databases/connect/test", json={**BODY, "schema_name": ""}, headers=VED)
+    assert res.status_code == 200 and res.json()["ok"] is True
+

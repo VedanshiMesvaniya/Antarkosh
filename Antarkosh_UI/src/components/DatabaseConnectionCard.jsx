@@ -71,7 +71,14 @@ export default function DatabaseConnectionCard({ editingId = null, editingName =
       }
       if (!alive) return
       if (saved) {
-        setForm({ ...connectionForm(saved), engine: saved.engine || catalog.engines[0].key })
+        const engKey = saved.engine || catalog.engines[0].key
+        const activeSpec = catalog.engines.find((e) => e.key === engKey)
+        const fields = activeSpec?.fields || []
+        const baseForm = connectionForm(saved)
+        if (!fields.includes('schema_name')) baseForm.schema_name = ''
+        if (!fields.includes('service_name')) baseForm.service_name = ''
+        if (engKey !== 'mssql') baseForm.odbc_driver = ''
+        setForm({ ...baseForm, engine: engKey })
         setPasswordSet(!!saved.password_set)
       } else {
         const engine = catalog.engines.find((e) => e.key === main?.engine) || catalog.engines[0]
@@ -103,10 +110,15 @@ export default function DatabaseConnectionCard({ editingId = null, editingName =
   const onEngine = (key) => {
     const next = cfg.engines.find((e) => e.key === key)
     setError('')
+    const nextFields = next?.fields || []
     set({
       engine: key,
       port: next?.default_port ?? '',
-      ...(key === 'mssql' && !form.odbc_driver ? { odbc_driver: cfg.odbc_driver || 'ODBC Driver 18 for SQL Server' } : {}),
+      ...(!nextFields.includes('schema_name') ? { schema_name: '' } : {}),
+      ...(!nextFields.includes('service_name') ? { service_name: '' } : {}),
+      ...(key === 'mssql'
+        ? { odbc_driver: form.odbc_driver || cfg.odbc_driver || 'ODBC Driver 18 for SQL Server' }
+        : { odbc_driver: '' }),
     })
   }
 
@@ -114,12 +126,20 @@ export default function DatabaseConnectionCard({ editingId = null, editingName =
     setBusy(kind)
     setError('')
     try {
-      const payload = { ...form, db_id: editingId && !isMain ? editingId : undefined }
+      const activeSpec = cfg.engines.find((e) => e.key === form.engine) || cfg.engines[0]
+      const activeFields = activeSpec?.fields || []
+      const payload = {
+        ...form,
+        schema_name: activeFields.includes('schema_name') ? (form.schema_name || '') : '',
+        service_name: activeFields.includes('service_name') ? (form.service_name || '') : '',
+        odbc_driver: form.engine === 'mssql' ? (form.odbc_driver || cfg.odbc_driver || 'ODBC Driver 18 for SQL Server') : '',
+        db_id: editingId && !isMain ? editingId : undefined,
+      }
       if (kind === 'test') {
-        await (isMain ? testDbConnection(form) : testConnectDatabase(payload))
+        await (isMain ? testDbConnection(payload) : testConnectDatabase(payload))
         toast.success('Connection works')
       } else if (isMain) {
-        await saveDbConnection(form)
+        await saveDbConnection(payload)
         set({ password: undefined }) // never keep the typed password around; omitted = "keep stored"
         toast.success('Database connection saved', {
           description: 'Run "Sync schema" so Antarkosh learns the new database.',

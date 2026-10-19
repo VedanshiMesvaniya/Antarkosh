@@ -218,6 +218,10 @@ async def _prepare_connect(body: DBConnectPayload, admin: str):
         if not str(fields.get(name) or "").strip():
             raise HTTPException(status_code=422, detail=f"{name.replace('_', ' ').capitalize()} is required.")
 
+    if fields.get("schema_name") is None and requested and engine.value in SCHEMA_ENGINES:
+        stored_schema = get_connection(requested).get("schema_name")
+        if stored_schema:
+            fields["schema_name"] = stored_schema
     if fields.get("schema_name") is not None:
         try:
             fields["schema_name"] = validate_schema_name(fields["schema_name"])
@@ -347,7 +351,7 @@ async def test_database_connection_endpoint(
 
     from src.sql.engine import SCHEMA_ENGINES, validate_schema_name
 
-    if fields.get("schema_name") is None:  # not sent: the form is about the stored connection
+    if fields.get("schema_name") is None and engine.value in SCHEMA_ENGINES:  # not sent: the form is about the stored connection
         stored_schema = get_connection(db_id).get("schema_name")
         if stored_schema:
             fields["schema_name"] = stored_schema
@@ -401,7 +405,7 @@ async def save_database_connection_endpoint(
 
     from src.sql.engine import SCHEMA_ENGINES, validate_schema_name
 
-    if fields.get("schema_name") is None:  # not sent: the form is about the stored connection
+    if fields.get("schema_name") is None and engine.value in SCHEMA_ENGINES:  # not sent: the form is about the stored connection
         stored_schema = get_connection(db_id).get("schema_name")
         if stored_schema:
             fields["schema_name"] = stored_schema
