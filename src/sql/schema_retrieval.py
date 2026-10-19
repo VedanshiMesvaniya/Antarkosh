@@ -692,6 +692,18 @@ async def sync_live_schema(
             if sa_failure is not None:
                 catalog_report["sqlalchemy_fallback"] = sa_failure
 
+    # Auto-schema Phase 4: read the database's stored procedures and functions (source text only,
+    # never executed) and record Full / Basic mode. Per-DB flag, off by default; never fails the sync.
+    procedures_report: dict[str, Any] | None = None
+    if is_db_feature_enabled("auto_procedures", db_id):
+        try:
+            from src.sql.sa.procedures_phase import run_procedures_phase
+
+            procedures_report, _routines = await run_procedures_phase(db_id=db_id)  # _routines: used by Phase 5
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Procedure phase failed for %s: %s", db_id, exc)
+            procedures_report = {"ok": False, "mode": "basic", "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.sql.pipeline import SQLRetriever
@@ -720,5 +732,7 @@ async def sync_live_schema(
     }
     if catalog_report is not None:
         result["catalog"] = catalog_report
+    if procedures_report is not None:
+        result["procedures"] = procedures_report
     return result
 

@@ -1059,9 +1059,16 @@ export const useAppStore = create((set, get) => ({
         ? ` Catalog: ${catalog.tables} tables and ${catalog.views} views across ${schemaCount} schema${plural(schemaCount)}.`
         : ''
 
+      const procs = result?.procedures
+      const procNote = procs?.mode
+        ? procs.mode === 'full'
+          ? ' Stored procedures: Full mode.'
+          : ' Stored procedures: Basic mode (none readable). Upload a .sql script to improve accuracy.'
+        : ''
+
       toast.success('Schema sync complete', {
         id: toastId,
-        description: `Successfully embedded ${tables} table${plural(tables)} into the vector store.${extra}`,
+        description: `Successfully embedded ${tables} table${plural(tables)} into the vector store.${extra}${procNote}`,
         duration: 5000,
       })
       return { ok: true, tables }

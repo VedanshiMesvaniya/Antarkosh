@@ -1,4 +1,4 @@
-import { CheckCircle2, Loader2, PencilLine, Plus, RefreshCw } from 'lucide-react'
+import { CheckCircle2, FileCode2, Loader2, PencilLine, Plus, RefreshCw } from 'lucide-react'
 
 function formatWhen(value) {
   if (!value) return 'never'
@@ -8,7 +8,7 @@ function formatWhen(value) {
 
 // One row per database the admin may manage. "Active" means answers can come from it (it has been synced);
 // "Your questions" marks the one YOUR questions are answered from right now.
-export default function DatabaseList({ databases, currentId, busyId, onAdd, onEdit, onSync, onUse }) {
+export default function DatabaseList({ databases, currentId, busyId, onAdd, onEdit, onSync, onUse, onUpload }) {
   return (
     <section className="settings-card">
       <div className="settings-card__heading db-list__heading">
@@ -50,6 +50,24 @@ export default function DatabaseList({ databases, currentId, busyId, onAdd, onEd
                     <button type="button" className="secondary-button" disabled={!!busyId} onClick={() => onUse(db.id)}>
                       Use for my questions
                     </button>
+                  ) : null}
+                  {db.id !== 'erp_main' ? (
+                    <label className="secondary-button" title="Upload a .sql script of CREATE PROCEDURE / FUNCTION definitions">
+                      <FileCode2 size={13} />
+                      <span>Upload procedures</span>
+                      <input
+                        type="file"
+                        accept=".sql,.txt"
+                        multiple
+                        hidden
+                        disabled={!!busyId}
+                        onChange={(e) => {
+                          const picked = Array.from(e.target.files || [])
+                          e.target.value = ''
+                          if (picked.length) onUpload(db.id, picked)
+                        }}
+                      />
+                    </label>
                   ) : null}
                   <button type="button" className="secondary-button" disabled={!!busyId} onClick={() => onEdit(db.id)}>
                     <PencilLine size={13} />

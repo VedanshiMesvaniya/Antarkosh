@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import DatabaseConnectionCard from '../components/DatabaseConnectionCard.jsx'
 import DatabaseList from '../components/DatabaseList.jsx'
-import { getMyDatabase, listAdminDatabases, setMyDatabase } from '../services/api.js'
+import { getMyDatabase, listAdminDatabases, setMyDatabase, uploadProcedureScripts } from '../services/api.js'
 import { useAppStore } from '../store/store.js'
 
 const MAIN_DB = 'erp_main'
@@ -51,6 +51,24 @@ export default function Databases() {
     }
   }
 
+  const upload = async (id, files) => {
+    setBusyId(id)
+    try {
+      const res = await uploadProcedureScripts(id, files)
+      const routines = res.stored.reduce((n, s) => n + (s.routines?.length || 0), 0)
+      toast.success(`Stored ${res.stored.length} script${res.stored.length === 1 ? '' : 's'} (${routines} routine${routines === 1 ? '' : 's'})`, {
+        description: res.rejected.length
+          ? `Skipped: ${res.rejected.map((r) => `${r.file} (${r.reason})`).join('; ')}`
+          : 'Click "Sync schema" to use them.',
+        duration: 8000,
+      })
+    } catch (e) {
+      toast.error('Upload refused', { description: e.response?.data?.detail || e.message, duration: 8000 })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const use = async (id) => {
     setBusyId(id)
     try {
@@ -79,6 +97,7 @@ export default function Databases() {
         onEdit={setEditingId}
         onSync={sync}
         onUse={use}
+        onUpload={upload}
       />
 
       <DatabaseConnectionCard
