@@ -61,8 +61,9 @@ def choose_db_id(
 ) -> tuple[str, bool]:
     """Return (db_id, already_exists) for a connection being added by ``admin``.
 
-    Raises ValueError for an invalid id or for the main database's own server details, and
-    PermissionError if the requested id belongs to another admin.
+    Raises ValueError for an invalid id (or a request to overwrite erp_main through this form) and
+    PermissionError if the requested id belongs to another admin. Any other connection, even one with
+    the same server details as erp_main, is simply a new database with its own id and folder.
     """
     base = databases_dir or registry.DATABASES_DIR
     fingerprint = connection_fingerprint(cfg)
@@ -75,10 +76,6 @@ def choose_db_id(
             raise PermissionError(f"Database {requested!r} belongs to another admin.")
         existing = bool(registry.get_connection(requested, conn_path=conn_path)) or (base / requested).exists()
         return requested, existing
-
-    main_cfg = registry.get_connection(DEFAULT_DB_ID, conn_path=conn_path)
-    if main_cfg and connection_fingerprint(main_cfg) == fingerprint:
-        raise ValueError("This is the main database. Select it in the Databases list to edit it.")
 
     for existing_id in registry.list_connection_ids(conn_path=conn_path):
         if existing_id == DEFAULT_DB_ID:

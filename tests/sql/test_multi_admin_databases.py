@@ -167,12 +167,11 @@ def test_same_database_same_admin_reuses_the_id_and_another_admin_gets_their_own
     assert (other_id, existing) == ("qts_ais_2", False)
 
 
-def test_the_main_databases_own_server_details_are_refused(env: Path):
-    registry.save_connection("erp_main", {**BODY})
+def test_a_connection_that_matches_erp_main_is_just_another_database(env: Path):
+    registry.save_connection("erp_main", {**BODY})  # e.g. erp_main was pointed at this server earlier
+    assert choose_db_id("vedanshi", dict(BODY)) == ("qts_ais", False)  # gets its own id and folder
     with pytest.raises(ValueError, match="main database"):
-        choose_db_id("vedanshi", dict(BODY))
-    with pytest.raises(ValueError, match="main database"):
-        choose_db_id("vedanshi", dict(BODY), requested="erp_main")
+        choose_db_id("vedanshi", dict(BODY), requested="erp_main")  # erp_main is never overwritten from this form
 
 
 def test_an_id_that_belongs_to_another_admin_cannot_be_requested(env: Path):
@@ -451,3 +450,33 @@ def test_the_admin_list_and_strict_mode_can_also_come_from_the_env_file_settings
     assert registry._strict_ownership() is True
     monkeypatch.setenv("STRICT_DB_OWNERSHIP", "0")  # the process environment wins over .env
     assert registry._strict_ownership() is False
+
+
+# ================================================================== blank fields are never borrowed from the app's own database
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("missing", ["host", "database", "username", "password"])
+async def test_a_half_filled_connection_is_rejected_before_anything_is_saved(env: Path, missing: str):
+    # env's connector always "succeeds", so a 422 here proves the form is checked before any connection is tried.
+    body = {**BODY, missing: ""}
+    async with _client() as c:
+        for url in ("/api/databases/connect/test", "/api/databases/connect"):
+            res = await c.post(url, json=body, headers=VED)
+            assert res.status_code == 422 and "required" in res.json()["detail"], url
+    assert registry.get_connection("qts_ais") == {} and not (env / "qts_ais").exists()
+
+
+@pytest.mark.asyncio
+async def test_the_add_form_test_reaches_the_add_handler_not_the_per_database_one(env: Path):
+    async with _client() as c:
+        res = await c.post("/api/databases/connect/test", json=BODY, headers=VED)
+    assert res.status_code == 200 and res.json() == {"ok": True, "db_id": "qts_ais", "existing": False}  # not db_id "connect"
+
+
+@pytest.mark.asyncio
+async def test_editing_a_saved_database_may_leave_the_password_blank(env: Path):
+    async with _client() as c:
+        await c.post("/api/databases/connect", json=BODY, headers=VED)
+        res = await c.post("/api/databases/connect", json={**BODY, "password": "", "db_id": "qts_ais"}, headers=VED)
+    assert res.status_code == 200 and registry.get_connection("qts_ais")["password"] == "pw"

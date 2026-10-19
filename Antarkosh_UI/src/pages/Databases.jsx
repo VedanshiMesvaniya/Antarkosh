@@ -84,8 +84,9 @@ export default function Databases() {
       <DatabaseConnectionCard
         key={editingId || 'new'}
         editingId={editingId}
-        onSaved={(id) => {
-          setEditingId(id)
+        editingName={databases.find((d) => d.id === editingId)?.name}
+        onSaved={() => {
+          setEditingId(null) // back to a blank "Add a database" form; the list shows what was saved
           refresh()
         }}
         onCancel={() => setEditingId(null)}

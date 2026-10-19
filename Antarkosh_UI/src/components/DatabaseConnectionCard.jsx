@@ -41,7 +41,7 @@ const connectionForm = (c) => ({
 // makes its folder and records you as the owner. To change a saved database, pick it in the list: this form
 // is remounted (key) with `editingId` set, and the ID is sent only so the SAME database is updated.
 // `onSaved(dbId)` tells the page to refresh its list.
-export default function DatabaseConnectionCard({ editingId = null, onSaved, onCancel }) {
+export default function DatabaseConnectionCard({ editingId = null, editingName = '', onSaved, onCancel }) {
   const [cfg, setCfg] = useState(null) // engine list; null = loading, false = unavailable
   const [form, setForm] = useState({})
   const [passwordSet, setPasswordSet] = useState(false)
@@ -144,11 +144,13 @@ export default function DatabaseConnectionCard({ editingId = null, onSaved, onCa
     <section className="settings-card">
       <div className="settings-card__heading">
         <Database size={15} />
-        <h3 className="settings-card__title">{editingId ? 'Edit connection' : 'Add a database'}</h3>
+        <h3 className="settings-card__title">
+          {editingId ? `Edit connection: ${editingName || editingId}` : 'Add a database'}
+        </h3>
       </div>
       <p className="settings-card__desc">
         Credentials are tested first, then saved to the server&apos;s configuration file.
-        {editingId ? '' : ' The database gets its own ID and folder automatically.'}
+        {editingId ? '' : ' A new database never changes the ones already connected.'}
       </p>
 
       <div className="db-form">
