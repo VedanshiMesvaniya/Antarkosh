@@ -119,12 +119,15 @@ def extract_routine_facts(trees: list[exp.Expression], engine: str, catalog: Cat
         target: exp.Table | None = None
         if isinstance(tree, (exp.Insert, exp.Update, exp.Delete, exp.Merge)):
             this = tree.this
-            target = this if isinstance(this, exp.Table) else (this.find(exp.Table) if this is not None else None)
+            if isinstance(this, exp.Table):
+                target = this
+            elif isinstance(this, exp.Expression):
+                target = this.find(exp.Table)
         select_into = None
         if tsql:
             for sel in tree.find_all(exp.Select):
                 into = sel.args.get("into")
-                if into is not None and isinstance(into.this, exp.Table):
+                if isinstance(into, exp.Expression) and isinstance(getattr(into, "this", None), exp.Table):
                     select_into = into.this
         for tb in tree.find_all(exp.Table):
             if id(tb) in skip:

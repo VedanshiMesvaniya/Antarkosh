@@ -43,8 +43,7 @@ dependencies = [
     # Stage 11: Vector store
     "qdrant-client>=1.9",
 
-    # Stage 12b: Text-to-SQL retrieval
-    "sqlglot>=23.0.0",   # SQL parsing / safety validation
+    "sqlglot>=30.0.0,<31", # SQL parsing / safety validation (v30 required for Phase 5 SP mining)
     "aiosqlite>=0.20.0", # async SQLite for the live-data DB
     "aiomysql>=0.2",     # async MySQL support for the live-data DB
     "asyncpg>=0.29",     # async PostgreSQL support for the live-data DB

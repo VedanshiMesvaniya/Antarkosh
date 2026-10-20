@@ -1,4 +1,4 @@
-sqlglot>=23.0.0
+sqlglot>=30.0.0,<31
 aiosqlite>=0.20.0
 aiomysql>=0.2
 asyncpg>=0.29
