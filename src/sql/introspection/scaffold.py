@@ -14,7 +14,7 @@ import os
 import shutil
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -129,16 +129,15 @@ def ensure_db_folder(
         meta["engine"] = resolved_engine
         meta["connection"] = db_id
         meta["description"] = ""
+        meta["created_at"] = datetime.now(UTC).isoformat(timespec="seconds")
         if owner:
-            meta["owner"] = owner
             meta["created_by"] = owner
-            meta["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-            meta["allowed_users"] = [owner]
+            meta["allowed_users"] = ["*"]
         registry.atomic_write_yaml(tmp / "db.yaml", meta)
 
         try:
             os.rename(tmp, target)
-        except OSError as exc:
+        except OSError:
             if target.exists():  # lost a race: someone else created it first. Theirs wins, untouched.
                 return ScaffoldResult(db_id, target, created=False, missing_files=_missing_files(target, template))
             raise
@@ -165,7 +164,7 @@ def scaffold_if_enabled(db_id: str) -> ScaffoldResult | None:
         logger.warning("Folder scaffolding skipped for %s: %s", db_id, exc)
         return None
 
-    if result.created:
+    if result and result.created:
         try:  # drop anything cached while the folder did not exist
             from src.sql.pipeline import clear_knowledge_caches
 
@@ -202,7 +201,7 @@ def activate_after_sync(db_id: str, synced_by: str | None = None) -> bool:
             sync_meta = {}
         first_sync = not sync_meta.get("last_synced_at")
         turned_on = first_sync and meta.get("enabled") is False
-        sync_meta["last_synced_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        sync_meta["last_synced_at"] = datetime.now(UTC).isoformat(timespec="seconds")
         if synced_by:
             sync_meta["synced_by"] = synced_by  # which admin ran the sync
         sync_meta.setdefault("schema_hash", None)

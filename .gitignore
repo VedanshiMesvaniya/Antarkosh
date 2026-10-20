@@ -43,11 +43,13 @@ data/qdrant_local/
 .vscode/
 .idea/
 .agent/
+.agents/
 .planning/
 *.swp
 *.swo
 .DS_Store
 Thumbs.db
+skills-lock.json
 
 
 # Transfer / Bundle artifacts

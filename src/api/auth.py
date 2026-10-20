@@ -92,7 +92,7 @@ class SessionStore:
                 pass
             os.replace(tmp, path)
             self._mtime = path.stat().st_mtime
-        except Exception:  # noqa: BLE001 - persistence is best effort
+        except Exception:
             logger.warning("Could not persist session store", exc_info=True)
 
     def _purge_expired(self) -> None:
@@ -180,11 +180,15 @@ async def login(form: LoginForm, response: Response) -> dict[str, Any]:
         secure=os.environ.get("COOKIE_SECURE", "").strip().lower() in ("1", "true", "yes"),
     )
     logger.info("Alpha user '%s' logged in successfully", username)
+    role = get_user_role(username)
+    is_admin = role == "admin"
     return {
         "status": "logged_in",
         "user": username,
         "user_id": username,
-        "database_admin": username in database_admins(),
+        "role": role,
+        "is_admin": is_admin,
+        "database_admin": is_admin,
     }
 
 
@@ -209,22 +213,15 @@ def get_current_user_optional(request: Request) -> str:
     return _resolve_user(request) or "anonymous"
 
 
-def require_admin(user: str = Depends(get_current_user)) -> str:
-    """Dependency for admin-only endpoints (the alpha ``admin`` account)."""
-    if user != "admin":
-        raise HTTPException(status_code=403, detail="Access denied: Admin access required.")
-    return user
-
-
 SUPER_ADMIN = "admin"
 
 
-def database_admins() -> frozenset[str]:
-    """Accounts that may connect and sync their OWN databases.
+def admin_users() -> frozenset[str]:
+    """Accounts with the 'admin' role.
 
-    ``admin`` (the platform owner) is always one. More come from the ``ADMIN_USERS`` environment variable
-    (comma separated) or an optional ``ADMIN_USERS`` set in ``config/alpha_users.py``. They are NOT admins
-    anywhere else: every other admin-only endpoint still accepts only ``admin``.
+    ``admin`` (the platform owner) is always one. Additional administrators can be configured
+    via the ``ADMIN_USERS`` environment variable (comma separated) or an optional ``ADMIN_USERS``
+    set in ``config/alpha_users.py``.
     """
     names: set[str] = set()
     env = os.environ.get("ADMIN_USERS")
@@ -243,20 +240,44 @@ def database_admins() -> frozenset[str]:
     return frozenset(names)
 
 
-def require_db_admin(user: str = Depends(get_current_user)) -> str:
-    """Dependency for the database connection / sync endpoints: ``admin`` or a configured database admin."""
-    if user not in database_admins():
+# Alias for backward compatibility
+database_admins = admin_users
+
+
+def is_admin_user(user: str | None) -> bool:
+    """Check if the given username holds the admin role."""
+    if not user:
+        return False
+    return user in admin_users()
+
+
+def get_user_role(user: str | None) -> str:
+    """Return 'admin' or 'user'."""
+    return "admin" if is_admin_user(user) else "user"
+
+
+def require_admin(user: str = Depends(get_current_user)) -> str:
+    """Dependency for admin-only endpoints: rejects non-admin users with 403."""
+    if not is_admin_user(user):
         raise HTTPException(status_code=403, detail="Access denied: Admin access required.")
     return user
 
 
+# Unified admin dependency alias
+require_db_admin = require_admin
+
+
 @router.get("/me")
 async def get_me(user: str = Depends(get_current_user_optional)) -> dict[str, Any]:
-    """Get currently logged-in user."""
+    """Get currently logged-in user and role."""
     authenticated = user != "anonymous"
+    is_admin = authenticated and is_admin_user(user)
+    role = "admin" if is_admin else ("user" if authenticated else "anonymous")
     return {
         "user": user,
         "user_id": user,
         "authenticated": authenticated,
-        "database_admin": authenticated and user in database_admins(),
+        "role": role,
+        "is_admin": is_admin,
+        "database_admin": is_admin,
     }

@@ -46,7 +46,6 @@ export default function CurrentDatabaseCard({ db, databases, busy, syncing, onSw
           {db.enabled ? 'Active' : 'Not active - sync to activate'}
         </span>
         {db.engine ? <span>{db.engine}</span> : null}
-        {db.owner ? <span>Owner: {db.owner}</span> : null}
         <span>Last sync: {formatWhen(db.last_synced_at)}</span>
       </div>
 

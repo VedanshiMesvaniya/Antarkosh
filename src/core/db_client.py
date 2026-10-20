@@ -85,6 +85,8 @@ async def run_readonly_query(
 
     conn_cfg = get_connection(target_db_id)
     engine = conn_cfg.get("engine")
+    if not engine and target_db_id == DEFAULT_DB_ID:
+        engine = settings.db_engine
     if not engine:
         try:
             db_meta = get_database(target_db_id)

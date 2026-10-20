@@ -15,7 +15,7 @@ const loadState = () =>
 // or the one you just saved. Other saved databases are reachable from the "Switch" dropdown. The connection
 // form is hidden until you press Edit or Add database. Database IDs are created automatically.
 export default function Databases() {
-  const isDatabaseAdmin = useAppStore((state) => state.isDatabaseAdmin)
+  const isAdmin = useAppStore((state) => state.isAdmin)
   const runSchemaSync = useAppStore((state) => state.runSchemaSync)
   const [databases, setDatabases] = useState([])
   const [loaded, setLoaded] = useState(false)
@@ -34,7 +34,7 @@ export default function Databases() {
   const refresh = () => loadState().then(apply)
 
   useEffect(() => {
-    if (!isDatabaseAdmin) return undefined
+    if (!isAdmin) return undefined
     let alive = true
     loadState().then((r) => {
       if (alive) apply(r)
@@ -42,9 +42,9 @@ export default function Databases() {
     return () => {
       alive = false
     }
-  }, [isDatabaseAdmin, apply])
+  }, [isAdmin, apply])
 
-  if (!isDatabaseAdmin) return <Navigate to="/" replace />
+  if (!isAdmin) return <Navigate to="/" replace />
 
   const shown = databases.find((d) => d.id === (shownId ?? currentId)) || databases.find((d) => d.id === currentId) || databases[0] || null
   const showForm = form !== null || (loaded && databases.length === 0)

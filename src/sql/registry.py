@@ -134,12 +134,11 @@ def _import_legacy_erp_connection(target_path: Path | None = None) -> dict[str, 
     """
     from src.core.config import settings
 
-    legacy_candidates = [
-        CONFIG_DIR / "db_connection.json",
-    ]
     db_cfg_override = os.environ.get("DB_CONFIG_FILE", "").strip()
     if db_cfg_override:
-        legacy_candidates.insert(0, Path(db_cfg_override).expanduser())
+        legacy_candidates = [Path(db_cfg_override).expanduser()]
+    else:
+        legacy_candidates = [CONFIG_DIR / "db_connection.json"]
 
     raw_legacy: dict[str, Any] = {}
     legacy_file_used: Path | None = None
@@ -369,56 +368,62 @@ def can_access_database(
 ) -> bool:
     """Check if user has permission to read the specified database's data.
 
-    * Wildcard callers ('*', 'all') are always allowed.
-    * A database with an ``owner`` in its db.yaml (connected by a database admin) is open to that owner and
-      to the users the owner granted in ``allowed_users``; the super admin keeps access unless
-      STRICT_DB_OWNERSHIP is set.
-    * Any other database (``erp_main``, older ones) keeps the original rule: the super admin ('admin'),
-      or a user listed in ``allowed_users``.
+    * Wildcard callers ('*', 'all') and admins are always allowed.
+    * If a database specifies allowed_users in its db.yaml, only matching users or '*' are allowed.
+    * If allowed_users is empty or omitted, any authenticated user can access it.
     """
-    if not user:
+    if not user or user == "anonymous":
         return False
     if user in ("*", "all"):
+        return True
+
+    from src.api.auth import is_admin_user
+
+    if is_admin_user(user):
         return True
 
     try:
         db_meta = get_database(db_id, databases_dir=databases_dir)
     except (FileNotFoundError, KeyError, ValueError, TypeError, OSError):
-        return user == SUPER_ADMIN  # no db.yaml: as before, only the super admin
+        return False
 
-    owner = db_meta.get("owner")
-    if owner:
-        if user == owner:
-            return True
-        if user == SUPER_ADMIN and not _strict_ownership():
-            return True
-    elif user == SUPER_ADMIN:
-        return True
-
-    allowed = db_meta.get("allowed_users") or []
-    if isinstance(allowed, list):
+    allowed = db_meta.get("allowed_users")
+    if isinstance(allowed, list) and allowed:
         return user in allowed or "*" in allowed
-    return False
+    return True
 
 
 def can_manage_database(db_id: str, admin: str | None, databases_dir: Path | None = None) -> bool:
-    """May this database admin connect, edit, sync or share ``db_id``?
+    """Check if the user is authorized to manage databases.
 
-    The super admin may manage any database. Any other database admin may manage a database they own, or
-    claim a brand-new id (no saved connection and no folder yet). The default database is super-admin only.
+    Under the centralized role-based model, any administrator can manage any database.
     """
     if not admin:
         return False
-    if admin == SUPER_ADMIN:
-        return True
+    from src.api.auth import is_admin_user
+
+    return is_admin_user(admin)
+
+
+def delete_connection(db_id: str, conn_path: Path | None = None) -> bool:
+    """Remove connection credentials for db_id from config/connections.json atomically.
+
+    Returns True if the connection was removed, False if it was not present.
+    Never removes the default database (erp_main).
+    """
+    validate_db_id(db_id)
     if db_id == DEFAULT_DB_ID:
+        raise ValueError("The default database connection cannot be deleted.")
+
+    connections = _load_connections(conn_path=conn_path)
+    if db_id not in connections:
         return False
-    owner = get_database_owner(db_id, databases_dir=databases_dir)
-    if owner:
-        return owner == admin
-    base = databases_dir or DATABASES_DIR
-    folder_exists = (base / db_id).exists()
-    return not folder_exists and not get_connection(db_id)
+
+    del connections[db_id]
+    path = conn_path or connections_path()
+    atomic_write_json(path, connections)
+    logger.info("Deleted connection for db_id %s", db_id)
+    return True
 
 
 def list_connection_ids(conn_path: Path | None = None) -> list[str]:
@@ -597,14 +602,15 @@ __all__ = [
     "atomic_write_json",
     "atomic_write_yaml",
     "can_access_database",
+    "can_manage_database",
     "connections_path",
+    "delete_connection",
     "get_connection",
     "get_database",
     "get_database_access",
     "get_database_owner",
-    "can_manage_database",
-    "list_connection_ids",
     "is_database_active",
+    "list_connection_ids",
     "list_databases",
     "resolve_db_engine",
     "save_connection",

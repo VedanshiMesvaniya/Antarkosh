@@ -35,10 +35,10 @@ const connectionForm = (c) => ({
   username: c.username,
 })
 
-// Connection form for the Databases page (database admins only; the server is the real gate).
+// Connection form for the Databases page (admins only; the server is the real gate).
 //
 // There is no Database ID to type. For a new database the server creates the ID from the database's name,
-// makes its folder and records you as the owner. To change a saved database, pick it in the list: this form
+// and sets up its configuration folder. To change a saved database, pick it in the list: this form
 // is remounted (key) with `editingId` set, and the ID is sent only so the SAME database is updated.
 // `onSaved(dbId)` tells the page to refresh its list.
 export default function DatabaseConnectionCard({ editingId = null, editingName = '', onSaved, onCancel }) {

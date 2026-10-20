@@ -104,6 +104,8 @@ class SQLRetriever:
         self._embeddings = embedding_service
         conn_cfg = get_connection(self.db_id)
         engine = conn_cfg.get("engine")
+        if not engine and self.db_id == DEFAULT_DB_ID:
+            engine = settings.db_engine
         if not engine:
             try:
                 db_meta = get_database(self.db_id)

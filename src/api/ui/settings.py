@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from src.api.auth import require_admin, require_db_admin
+from src.api.auth import require_admin
 from src.api.ui.databases import DBConnectionPayload
 from src.core import db_settings
 from src.core.config import settings
@@ -147,7 +147,7 @@ async def save_settings(settings: dict[str, Any]) -> dict[str, Any]:
 @router.post("/settings/sync-schema")
 async def sync_schema(
     db_id: str = "erp_main",
-    admin: str = Depends(require_db_admin),
+    admin: str = Depends(require_admin),
 ) -> dict[str, Any]:
     """Sync the live database schema into the vector store for Schema RAG.
 
@@ -162,7 +162,7 @@ async def sync_schema(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not can_manage_database(db_id, admin):
-        raise HTTPException(status_code=403, detail="This database belongs to another admin.")
+        raise HTTPException(status_code=403, detail="Access denied: Admin access required.")
 
     try:
         result = await sync_live_schema(db_id=db_id, synced_by=admin)

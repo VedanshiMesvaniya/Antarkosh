@@ -15,3 +15,4 @@ import tempfile
 os.environ["ALLOW_HEADER_AUTH"] = "1"  # tests authenticate with the X-User-Id header
 os.environ["SESSION_STORE_FILE"] = os.path.join(tempfile.gettempdir(), "antarkosh-tests-sessions.json")
 os.environ["DB_CONFIG_FILE"] = os.path.join(tempfile.gettempdir(), "antarkosh-tests-no-db-config.json")
+os.environ["CONNECTIONS_FILE"] = os.path.join(tempfile.gettempdir(), "antarkosh-tests-no-connections.json")

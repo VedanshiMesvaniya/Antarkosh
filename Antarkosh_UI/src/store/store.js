@@ -376,6 +376,8 @@ export const useAppStore = create((set, get) => ({
 
   // --- Authentication State ---
   currentUser: null,
+  role: null,
+  isAdmin: false,
   isAuthChecking: true,
   isDatabaseAdmin: false,
   loginLoading: false,
@@ -386,13 +388,20 @@ export const useAppStore = create((set, get) => ({
     try {
       const data = await getMeApi()
       if (data && data.authenticated && data.user_id && data.user_id !== 'anonymous') {
-        set({ currentUser: data.user_id, isDatabaseAdmin: !!data.database_admin, isAuthChecking: false })
+        const isAdmin = Boolean(data.role === 'admin' || data.is_admin || data.database_admin)
+        set({
+          currentUser: data.user_id,
+          role: data.role || (isAdmin ? 'admin' : 'user'),
+          isAdmin,
+          isDatabaseAdmin: isAdmin,
+          isAuthChecking: false,
+        })
         await get().initApp()
       } else {
-        set({ currentUser: null, isAuthChecking: false, loading: false })
+        set({ currentUser: null, role: null, isAdmin: false, isDatabaseAdmin: false, isAuthChecking: false, loading: false })
       }
     } catch {
-      set({ currentUser: null, isAuthChecking: false, loading: false })
+      set({ currentUser: null, role: null, isAdmin: false, isDatabaseAdmin: false, isAuthChecking: false, loading: false })
     }
   },
 
@@ -401,7 +410,15 @@ export const useAppStore = create((set, get) => ({
     try {
       const data = await loginApi(username, password)
       const user = data.user_id || data.user || username
-      set({ currentUser: user, isDatabaseAdmin: !!data.database_admin, loginLoading: false, loginError: null })
+      const isAdmin = Boolean(data.role === 'admin' || data.is_admin || data.database_admin)
+      set({
+        currentUser: user,
+        role: data.role || (isAdmin ? 'admin' : 'user'),
+        isAdmin,
+        isDatabaseAdmin: isAdmin,
+        loginLoading: false,
+        loginError: null,
+      })
       toast.success(`Welcome back, ${user}!`)
       await get().initApp()
       return true
@@ -421,6 +438,8 @@ export const useAppStore = create((set, get) => ({
     }
     set({
       currentUser: null,
+      role: null,
+      isAdmin: false,
       isDatabaseAdmin: false,
       chats: [],
       messagesByChatId: {},

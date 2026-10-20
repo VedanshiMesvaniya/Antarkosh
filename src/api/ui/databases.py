@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
-from src.api.auth import get_current_user, require_db_admin
+from src.api.auth import get_current_user, require_admin, require_db_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -42,11 +42,11 @@ class DatabaseAccessPayload(BaseModel):
 
 
 def _ensure_can_manage(db_id: str, admin: str) -> None:
-    """403 unless this admin owns ``db_id`` (the super admin may manage any; a brand-new id is free to claim)."""
+    """Verify admin management access (admin only)."""
     from src.sql.registry import can_manage_database
 
     if not can_manage_database(db_id, admin):
-        raise HTTPException(status_code=403, detail="This database belongs to another admin.")
+        raise HTTPException(status_code=403, detail="Access denied: Admin access required.")
 
 
 @router.get("/databases")
@@ -79,12 +79,12 @@ async def list_databases_endpoint(
 
 @router.get("/admin/databases")
 async def admin_list_databases_endpoint(
-    admin: str = Depends(require_db_admin),
+    admin: str = Depends(require_admin),
 ) -> list[dict[str, Any]]:
-    """List the databases this admin may manage: all of them for the super admin, otherwise their own."""
-    from src.sql.registry import can_manage_database, list_databases
+    """List all databases for administration (admin only)."""
+    from src.sql.registry import list_databases
 
-    dbs = [db for db in list_databases() if can_manage_database(db.get("id", ""), admin)]
+    dbs = list_databases()
     return [
         {
             "id": db.get("id"),
@@ -481,3 +481,27 @@ async def get_database_connection_endpoint(
         "odbc_driver": cfg.get("odbc_driver", ""),
         "password_set": bool(cfg.get("password")),
     }
+
+
+@router.delete("/databases/{db_id}/connection")
+@router.delete("/databases/{db_id}")
+async def delete_database_connection_endpoint(
+    db_id: str,
+    admin: str = Depends(require_admin),
+) -> dict[str, Any]:
+    """Remove a saved database connection (admin only). Cannot remove the default database."""
+    from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
+    from src.sql.registry import delete_connection
+
+    try:
+        validate_db_id(db_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if db_id == DEFAULT_DB_ID:
+        raise HTTPException(status_code=400, detail="The default database connection cannot be deleted.")
+
+    removed = delete_connection(db_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Database connection not found")
+    return {"ok": True, "db_id": db_id, "status": "deleted"}
+

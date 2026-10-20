@@ -50,8 +50,7 @@ function StepIcon({ status }) {
 }
 
 export default function Documents() {
-  const currentUser = useAppStore((state) => state.currentUser)
-  const isAdmin = currentUser === 'admin'
+  const isAdmin = useAppStore((state) => state.isAdmin)
 
   const documents = useAppStore((state) => state.documents)
   const selectedDocId = useAppStore((state) => state.selectedDocId)

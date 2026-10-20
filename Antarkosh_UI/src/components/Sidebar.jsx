@@ -80,7 +80,7 @@ function useIsMobile() {
 
 export default function Sidebar() {
   const currentUser = useAppStore((state) => state.currentUser)
-  const isDatabaseAdmin = useAppStore((state) => state.isDatabaseAdmin)
+  const isAdmin = useAppStore((state) => state.isAdmin)
   const logoutUser = useAppStore((state) => state.logoutUser)
   const chats = useAppStore((state) => state.chats)
   const activeChatId = useAppStore((state) => state.activeChatId)
@@ -283,7 +283,7 @@ export default function Sidebar() {
             <Library size={16} />
             <span className="sidebar__label">Documents</span>
           </NavLink>
-          {isDatabaseAdmin ? (
+          {isAdmin ? (
             <NavLink
               to="/databases"
               className={({ isActive }) => `nav-item nav-item--documents ${isActive ? 'nav-item--active' : ''}`}
