@@ -1601,19 +1601,17 @@ button:disabled { cursor: not-allowed; }
 
 
 
-/* Databases page: connected-database list */
-.db-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.db-list__heading { justify-content: space-between; }
-.db-list__add { display: inline-flex; align-items: center; gap: 6px; }
-.db-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 14px 0; border-bottom: 1px solid var(--color-border); }
-.db-row:last-child { border-bottom: 0; padding-bottom: 0; }
-.db-row__info { min-width: 0; flex: 1 1 260px; }
-.db-row__name { display: flex; align-items: baseline; gap: 8px; font-weight: 600; font-size: 14px; }
-.db-row__id { font-size: var(--text-xs); color: var(--color-text-muted); }
-.db-row__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; font-size: var(--text-xs); color: var(--color-text-muted); }
-.db-row__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.db-row__actions .secondary-button { display: inline-flex; align-items: center; gap: 6px; }
+/* Databases page: the one current connection */
+.db-current { display: flex; flex-direction: column; gap: 14px; }
+.db-current__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+.db-current__title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.db-current__name { margin: 0; font-size: 18px; font-weight: 650; }
+.db-current__id { font-size: var(--text-xs); color: var(--color-text-muted); }
+.db-current__tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.db-current__switch { width: auto; min-width: 170px; max-width: 260px; }
+.db-current__tools .secondary-button, .db-current__actions .secondary-button { display: inline-flex; align-items: center; gap: 6px; }
+.db-current__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; font-size: var(--text-xs); color: var(--color-text-muted); }
+.db-current__actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--color-border); }
 .db-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--color-border-strong); }
 .db-badge--active { color: var(--color-success); border-color: currentColor; }
 .db-badge--idle { color: var(--color-warning); border-color: currentColor; }
-.db-badge--current { color: var(--color-text); background: var(--color-control); }

@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Any
 
 import yaml
 
-from src.core.config import CONFIG_DIR, PROJECT_ROOT
+from src.core.config import CONFIG_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +92,7 @@ DB_FEATURE_FLAGS: tuple[str, ...] = (
     "auto_catalog",
     "auto_sqlalchemy",
     "auto_procedures",
+    "auto_sp_mining",
     "auto_relationships",
     "auto_table_profiles",
     "auto_join_paths",

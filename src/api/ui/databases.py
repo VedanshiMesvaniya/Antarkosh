@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
 from src.api.auth import get_current_user, require_db_admin
@@ -481,70 +481,3 @@ async def get_database_connection_endpoint(
         "odbc_driver": cfg.get("odbc_driver", ""),
         "password_set": bool(cfg.get("password")),
     }
-
-
-# --- Stored-procedure scripts (auto-schema Phase 4). Text is stored for mining, never executed. -----------
-
-
-def _procedure_target(db_id: str, admin: str) -> None:
-    """Shared checks: valid id, not erp_main, this admin may manage it, and its folder exists."""
-    from src.sql import registry
-    from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
-
-    try:
-        validate_db_id(db_id)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    if db_id == DEFAULT_DB_ID:
-        raise HTTPException(status_code=422, detail="The main database keeps its curated files; uploads are not used.")
-    _ensure_can_manage(db_id, admin)
-    if not (registry.DATABASES_DIR / db_id).is_dir():
-        raise HTTPException(status_code=404, detail="Database not found. Connect and save it first.")
-
-
-@router.post("/databases/{db_id}/procedures")
-async def upload_procedures_endpoint(
-    db_id: str,
-    files: list[UploadFile] = File(...),  # noqa: B008
-    admin: str = Depends(require_db_admin),
-) -> dict[str, Any]:
-    """Upload ``.sql`` / ``.txt`` scripts of CREATE PROCEDURE / FUNCTION definitions for a database you own."""
-    import os
-
-    from src.sql import procedure_upload as up
-
-    _procedure_target(db_id, admin)
-    if not files or len(files) > up.MAX_REQUEST_FILES:
-        raise HTTPException(status_code=422, detail=f"Send between 1 and {up.MAX_REQUEST_FILES} files.")
-
-    stored: list[dict[str, Any]] = []
-    rejected: list[dict[str, str]] = []
-    total = 0
-    for f in files:
-        label = os.path.basename(f.filename or "file")[:80]  # shown back to the admin only, never used as a path
-        raw = await f.read(up.MAX_FILE_BYTES + 1)
-        total += len(raw)
-        if len(raw) > up.MAX_FILE_BYTES or total > up.MAX_REQUEST_BYTES:
-            rejected.append({"file": label, "reason": "The file is too large."})
-            continue
-        try:
-            text = up.decode_script(raw)
-            problem = up.script_problem(text)
-            if problem:
-                rejected.append({"file": label, "reason": problem})
-                continue
-            stored.append({**up.store_script(db_id, text), "name": label})
-        except (ValueError, FileNotFoundError) as e:
-            rejected.append({"file": label, "reason": str(e)})
-    if not stored:
-        raise HTTPException(status_code=422, detail="; ".join(f"{r['file']}: {r['reason']}" for r in rejected))
-    return {"ok": True, "db_id": db_id, "stored": stored, "rejected": rejected}
-
-
-@router.delete("/databases/{db_id}/procedures")
-async def clear_procedures_endpoint(db_id: str, admin: str = Depends(require_db_admin)) -> dict[str, Any]:
-    """Remove every uploaded procedure script of a database you own."""
-    from src.sql import procedure_upload as up
-
-    _procedure_target(db_id, admin)
-    return {"ok": True, "db_id": db_id, "removed": up.clear_scripts(db_id)}

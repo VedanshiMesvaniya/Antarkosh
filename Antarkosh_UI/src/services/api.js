@@ -264,21 +264,6 @@ export async function syncSchema(dbId) {
   return response.data
 }
 
-// Admin-only: stored-procedure scripts (.sql) for a database. The text is stored for schema learning and never run.
-export async function uploadProcedureScripts(dbId, files) {
-  const formData = new FormData()
-  Array.from(files).forEach((f) => formData.append('files', f))
-  const response = await http.post(`/databases/${encodeURIComponent(dbId)}/procedures`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return response.data
-}
-
-export async function clearProcedureScripts(dbId) {
-  const response = await http.delete(`/databases/${encodeURIComponent(dbId)}/procedures`)
-  return response.data
-}
-
 // Admin-only: live database connection (password is never returned by the server).
 export async function getDbConnection() {
   const response = await http.get('/settings/database')

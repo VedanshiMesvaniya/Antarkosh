@@ -13,24 +13,21 @@ from __future__ import annotations
 import json
 import logging
 import re
-import sys
-from pathlib import Path
 from typing import Any
 
-from src.core.config import settings
 from src.core.db_client import run_readonly_query
-from src.sql.dialects import SQLDialectProfile, get_dialect_profile
 from src.models.schemas import Chunk, ChunkType, DocumentType
+from src.rag.stages.s10_embeddings import EmbeddingService
+from src.rag.stages.s11_vector_store import QdrantStore
+from src.sql.dialects import SQLDialectProfile, get_dialect_profile
 from src.sql.engine import Engine
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, get_knowledge_path, validate_db_id
-from src.sql.table_router import route_anchor_tables, route_tables_for_query
-from src.utils.feature_flags import is_feature_enabled
 from src.sql.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
 from src.sql.schema_compactor import compact_ddl, extract_join_hints
 from src.sql.schema_token_estimator import estimate_schema_tokens
+from src.sql.table_router import route_anchor_tables, route_tables_for_query
+from src.utils.feature_flags import is_feature_enabled
 from src.utils.telemetry import log_telemetry
-from src.rag.stages.s10_embeddings import EmbeddingService
-from src.rag.stages.s11_vector_store import QdrantStore
 
 logger = logging.getLogger(__name__)
 
@@ -692,17 +689,31 @@ async def sync_live_schema(
             if sa_failure is not None:
                 catalog_report["sqlalchemy_fallback"] = sa_failure
 
-    # Auto-schema Phase 4: read the database's stored procedures and functions (source text only,
-    # never executed) and record Full / Basic mode. Per-DB flag, off by default; never fails the sync.
     procedures_report: dict[str, Any] | None = None
+    procedure_routines: list[Any] = []  # the routines stay in memory only; Phase 5 mines them and they are then dropped
     if is_db_feature_enabled("auto_procedures", db_id):
         try:
             from src.sql.sa.procedures_phase import run_procedures_phase
 
-            procedures_report, _routines = await run_procedures_phase(db_id=db_id)  # _routines: used by Phase 5
+            procedures_report, procedure_routines = await run_procedures_phase(db_id=db_id)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Procedure phase failed for %s: %s", db_id, exc)
             procedures_report = {"ok": False, "mode": "basic", "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
+    # Auto-schema Phase 5: learn joins, tables and string values from those procedures (facts only; the
+    # text is discarded). Needs Phase 4's routines, so it only runs when that phase ran. Never fails the sync.
+    sp_evidence_report: dict[str, Any] | None = None
+    if procedures_report is not None and procedures_report.get("ok") and is_db_feature_enabled("auto_sp_mining", db_id):
+        try:
+            from src.sql.sa.mining_phase import run_mining_phase
+
+            sp_evidence_report = await run_mining_phase(
+                db_id=db_id, engine_key=procedures_report.get("engine") or "", routines=procedure_routines
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Procedure mining failed for %s: %s", db_id, exc)
+            sp_evidence_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+    procedure_routines = []  # drop the routine text
 
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
@@ -734,5 +745,7 @@ async def sync_live_schema(
         result["catalog"] = catalog_report
     if procedures_report is not None:
         result["procedures"] = procedures_report
+    if sp_evidence_report is not None:
+        result["sp_evidence"] = sp_evidence_report
     return result
 

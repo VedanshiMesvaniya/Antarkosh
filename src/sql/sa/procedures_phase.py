@@ -33,10 +33,17 @@ MANIFEST_REL = "schema/procedures.json"
 PROC_TIMEOUT_SECONDS = 120
 
 
-def build_report(engine: str, routines: list[Routine], *, limited: bool = False, warnings: list[str] | None = None) -> dict[str, Any]:
+def build_report(
+    engine: str,
+    routines: list[Routine],
+    *,
+    limited: bool = False,
+    warnings: list[str] | None = None,
+    skipped_files: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
     """Counts and the Full / Basic decision. Contains no code text and no routine names."""
     db = [r for r in routines if r.source == "database"]
-    scripts = [r for r in routines if r.source == "upload" and r.definition]
+    scripts = [r for r in routines if r.source == "folder" and r.definition]
     readable = [r for r in db if r.definition]
     unreadable: dict[str, int] = {}
     by_kind: dict[str, int] = {}
@@ -63,8 +70,9 @@ def build_report(engine: str, routines: list[Routine], *, limited: bool = False,
         "readable": len(readable),
         "unreadable": dict(sorted(unreadable.items())),
         "by_kind": dict(sorted(by_kind.items())),
-        "uploaded_scripts": len(scripts),
-        "uploaded_routines": sum(len(r.members) for r in scripts),
+        "folder_scripts": len(scripts),
+        "folder_routines": sum(len(r.members) for r in scripts),
+        "folder_skipped": list(skipped_files or []),
         "warnings": notes,
     }
 
@@ -92,7 +100,7 @@ def manifest_document(db_id: str, engine: str, routines: list[Routine], report: 
         "engine": engine,
         "mode": report["mode"],
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "counts": {k: report[k] for k in ("found", "readable", "unreadable", "by_kind", "uploaded_scripts", "uploaded_routines")},
+        "counts": {k: report[k] for k in ("found", "readable", "unreadable", "by_kind", "folder_scripts", "folder_routines")},
         "routines": entries,
     }
 
@@ -156,12 +164,14 @@ async def run_procedures_phase(
         finally:
             await engine.dispose()
 
-    # Scripts an admin uploaded for this database (the other source). Both sources feed Phase 5.
-    from src.sql.procedure_upload import load_uploaded_routines
+    # The optional source: .sql files a developer put in databases/<id>/procedures/. Both sources feed Phase 5.
+    from src.sql.procedure_files import ensure_procedures_folder, load_folder_routines
 
-    routines = routines + load_uploaded_routines(db_id, databases_dir)
+    ensure_procedures_folder(db_id, databases_dir)
+    folder_routines, skipped_files = load_folder_routines(db_id, databases_dir)
+    routines = routines + folder_routines
 
-    report = build_report(engine_key, routines, limited=limited, warnings=warnings)
+    report = build_report(engine_key, routines, limited=limited, warnings=warnings, skipped_files=skipped_files)
     report["files"] = write_manifest(db_id, manifest_document(db_id, engine_key, routines, report), databases_dir)
     return report, routines
 

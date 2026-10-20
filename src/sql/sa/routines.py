@@ -86,16 +86,16 @@ PERMISSION_HINT: dict[str, str] = {
 
 @dataclass(frozen=True)
 class Routine:
-    """One stored routine (or an uploaded script). ``definition`` is None when it could not be read."""
+    """One stored routine (or a script from the procedures folder). ``definition`` is None when it could not be read."""
 
     schema: str
     name: str
-    kind: str  # PROCEDURE | FUNCTION | PACKAGE BODY | SCRIPT (an uploaded file)
-    source: str  # "database" | "upload"
+    kind: str  # PROCEDURE | FUNCTION | PACKAGE BODY | SCRIPT (a .sql file from the procedures folder)
+    source: str  # "database" | "folder"
     definition: str | None
     unreadable: str | None = None  # None | "hidden" | "empty" | "wrapped" | "limit"
     truncated: bool = False
-    members: tuple[str, ...] = ()  # an uploaded SCRIPT: the routine names it defines
+    members: tuple[str, ...] = ()  # a folder SCRIPT: the routine names it defines
 
     @property
     def sha256(self) -> str:

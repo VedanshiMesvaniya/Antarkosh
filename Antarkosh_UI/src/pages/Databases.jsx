@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import CurrentDatabaseCard from '../components/CurrentDatabaseCard.jsx'
 import DatabaseConnectionCard from '../components/DatabaseConnectionCard.jsx'
-import DatabaseList from '../components/DatabaseList.jsx'
-import { getMyDatabase, listAdminDatabases, setMyDatabase, uploadProcedureScripts } from '../services/api.js'
+import { getMyDatabase, listAdminDatabases, setMyDatabase } from '../services/api.js'
 import { useAppStore } from '../store/store.js'
 
 const MAIN_DB = 'erp_main'
@@ -11,19 +11,24 @@ const MAIN_DB = 'erp_main'
 const loadState = () =>
   Promise.all([listAdminDatabases().catch(() => null), getMyDatabase().catch(() => null)])
 
-// All database settings live here (database admins only): connect a database, edit it, sync its schema,
-// and see which connection is active. Database IDs are created automatically; nobody types one.
+// Database settings (database admins only). Only ONE connection is shown: the database your questions use,
+// or the one you just saved. Other saved databases are reachable from the "Switch" dropdown. The connection
+// form is hidden until you press Edit or Add database. Database IDs are created automatically.
 export default function Databases() {
   const isDatabaseAdmin = useAppStore((state) => state.isDatabaseAdmin)
   const runSchemaSync = useAppStore((state) => state.runSchemaSync)
   const [databases, setDatabases] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [currentId, setCurrentId] = useState(null) // the database MY questions are answered from
-  const [editingId, setEditingId] = useState(null) // null = the "add a database" form
-  const [busyId, setBusyId] = useState(null)
+  const [shownId, setShownId] = useState(null) // null = show the current one
+  const [form, setForm] = useState(null) // null | 'add' | 'edit'
+  const [busy, setBusy] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const apply = useCallback(([list, mine]) => {
     if (list) setDatabases(list)
     if (mine) setCurrentId(mine.effective)
+    setLoaded(true)
   }, [])
 
   const refresh = () => loadState().then(apply)
@@ -41,44 +46,37 @@ export default function Databases() {
 
   if (!isDatabaseAdmin) return <Navigate to="/" replace />
 
-  const sync = async (id) => {
-    setBusyId(id)
+  const shown = databases.find((d) => d.id === (shownId ?? currentId)) || databases.find((d) => d.id === currentId) || databases[0] || null
+  const showForm = form !== null || (loaded && databases.length === 0)
+
+  const sync = async () => {
+    setBusy(true)
+    setSyncing(true)
     try {
-      await runSchemaSync(id) // shows its own progress / result toasts
+      await runSchemaSync(shown.id) // shows its own progress / result toasts
     } finally {
-      setBusyId(null)
+      setSyncing(false)
+      setBusy(false)
       refresh()
     }
   }
 
-  const upload = async (id, files) => {
-    setBusyId(id)
-    try {
-      const res = await uploadProcedureScripts(id, files)
-      const routines = res.stored.reduce((n, s) => n + (s.routines?.length || 0), 0)
-      toast.success(`Stored ${res.stored.length} script${res.stored.length === 1 ? '' : 's'} (${routines} routine${routines === 1 ? '' : 's'})`, {
-        description: res.rejected.length
-          ? `Skipped: ${res.rejected.map((r) => `${r.file} (${r.reason})`).join('; ')}`
-          : 'Click "Sync schema" to use them.',
-        duration: 8000,
-      })
-    } catch (e) {
-      toast.error('Upload refused', { description: e.response?.data?.detail || e.message, duration: 8000 })
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const use = async (id) => {
-    setBusyId(id)
+  // Choosing a synced database also makes it the one your questions use. A not-yet-synced one is only shown.
+  const switchTo = async (id) => {
+    setShownId(id)
+    setForm(null)
+    const db = databases.find((d) => d.id === id)
+    if (!db || !db.enabled || id === currentId) return
+    setBusy(true)
     try {
       const saved = await setMyDatabase(id === MAIN_DB ? null : id)
       setCurrentId(saved.effective)
-      toast.success(`Your questions now use "${saved.effective}"`)
+      toast.success(`Your questions now use "${db.name}"`)
     } catch (e) {
+      setShownId(null)
       toast.error(e.response?.data?.detail || e.message || 'Could not change the database')
     } finally {
-      setBusyId(null)
+      setBusy(false)
     }
   }
 
@@ -86,30 +84,35 @@ export default function Databases() {
     <section className="page settings-page">
       <div className="settings-page__header">
         <h2 className="settings-page__title">Databases</h2>
-        <p className="settings-page__subtitle">Connect databases, keep their schema up to date, and see which one is active.</p>
+        <p className="settings-page__subtitle">Your current connection. Other saved databases are in the Switch menu.</p>
       </div>
 
-      <DatabaseList
-        databases={databases}
-        currentId={currentId}
-        busyId={busyId}
-        onAdd={() => setEditingId(null)}
-        onEdit={setEditingId}
-        onSync={sync}
-        onUse={use}
-        onUpload={upload}
-      />
+      {shown ? (
+        <CurrentDatabaseCard
+          db={shown}
+          databases={databases}
+          busy={busy}
+          syncing={syncing}
+          onSwitch={switchTo}
+          onAdd={() => setForm('add')}
+          onEdit={() => setForm('edit')}
+          onSync={sync}
+        />
+      ) : null}
 
-      <DatabaseConnectionCard
-        key={editingId || 'new'}
-        editingId={editingId}
-        editingName={databases.find((d) => d.id === editingId)?.name}
-        onSaved={() => {
-          setEditingId(null) // back to a blank "Add a database" form; the list shows what was saved
-          refresh()
-        }}
-        onCancel={() => setEditingId(null)}
-      />
+      {showForm ? (
+        <DatabaseConnectionCard
+          key={form === 'edit' && shown ? shown.id : 'new'}
+          editingId={form === 'edit' && shown ? shown.id : null}
+          editingName={shown?.name}
+          onSaved={(id) => {
+            setShownId(id) // show what was just saved
+            setForm(null)
+            refresh()
+          }}
+          onCancel={databases.length ? () => setForm(null) : undefined}
+        />
+      ) : null}
     </section>
   )
 }

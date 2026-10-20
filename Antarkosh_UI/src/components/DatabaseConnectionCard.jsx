@@ -243,7 +243,7 @@ export default function DatabaseConnectionCard({ editingId = null, editingName =
             {busy === 'save' ? <Loader2 size={14} className="spin" /> : null}
             <span>Save connection</span>
           </button>
-          {editingId && onCancel ? (
+          {onCancel ? (
             <button type="button" className="secondary-button" disabled={!!busy} onClick={onCancel}>
               Cancel
             </button>

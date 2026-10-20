@@ -1063,12 +1063,17 @@ export const useAppStore = create((set, get) => ({
       const procNote = procs?.mode
         ? procs.mode === 'full'
           ? ' Stored procedures: Full mode.'
-          : ' Stored procedures: Basic mode (none readable). Upload a .sql script to improve accuracy.'
+          : ' Stored procedures: Basic mode (none found).'
         : ''
+      const learned = result?.sp_evidence
+      const learnedNote =
+        learned?.ok && (learned.joins_high || learned.joins_low || learned.value_columns)
+          ? ` Learned ${learned.joins_high + learned.joins_low} join${learned.joins_high + learned.joins_low === 1 ? '' : 's'} and ${learned.value_columns} value set${learned.value_columns === 1 ? '' : 's'} from procedures.`
+          : ''
 
       toast.success('Schema sync complete', {
         id: toastId,
-        description: `Successfully embedded ${tables} table${plural(tables)} into the vector store.${extra}${procNote}`,
+        description: `Successfully embedded ${tables} table${plural(tables)} into the vector store.${extra}${procNote}${learnedNote}`,
         duration: 5000,
       })
       return { ok: true, tables }
