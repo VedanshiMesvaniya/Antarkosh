@@ -21,15 +21,25 @@ features:
   guard_rag_citation_enforce: true
   enable_fallback_on_guard_failure: true
 
-# Per-database flags for automatic schema intelligence. All off by default.
-# erp_main is pinned off in code regardless of this file.
-# Applied to every database that has no entry of its own below (erp_main is always excluded).
-# Everything is off unless you turn it on. Set auto_catalog and auto_sqlalchemy to true here and every
-# database an admin connects gets its schema.json and table inventory on its first sync.
+# Default feature template for every database without its own override.
+# New databases automatically inherit these settings.
 db_defaults:
-  auto_scaffold: false
-  auto_catalog: false
-  auto_sqlalchemy: false
+  # Core schema setup — enabled by default
+  auto_scaffold: true
+  auto_catalog: true
+  auto_sqlalchemy: true
+  # Optional schema intelligence — disabled by default
+  auto_procedures: false
+  auto_sp_mining: false
+  auto_relationships: false
+  auto_relationships_apply: false
+  auto_table_profiles: false
+  auto_join_paths: false
+  auto_column_meaning: false
+  auto_prompt_shadow: false
+  auto_prompt_inject: false
+  auto_learning: false
+
 
 db_features:
   _example_db:

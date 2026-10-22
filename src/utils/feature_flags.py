@@ -112,16 +112,23 @@ _DB_CACHE_MTIME: float = 0.0
 
 
 def _load_db_flags_from_yaml() -> dict[str, dict[str, bool]]:
-    """Return {db_id: {flag: bool}} from ``db_features:``; {} on any problem."""
+    """Return {db_id: {flag: bool}} from ``db_features:`` with ``db_defaults:`` template under '*'; {} on any problem."""
     global _DB_FLAGS_CACHE, _DB_CACHE_MTIME
-    file_path = CONFIG_DIR / "feature_flags.yaml"
+    target_file = None
+    for filename in ("feature_flags.yaml", "features.yaml"):
+        file_path = CONFIG_DIR / filename
+        if file_path.exists():
+            target_file = file_path
+            break
+
+    if target_file is None:
+        return {}
+
     try:
-        if not file_path.exists():
-            return {}
-        mtime = file_path.stat().st_mtime
+        mtime = target_file.stat().st_mtime
         if _DB_FLAGS_CACHE is not None and mtime == _DB_CACHE_MTIME:
             return _DB_FLAGS_CACHE
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(target_file, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         parsed: dict[str, dict[str, bool]] = {}
         block = data.get("db_features") if isinstance(data, dict) else None
@@ -138,7 +145,7 @@ def _load_db_flags_from_yaml() -> dict[str, dict[str, bool]]:
         _DB_CACHE_MTIME = mtime
         return parsed
     except Exception as e:  # noqa: BLE001
-        logger.warning("Failed to load db_features from %s: %s — all per-DB flags off", file_path, e)
+        logger.warning("Failed to load db_features from %s: %s — all per-DB flags off", target_file, e)
         return {}
 
 

@@ -69,3 +69,69 @@ def test_global_flags_unchanged_by_db_block(cfg: Path):
     assert ff.is_feature_enabled("fast_path_enabled") is True
     assert ff.is_feature_enabled("delta_repair_enabled") is False
     assert ff.is_feature_enabled("auto_catalog") is False  # per-DB flags never leak into global lookup
+
+
+def test_db_defaults_template_applies_to_unconfigured_databases(cfg: Path):
+    cfg.write_text(
+        "db_defaults:\n"
+        "  auto_scaffold: true\n"
+        "  auto_catalog: true\n"
+        "  auto_sqlalchemy: true\n"
+        "  auto_procedures: false\n"
+        "  auto_relationships: false\n"
+        "  auto_relationships_apply: false\n"
+        "db_features:\n"
+        "  custom_db:\n"
+        "    auto_catalog: false\n",
+        encoding="utf-8",
+    )
+    # Unlisted database automatically inherits defaults
+    assert ff.is_db_feature_enabled("auto_scaffold", "sales_db") is True
+    assert ff.is_db_feature_enabled("auto_catalog", "sales_db") is True
+    assert ff.is_db_feature_enabled("auto_sqlalchemy", "sales_db") is True
+    assert ff.is_db_feature_enabled("auto_procedures", "sales_db") is False
+    assert ff.is_db_feature_enabled("auto_relationships", "sales_db") is False
+    assert ff.is_db_feature_enabled("auto_relationships_apply", "sales_db") is False
+
+
+def test_db_features_override_db_defaults(cfg: Path):
+    cfg.write_text(
+        "db_defaults:\n"
+        "  auto_scaffold: true\n"
+        "  auto_catalog: true\n"
+        "  auto_sqlalchemy: true\n"
+        "  auto_relationships: false\n"
+        "  auto_relationships_apply: false\n"
+        "db_features:\n"
+        "  sales_db:\n"
+        "    auto_catalog: false\n"
+        "    auto_relationships: true\n"
+        "    auto_relationships_apply: true\n",
+        encoding="utf-8",
+    )
+    # Explicit false overrides default true
+    assert ff.is_db_feature_enabled("auto_catalog", "sales_db") is False
+    # Explicit true overrides default false
+    assert ff.is_db_feature_enabled("auto_relationships", "sales_db") is True
+    assert ff.is_db_feature_enabled("auto_relationships_apply", "sales_db") is True
+    # Unspecified flag falls back to default template
+    assert ff.is_db_feature_enabled("auto_scaffold", "sales_db") is True
+    assert ff.is_db_feature_enabled("auto_sqlalchemy", "sales_db") is True
+
+
+def test_erp_main_pinned_off_even_with_db_defaults(cfg: Path):
+    cfg.write_text(
+        "db_defaults:\n"
+        "  auto_scaffold: true\n"
+        "  auto_catalog: true\n"
+        "  auto_sqlalchemy: true\n",
+        encoding="utf-8",
+    )
+    for flag in ("auto_scaffold", "auto_catalog", "auto_sqlalchemy"):
+        assert ff.is_db_feature_enabled(flag, "erp_main") is False
+
+
+def test_auto_relationships_apply_included_in_db_feature_flags():
+    assert "auto_relationships_apply" in ff.DB_FEATURE_FLAGS
+    assert "auto_relationships" in ff.DB_FEATURE_FLAGS
+

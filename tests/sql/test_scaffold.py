@@ -283,6 +283,7 @@ async def test_sync_result_is_unchanged_by_the_hook_when_flag_is_off(monkeypatch
     from src.sql.schema_retrieval import sync_live_schema
 
     created = []
+    monkeypatch.setattr("src.utils.feature_flags.is_db_feature_enabled", lambda flag, db: False)
     monkeypatch.setattr(scaffold, "ensure_db_folder", lambda *a, **k: created.append(a))  # must never run
     monkeypatch.setattr(
         "src.sql.schema_retrieval.run_readonly_query",
