@@ -1,0 +1,1103 @@
+{
+ "database": "northwind",
+ "domains": {},
+ "engine": "postgresql",
+ "generated_by": "antarkosh-auto-catalog",
+ "generated_note": "Generated from the live database catalog (catalog queries only; no data rows were read).",
+ "relationship_count": 13,
+ "relationships": [
+  {
+   "from_column": "customer_id",
+   "from_table": "customer_customer_demo",
+   "to_column": "customer_id",
+   "to_table": "customers",
+   "type": "fk"
+  },
+  {
+   "from_column": "customer_type_id",
+   "from_table": "customer_customer_demo",
+   "to_column": "customer_type_id",
+   "to_table": "customer_demographics",
+   "type": "fk"
+  },
+  {
+   "from_column": "employee_id",
+   "from_table": "employee_territories",
+   "to_column": "employee_id",
+   "to_table": "employees",
+   "type": "fk"
+  },
+  {
+   "from_column": "territory_id",
+   "from_table": "employee_territories",
+   "to_column": "territory_id",
+   "to_table": "territories",
+   "type": "fk"
+  },
+  {
+   "from_column": "reports_to",
+   "from_table": "employees",
+   "to_column": "employee_id",
+   "to_table": "employees",
+   "type": "fk"
+  },
+  {
+   "from_column": "order_id",
+   "from_table": "order_details",
+   "to_column": "order_id",
+   "to_table": "orders",
+   "type": "fk"
+  },
+  {
+   "from_column": "product_id",
+   "from_table": "order_details",
+   "to_column": "product_id",
+   "to_table": "products",
+   "type": "fk"
+  },
+  {
+   "from_column": "customer_id",
+   "from_table": "orders",
+   "to_column": "customer_id",
+   "to_table": "customers",
+   "type": "fk"
+  },
+  {
+   "from_column": "employee_id",
+   "from_table": "orders",
+   "to_column": "employee_id",
+   "to_table": "employees",
+   "type": "fk"
+  },
+  {
+   "from_column": "ship_via",
+   "from_table": "orders",
+   "to_column": "shipper_id",
+   "to_table": "shippers",
+   "type": "fk"
+  },
+  {
+   "from_column": "category_id",
+   "from_table": "products",
+   "to_column": "category_id",
+   "to_table": "categories",
+   "type": "fk"
+  },
+  {
+   "from_column": "supplier_id",
+   "from_table": "products",
+   "to_column": "supplier_id",
+   "to_table": "suppliers",
+   "type": "fk"
+  },
+  {
+   "from_column": "region_id",
+   "from_table": "territories",
+   "to_column": "region_id",
+   "to_table": "region",
+   "type": "fk"
+  }
+ ],
+ "table_count": 14,
+ "tables": [
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "category_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "category_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "description",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "picture",
+     "nullable": null,
+     "type": "bytea"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "categories",
+   "primary_key": [
+    "category_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "customer_id",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "customer_type_id",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "customer_customer_demo",
+   "primary_key": [
+    "customer_id",
+    "customer_type_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "customer_type_id",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "customer_desc",
+     "nullable": null,
+     "type": "text"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "customer_demographics",
+   "primary_key": [
+    "customer_type_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "customer_id",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "company_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "contact_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "contact_title",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "city",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "region",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "postal_code",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "country",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "phone",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "fax",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "customers",
+   "primary_key": [
+    "customer_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "employee_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "territory_id",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "employee_territories",
+   "primary_key": [
+    "employee_id",
+    "territory_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "employee_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "first_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "title",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "title_of_courtesy",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "birth_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "hire_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "city",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "region",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "postal_code",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "country",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "home_phone",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "extension",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "photo",
+     "nullable": null,
+     "type": "bytea"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "notes",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "reports_to",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "photo_path",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "employees",
+   "primary_key": [
+    "employee_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "order_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "product_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "unit_price",
+     "nullable": null,
+     "type": "real"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "quantity",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "discount",
+     "nullable": null,
+     "type": "real"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "order_details",
+   "primary_key": [
+    "order_id",
+    "product_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "order_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "customer_id",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "employee_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "order_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "required_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "shipped_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "ship_via",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "freight",
+     "nullable": null,
+     "type": "real"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "ship_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "ship_address",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "ship_city",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "ship_region",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "ship_postal_code",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "ship_country",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "orders",
+   "primary_key": [
+    "order_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "product_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "product_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "supplier_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "category_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "quantity_per_unit",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "unit_price",
+     "nullable": null,
+     "type": "real"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "units_in_stock",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "units_on_order",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "reorder_level",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "discontinued",
+     "nullable": null,
+     "type": "integer"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "products",
+   "primary_key": [
+    "product_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "region_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "region_description",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "region",
+   "primary_key": [
+    "region_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "shipper_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "company_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "phone",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "shippers",
+   "primary_key": [
+    "shipper_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "supplier_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "company_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "contact_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "contact_title",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "city",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "region",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "postal_code",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "country",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "phone",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "fax",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "homepage",
+     "nullable": null,
+     "type": "text"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "suppliers",
+   "primary_key": [
+    "supplier_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "territory_id",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "territory_description",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "region_id",
+     "nullable": null,
+     "type": "smallint"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "territories",
+   "primary_key": [
+    "territory_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "state_id",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "state_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "state_abbr",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "state_region",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "us_states",
+   "primary_key": [
+    "state_id"
+   ],
+   "unique_keys": []
+  }
+ ]
+}

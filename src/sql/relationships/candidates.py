@@ -20,6 +20,7 @@ WEIGHTS: dict[str, float] = {
     "proc_low": 0.55,  # step 5: join seen once
     "table_id": 0.60,  # step 6: <table>_id -> that table's key
     "same_name": 0.55,  # step 7: same column name as a parent key
+    "pk_name": 0.55,  # step 7: same, for a name found in many tables that is the sole primary key of one table
     "abbrev": 0.40,  # step 8: cust_id -> customer
     "role_prefix": 0.45,  # step 9: billing_address_id -> address
     "self_ref": 0.55,  # step 10: parent_id -> own key
@@ -33,7 +34,7 @@ WEIGHTS: dict[str, float] = {
 
 # Rules that read the same fact from the same names. They are ONE witness, not several: customer_id ->
 # customer.customer_id matches both "table id" and "same name", and must not count twice.
-NAME_RULES = frozenset({"table_id", "same_name", "abbrev", "role_prefix", "self_ref", "code_like"})
+NAME_RULES = frozenset({"table_id", "same_name", "pk_name", "abbrev", "role_prefix", "self_ref", "code_like"})
 STRUCTURE_RULES = frozenset({"junction", "header_detail"})
 
 

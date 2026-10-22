@@ -84,7 +84,7 @@ SHOP_APPLIED = {("orders", "customer_id", "customers", "id"), ("order_items", "p
 # ================================================================= 6e: selection
 
 def test_bands():
-    assert (band(0.70), band(0.699), band(0.50), band(0.499)) == ("high", "medium", "medium", "low")
+    assert (band(0.70), band(0.699), band(0.45), band(0.449)) == ("high", "medium", "medium", "low")
 
 
 def test_only_high_known_unambiguous_in_scope_edges_are_applied_and_the_rest_are_counted():

@@ -39,12 +39,16 @@ from src.sql.relationships.model import CatalogGraph
 logger = logging.getLogger(__name__)
 
 GENERATED_BY = "auto_relationships"
-RULESET_VERSION = 1  # bump when a rule or weight changes: it forces a rewrite even if the catalog did not
+RULESET_VERSION = 2  # bump when a rule or weight changes: it forces a rewrite even if the catalog did not
 INFERRED_REL = "schema/inferred_relationships.json"
 APPLIED_REL = "schema/relationships.json"
 
-HIGH_THRESHOLD = 0.70  # starting values; measured and set in step 6i
-MEDIUM_THRESHOLD = 0.50
+# Measured in step 6i on five real databases with every declared key hidden (``relationships/benchmark.py``):
+#   >= 0.70  edges that need a declared key, a procedure join or a corroborating comment: 100% precision, never from names alone.
+#   >= 0.45  every name-based rule: 94% recall at 93% precision. Worth a person's review, never applied automatically.
+#   <  0.45  rules the benchmark never saw fire (abbreviations, a manager column): kept for review, flagged low.
+HIGH_THRESHOLD = 0.70
+MEDIUM_THRESHOLD = 0.45
 MAX_EDGES_PER_TABLE = 40
 MAX_INFERRED_EDGES = 20000  # keeps the review file a sane size on a very large catalog
 
@@ -93,7 +97,7 @@ def select_applied(
 # ---------------------------------------------------------------- documents
 
 
-def edge_entry(graph: CatalogGraph, e: Edge, threshold: float, *, review: bool = False) -> dict[str, Any]:
+def edge_entry(graph: CatalogGraph, e: Edge, threshold: float, *, review: bool = False, publishable: bool = False) -> dict[str, Any]:
     child, parent = graph.tables[e.child], graph.tables[e.parent]
     entry: dict[str, Any] = {
         "from_table": child.name, "from_column": e.child_column, "to_table": parent.name, "to_column": e.parent_column,
@@ -102,7 +106,11 @@ def edge_entry(graph: CatalogGraph, e: Edge, threshold: float, *, review: bool =
         "evidence": [{"rule": r, "weight": w} for r, w in sorted(e.evidence.items())],
     }
     if review:
-        entry.update({"band": band(e.score, threshold), "direction_known": e.direction_known, "ambiguous": e.ambiguous})
+        in_scope = graph.in_answering_scope(child) and graph.in_answering_scope(parent)
+        entry.update({
+            "band": band(e.score, threshold), "direction_known": e.direction_known, "ambiguous": e.ambiguous,
+            "in_answering_scope": in_scope, "publishable": publishable,  # publishable: would reach relationships.json if apply were on
+        })
     return entry
 
 
@@ -116,7 +124,10 @@ def _now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def inferred_document(graph: CatalogGraph, edges: list[Edge], gate_counts: dict[str, int], key: str, threshold: float) -> tuple[dict[str, Any], int]:
+def inferred_document(
+    graph: CatalogGraph, edges: list[Edge], gate_counts: dict[str, int], key: str, threshold: float, publishable: set[tuple[str, str, str, str]] | None = None
+) -> tuple[dict[str, Any], int]:
+    publishable = publishable or set()
     ranked = sorted(edges, key=lambda e: (-e.score, e.key))
     kept = ranked[:MAX_INFERRED_EDGES]
     bands = Counter(band(e.score, threshold) for e in ranked)
@@ -129,8 +140,8 @@ def inferred_document(graph: CatalogGraph, edges: list[Edge], gate_counts: dict[
         "inputs_hash": graph.inputs_hash,
         "ruleset_version": RULESET_VERSION,
         "threshold": threshold,
-        "stats": {"edges": len(ranked), "high": bands["high"], "medium": bands["medium"], "low": bands["low"], **gate_counts},
-        "relationships": [edge_entry(graph, e, threshold, review=True) for e in kept],
+        "stats": {"edges": len(ranked), "high": bands["high"], "medium": bands["medium"], "low": bands["low"], "publishable": len(publishable), **gate_counts},
+        "relationships": [edge_entry(graph, e, threshold, review=True, publishable=e.key in publishable) for e in kept],
     }
     return doc, len(ranked) - len(kept)
 
@@ -201,6 +212,7 @@ def write_relationship_files(
         result["skipped"]["all"] = "database folder does not exist"
         return result
 
+    chosen, held = select_applied(graph, edges, threshold=threshold, max_per_table=max_per_table)
     inferred_path = folder / INFERRED_REL
     state = _state(inferred_path)
     key = input_key(graph, "inferred", threshold, max_per_table)
@@ -209,7 +221,7 @@ def write_relationship_files(
     elif state == "ours" and (_read(inferred_path) or {}).get("input_key") == key:
         result["unchanged"].append(INFERRED_REL)
     else:
-        doc, truncated = inferred_document(graph, edges, gate_counts, key, threshold)
+        doc, truncated = inferred_document(graph, edges, gate_counts, key, threshold, {e.key for e in chosen})
         registry.atomic_write_json(inferred_path, doc, mode=0o644)
         result["written"].append(INFERRED_REL)
         result["truncated"] = truncated
@@ -217,7 +229,6 @@ def write_relationship_files(
     if not apply:
         return result
 
-    chosen, held = select_applied(graph, edges, threshold=threshold, max_per_table=max_per_table)
     result["applied_edges"], result["held_back"] = len(chosen), dict(held)
     applied_path = folder / APPLIED_REL
     state = _state(applied_path)

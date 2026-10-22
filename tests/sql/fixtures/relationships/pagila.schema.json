@@ -1,0 +1,1635 @@
+{
+ "database": "pagila",
+ "domains": {},
+ "engine": "postgresql",
+ "generated_by": "antarkosh-auto-catalog",
+ "generated_note": "Generated from the live database catalog (catalog queries only; no data rows were read).",
+ "relationship_count": 19,
+ "relationships": [
+  {
+   "from_column": "city_id",
+   "from_table": "address",
+   "to_column": "city_id",
+   "to_table": "city",
+   "type": "fk"
+  },
+  {
+   "from_column": "country_id",
+   "from_table": "city",
+   "to_column": "country_id",
+   "to_table": "country",
+   "type": "fk"
+  },
+  {
+   "from_column": "address_id",
+   "from_table": "customer",
+   "to_column": "address_id",
+   "to_table": "address",
+   "type": "fk"
+  },
+  {
+   "from_column": "store_id",
+   "from_table": "customer",
+   "to_column": "store_id",
+   "to_table": "store",
+   "type": "fk"
+  },
+  {
+   "from_column": "language_id",
+   "from_table": "film",
+   "to_column": "language_id",
+   "to_table": "language",
+   "type": "fk"
+  },
+  {
+   "from_column": "original_language_id",
+   "from_table": "film",
+   "to_column": "language_id",
+   "to_table": "language",
+   "type": "fk"
+  },
+  {
+   "from_column": "actor_id",
+   "from_table": "film_actor",
+   "to_column": "actor_id",
+   "to_table": "actor",
+   "type": "fk"
+  },
+  {
+   "from_column": "film_id",
+   "from_table": "film_actor",
+   "to_column": "film_id",
+   "to_table": "film",
+   "type": "fk"
+  },
+  {
+   "from_column": "category_id",
+   "from_table": "film_category",
+   "to_column": "category_id",
+   "to_table": "category",
+   "type": "fk"
+  },
+  {
+   "from_column": "film_id",
+   "from_table": "film_category",
+   "to_column": "film_id",
+   "to_table": "film",
+   "type": "fk"
+  },
+  {
+   "from_column": "film_id",
+   "from_table": "film_embedding",
+   "to_column": "film_id",
+   "to_table": "film",
+   "type": "fk"
+  },
+  {
+   "from_column": "film_id",
+   "from_table": "inventory",
+   "to_column": "film_id",
+   "to_table": "film",
+   "type": "fk"
+  },
+  {
+   "from_column": "store_id",
+   "from_table": "inventory",
+   "to_column": "store_id",
+   "to_table": "store",
+   "type": "fk"
+  },
+  {
+   "from_column": "customer_id",
+   "from_table": "rental",
+   "to_column": "customer_id",
+   "to_table": "customer",
+   "type": "fk"
+  },
+  {
+   "from_column": "inventory_id",
+   "from_table": "rental",
+   "to_column": "inventory_id",
+   "to_table": "inventory",
+   "type": "fk"
+  },
+  {
+   "from_column": "staff_id",
+   "from_table": "rental",
+   "to_column": "staff_id",
+   "to_table": "staff",
+   "type": "fk"
+  },
+  {
+   "from_column": "address_id",
+   "from_table": "staff",
+   "to_column": "address_id",
+   "to_table": "address",
+   "type": "fk"
+  },
+  {
+   "from_column": "store_id",
+   "from_table": "staff",
+   "to_column": "store_id",
+   "to_table": "store",
+   "type": "fk"
+  },
+  {
+   "from_column": "address_id",
+   "from_table": "store",
+   "to_column": "address_id",
+   "to_table": "address",
+   "type": "fk"
+  }
+ ],
+ "table_count": 23,
+ "tables": [
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "actor_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "first_name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "actor",
+   "primary_key": [
+    "actor_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "actor_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "first_name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "film_info",
+     "nullable": null,
+     "type": "jsonb"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "actor_info",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "address_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address2",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "district",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "city_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "postal_code",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "phone",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "address",
+   "primary_key": [
+    "address_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "category_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "category",
+   "primary_key": [
+    "category_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "city_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "city",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "country_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "city",
+   "primary_key": [
+    "city_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "country_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "country",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "country",
+   "primary_key": [
+    "country_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "customer_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "store_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "first_name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "email",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "address_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "activebool",
+     "nullable": null,
+     "type": "boolean"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "create_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "active",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "uuid",
+     "nullable": null,
+     "type": "uuid"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "customer",
+   "primary_key": [
+    "customer_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "zip code",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "phone",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "city",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "country",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "notes",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "sid",
+     "nullable": null,
+     "type": "integer"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "customer_list",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "film_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "title",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "description",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "release_year",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "language_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "original_language_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "rental_duration",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "rental_rate",
+     "nullable": null,
+     "type": "numeric"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "length",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "replacement_cost",
+     "nullable": null,
+     "type": "numeric"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "rating",
+     "nullable": null,
+     "type": "mpaa_rating"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "special_features",
+     "nullable": null,
+     "type": "text[]"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "fulltext",
+     "nullable": null,
+     "type": "tsvector"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "length_hours",
+     "nullable": null,
+     "type": "numeric"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "film",
+   "primary_key": [
+    "film_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "actor_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "film_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "film_actor",
+   "primary_key": [
+    "actor_id",
+    "film_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "film_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "category_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "film_category",
+   "primary_key": [
+    "film_id",
+    "category_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "film_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "embedding",
+     "nullable": null,
+     "type": "float4[]"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "film_embedding",
+   "primary_key": [
+    "film_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "fid",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "title",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "description",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "category",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "price",
+     "nullable": null,
+     "type": "numeric"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "length",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "rating",
+     "nullable": null,
+     "type": "mpaa_rating"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "actors",
+     "nullable": null,
+     "type": "text"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "film_list",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "inventory_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "film_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "store_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "inventory",
+   "primary_key": [
+    "inventory_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "language_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "language",
+   "primary_key": [
+    "language_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "fid",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "title",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "description",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "category",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "price",
+     "nullable": null,
+     "type": "numeric"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "length",
+     "nullable": null,
+     "type": "smallint"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "rating",
+     "nullable": null,
+     "type": "mpaa_rating"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "actors",
+     "nullable": null,
+     "type": "text"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "nicer_but_slower_film_list",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "payment_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "customer_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "staff_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "rental_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "amount",
+     "nullable": null,
+     "type": "numeric"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "payment_date",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "uuid",
+     "nullable": null,
+     "type": "uuid"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "payment",
+   "primary_key": [
+    "payment_date",
+    "payment_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "rental_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "rental_date",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "inventory_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "customer_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "return_date",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "staff_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "uuid",
+     "nullable": null,
+     "type": "uuid"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "rental",
+   "primary_key": [
+    "rental_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "category",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "total_sales",
+     "nullable": null,
+     "type": "numeric"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "sales_by_film_category",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "store",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "manager",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "total_sales",
+     "nullable": null,
+     "type": "numeric"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "sales_by_store",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "staff_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "first_name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "address_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "email",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "store_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "active",
+     "nullable": null,
+     "type": "boolean"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "username",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "password",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "picture",
+     "nullable": null,
+     "type": "bytea"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "staff",
+   "primary_key": [
+    "staff_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "zip code",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "phone",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "city",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "country",
+     "nullable": null,
+     "type": "text"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "sid",
+     "nullable": null,
+     "type": "integer"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "staff_list",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "store_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "manager_staff_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "address_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_update",
+     "nullable": null,
+     "type": "timestamp with time zone"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "store",
+   "primary_key": [
+    "store_id"
+   ],
+   "unique_keys": []
+  }
+ ]
+}

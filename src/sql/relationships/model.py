@@ -40,12 +40,15 @@ _STRING = {
 }
 _BINARY = {"blob", "tinyblob", "mediumblob", "longblob", "binary", "varbinary", "bytea", "raw", "long raw", "image"}
 _BASE = re.compile(r"[A-Za-z_][A-Za-z_ ]*")
+_ARRAY = re.compile(r"\[\s*\d*\s*\]\s*$")
 _NOISE_WORDS = re.compile(r"\b(unsigned|signed|zerofill|identity|auto_increment)\b", re.IGNORECASE)
 
 
 def type_family(raw: str | None) -> str:
     """Group a catalog column type into integer / numeric / string / uuid / datetime / date / time / bool / binary / json / other."""
     if not raw:
+        return "other"
+    if _ARRAY.search(str(raw)):  # integer[] is an array of integers, never a key of integers
         return "other"
     match = _BASE.match(_NOISE_WORDS.sub(" ", str(raw)).strip())
     if not match:

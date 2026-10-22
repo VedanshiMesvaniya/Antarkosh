@@ -1,0 +1,799 @@
+{
+ "database": "chinook",
+ "domains": {},
+ "engine": "postgresql",
+ "generated_by": "antarkosh-auto-catalog",
+ "generated_note": "Generated from the live database catalog (catalog queries only; no data rows were read).",
+ "relationship_count": 11,
+ "relationships": [
+  {
+   "from_column": "artist_id",
+   "from_table": "album",
+   "to_column": "artist_id",
+   "to_table": "artist",
+   "type": "fk"
+  },
+  {
+   "from_column": "support_rep_id",
+   "from_table": "customer",
+   "to_column": "employee_id",
+   "to_table": "employee",
+   "type": "fk"
+  },
+  {
+   "from_column": "reports_to",
+   "from_table": "employee",
+   "to_column": "employee_id",
+   "to_table": "employee",
+   "type": "fk"
+  },
+  {
+   "from_column": "customer_id",
+   "from_table": "invoice",
+   "to_column": "customer_id",
+   "to_table": "customer",
+   "type": "fk"
+  },
+  {
+   "from_column": "invoice_id",
+   "from_table": "invoice_line",
+   "to_column": "invoice_id",
+   "to_table": "invoice",
+   "type": "fk"
+  },
+  {
+   "from_column": "track_id",
+   "from_table": "invoice_line",
+   "to_column": "track_id",
+   "to_table": "track",
+   "type": "fk"
+  },
+  {
+   "from_column": "playlist_id",
+   "from_table": "playlist_track",
+   "to_column": "playlist_id",
+   "to_table": "playlist",
+   "type": "fk"
+  },
+  {
+   "from_column": "track_id",
+   "from_table": "playlist_track",
+   "to_column": "track_id",
+   "to_table": "track",
+   "type": "fk"
+  },
+  {
+   "from_column": "album_id",
+   "from_table": "track",
+   "to_column": "album_id",
+   "to_table": "album",
+   "type": "fk"
+  },
+  {
+   "from_column": "genre_id",
+   "from_table": "track",
+   "to_column": "genre_id",
+   "to_table": "genre",
+   "type": "fk"
+  },
+  {
+   "from_column": "media_type_id",
+   "from_table": "track",
+   "to_column": "media_type_id",
+   "to_table": "media_type",
+   "type": "fk"
+  }
+ ],
+ "table_count": 11,
+ "tables": [
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "album_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "title",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "artist_id",
+     "nullable": null,
+     "type": "integer"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "album",
+   "primary_key": [
+    "album_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "artist_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "artist",
+   "primary_key": [
+    "artist_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "customer_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "first_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "company",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "city",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "state",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "country",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "postal_code",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "phone",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "fax",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "email",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "support_rep_id",
+     "nullable": null,
+     "type": "integer"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "customer",
+   "primary_key": [
+    "customer_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "employee_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "first_name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "title",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "reports_to",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "birth_date",
+     "nullable": null,
+     "type": "timestamp without time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "hire_date",
+     "nullable": null,
+     "type": "timestamp without time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "address",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "city",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "state",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "country",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "postal_code",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "phone",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "fax",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "email",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "employee",
+   "primary_key": [
+    "employee_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "genre_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "genre",
+   "primary_key": [
+    "genre_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "invoice_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "customer_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "invoice_date",
+     "nullable": null,
+     "type": "timestamp without time zone"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "billing_address",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "billing_city",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "billing_state",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "billing_country",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "billing_postal_code",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "total",
+     "nullable": null,
+     "type": "numeric"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "invoice",
+   "primary_key": [
+    "invoice_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "invoice_line_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "invoice_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "track_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "unit_price",
+     "nullable": null,
+     "type": "numeric"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "quantity",
+     "nullable": null,
+     "type": "integer"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "invoice_line",
+   "primary_key": [
+    "invoice_line_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "media_type_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "media_type",
+   "primary_key": [
+    "media_type_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "playlist_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "character varying"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "playlist",
+   "primary_key": [
+    "playlist_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "playlist_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "track_id",
+     "nullable": null,
+     "type": "integer"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "playlist_track",
+   "primary_key": [
+    "playlist_id",
+    "track_id"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "track_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "name",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "album_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "media_type_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": false,
+     "name": "genre_id",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "composer",
+     "nullable": null,
+     "type": "character varying"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "milliseconds",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "bytes",
+     "nullable": null,
+     "type": "integer"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "unit_price",
+     "nullable": null,
+     "type": "numeric"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "track",
+   "primary_key": [
+    "track_id"
+   ],
+   "unique_keys": []
+  }
+ ]
+}

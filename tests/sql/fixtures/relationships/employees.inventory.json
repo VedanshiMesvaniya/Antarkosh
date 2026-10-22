@@ -1,0 +1,102 @@
+{
+ "counts": {
+  "tables": 6,
+  "total": 8,
+  "views": 2
+ },
+ "db_id": "employees",
+ "engine": "mysql",
+ "generated_by": "antarkosh-auto-catalog",
+ "tables": [
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "current_dept_emp",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "departments",
+   "primary_key": [
+    "dept_no"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "dept_emp",
+   "primary_key": [
+    "emp_no",
+    "dept_no"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "dept_emp_latest_date",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "dept_manager",
+   "primary_key": [
+    "emp_no",
+    "dept_no"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 6,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "employees",
+   "primary_key": [
+    "emp_no"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "salaries",
+   "primary_key": [
+    "emp_no",
+    "from_date"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "titles",
+   "primary_key": [
+    "emp_no",
+    "title",
+    "from_date"
+   ],
+   "row_estimate": 0
+  }
+ ],
+ "unavailable": []
+}

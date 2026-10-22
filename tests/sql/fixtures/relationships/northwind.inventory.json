@@ -1,0 +1,170 @@
+{
+ "counts": {
+  "tables": 14,
+  "total": 14,
+  "views": 0
+ },
+ "db_id": "northwind",
+ "engine": "postgresql",
+ "generated_by": "antarkosh-auto-catalog",
+ "tables": [
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "categories",
+   "primary_key": [
+    "category_id"
+   ],
+   "row_estimate": 8
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "customer_customer_demo",
+   "primary_key": [
+    "customer_id",
+    "customer_type_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "customer_demographics",
+   "primary_key": [
+    "customer_type_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 11,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "customers",
+   "primary_key": [
+    "customer_id"
+   ],
+   "row_estimate": 91
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "employee_territories",
+   "primary_key": [
+    "employee_id",
+    "territory_id"
+   ],
+   "row_estimate": 49
+  },
+  {
+   "column_count": 18,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "employees",
+   "primary_key": [
+    "employee_id"
+   ],
+   "row_estimate": 9
+  },
+  {
+   "column_count": 5,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "order_details",
+   "primary_key": [
+    "order_id",
+    "product_id"
+   ],
+   "row_estimate": 2155
+  },
+  {
+   "column_count": 14,
+   "comment": null,
+   "foreign_key_count": 3,
+   "kind": "table",
+   "name": "orders",
+   "primary_key": [
+    "order_id"
+   ],
+   "row_estimate": 830
+  },
+  {
+   "column_count": 10,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "products",
+   "primary_key": [
+    "product_id"
+   ],
+   "row_estimate": 77
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "region",
+   "primary_key": [
+    "region_id"
+   ],
+   "row_estimate": 4
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "shippers",
+   "primary_key": [
+    "shipper_id"
+   ],
+   "row_estimate": 6
+  },
+  {
+   "column_count": 12,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "suppliers",
+   "primary_key": [
+    "supplier_id"
+   ],
+   "row_estimate": 29
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "territories",
+   "primary_key": [
+    "territory_id"
+   ],
+   "row_estimate": 53
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "us_states",
+   "primary_key": [
+    "state_id"
+   ],
+   "row_estimate": 51
+  }
+ ],
+ "unavailable": []
+}

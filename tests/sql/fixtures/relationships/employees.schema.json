@@ -1,0 +1,435 @@
+{
+ "database": "employees",
+ "domains": {},
+ "engine": "mysql",
+ "generated_by": "antarkosh-auto-catalog",
+ "generated_note": "Generated from the live database catalog (catalog queries only; no data rows were read).",
+ "relationship_count": 6,
+ "relationships": [
+  {
+   "from_column": "emp_no",
+   "from_table": "dept_manager",
+   "to_column": "emp_no",
+   "to_table": "employees",
+   "type": "fk"
+  },
+  {
+   "from_column": "dept_no",
+   "from_table": "dept_manager",
+   "to_column": "dept_no",
+   "to_table": "departments",
+   "type": "fk"
+  },
+  {
+   "from_column": "emp_no",
+   "from_table": "salaries",
+   "to_column": "emp_no",
+   "to_table": "employees",
+   "type": "fk"
+  },
+  {
+   "from_column": "emp_no",
+   "from_table": "dept_emp",
+   "to_column": "emp_no",
+   "to_table": "employees",
+   "type": "fk"
+  },
+  {
+   "from_column": "dept_no",
+   "from_table": "dept_emp",
+   "to_column": "dept_no",
+   "to_table": "departments",
+   "type": "fk"
+  },
+  {
+   "from_column": "emp_no",
+   "from_table": "titles",
+   "to_column": "emp_no",
+   "to_table": "employees",
+   "type": "fk"
+  }
+ ],
+ "table_count": 8,
+ "tables": [
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "emp_no",
+     "nullable": null,
+     "type": "int"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "dept_no",
+     "nullable": null,
+     "type": "char"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "from_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "to_date",
+     "nullable": null,
+     "type": "date"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "current_dept_emp",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "dept_no",
+     "nullable": null,
+     "type": "char"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "dept_name",
+     "nullable": null,
+     "type": "varchar"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "departments",
+   "primary_key": [
+    "dept_no"
+   ],
+   "unique_keys": [
+    [
+     "dept_name"
+    ]
+   ]
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "emp_no",
+     "nullable": null,
+     "type": "int"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "dept_no",
+     "nullable": null,
+     "type": "char"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "from_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "to_date",
+     "nullable": null,
+     "type": "date"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "dept_emp",
+   "primary_key": [
+    "emp_no",
+    "dept_no"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "emp_no",
+     "nullable": null,
+     "type": "int"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "from_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "to_date",
+     "nullable": null,
+     "type": "date"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": true,
+   "name": "dept_emp_latest_date",
+   "primary_key": [],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "emp_no",
+     "nullable": null,
+     "type": "int"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "dept_no",
+     "nullable": null,
+     "type": "char"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "from_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "to_date",
+     "nullable": null,
+     "type": "date"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "dept_manager",
+   "primary_key": [
+    "emp_no",
+    "dept_no"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "emp_no",
+     "nullable": null,
+     "type": "int"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "birth_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "first_name",
+     "nullable": null,
+     "type": "varchar"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "last_name",
+     "nullable": null,
+     "type": "varchar"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "gender",
+     "nullable": null,
+     "type": "enum"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "hire_date",
+     "nullable": null,
+     "type": "date"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "employees",
+   "primary_key": [
+    "emp_no"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "emp_no",
+     "nullable": null,
+     "type": "int"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "salary",
+     "nullable": null,
+     "type": "int"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "from_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "to_date",
+     "nullable": null,
+     "type": "date"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "salaries",
+   "primary_key": [
+    "emp_no",
+    "from_date"
+   ],
+   "unique_keys": []
+  },
+  {
+   "columns": [
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": true,
+     "is_primary_key": true,
+     "name": "emp_no",
+     "nullable": null,
+     "type": "int"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "title",
+     "nullable": null,
+     "type": "varchar"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": true,
+     "name": "from_date",
+     "nullable": null,
+     "type": "date"
+    },
+    {
+     "auto_increment": null,
+     "comment": null,
+     "is_foreign_key": false,
+     "is_primary_key": false,
+     "name": "to_date",
+     "nullable": null,
+     "type": "date"
+    }
+   ],
+   "comment": null,
+   "domain": null,
+   "is_view": false,
+   "name": "titles",
+   "primary_key": [
+    "emp_no",
+    "title",
+    "from_date"
+   ],
+   "unique_keys": []
+  }
+ ]
+}

@@ -8,7 +8,7 @@ Rule       Step  Reads
 declared    4    foreign keys declared in schema.json
 proc        5    join edges mined from stored procedures (sp_evidence.json)
 table_id    6    ``customer_id``  -> table ``customer`` (also CustomerID, tbl_customers, id_customer, fk_party)
-same_name   7    a column named like a single-column key of another table
+same_name   7    a column named like a single-column key of another table (pk_name: the same, for a name found in many tables)
 abbrev      8    ``cust_id``      -> table ``customer`` (only when exactly one table fits)
 role_prefix 9    ``billing_address_id`` -> table ``address``
 self_ref   10    ``parent_id``    -> the table's own key
@@ -79,6 +79,15 @@ def _name_points_at(ctx: Context, column: str, target: Table) -> bool:
     return bool(p and p.stem and p.stem == ctx.stems.get(target.qualified))
 
 
+def _names_one_primary_key(holders: list[tuple[Table, Column]]) -> bool:
+    """Is this name the single-column primary key of exactly one table, and does it read like an id or a code?"""
+    if len(holders) != 1:
+        return False
+    table, column = holders[0]
+    p = parse_id_column(column.name)
+    return table.key_strength(column.name) == "primary" and p is not None and bool(p.stem)
+
+
 def _short(s: str, f: str) -> bool:
     """Is ``s`` a short form of ``f``? cust/customer, hdr/header, emp/employee. Needs 3+ letters and the same first letter."""
     if len(s) < 3 or len(s) >= len(f) or s[0] != f[0]:
@@ -108,7 +117,12 @@ def _abbreviates(short: tuple[str, ...], full: tuple[str, ...]) -> bool:
 def declared_fks(ctx: Context) -> list[Candidate]:
     """Step 4. A foreign key the database declares is a fact."""
     w = WEIGHTS["declared"]
-    return [Candidate(fk.from_table, fk.from_column, fk.to_table, fk.to_column, "declared", w) for fk in ctx.graph.declared_fks]
+    # ctx.stems holds tables only: a key that names a view or a table the catalog did not list is ignored, as for every other rule
+    return [
+        Candidate(fk.from_table, fk.from_column, fk.to_table, fk.to_column, "declared", w)
+        for fk in ctx.graph.declared_fks
+        if fk.from_table in ctx.stems and fk.to_table in ctx.stems
+    ]
 
 
 # ---------------------------------------------------------------- step 5
@@ -172,8 +186,16 @@ def same_column_name(ctx: Context) -> list[Candidate]:
         for c in t.columns:
             norm = normalized_column_name(c.name)
             holders = ctx.keyed.get(norm, [])
-            if not norm or norm in ctx.common or not holders or len(holders) > MAX_KEY_HOLDERS:
+            if not norm or not holders or len(holders) > MAX_KEY_HOLDERS:
                 continue
+            rule = "same_name"
+            if norm in ctx.common:
+                # A name found in many tables is usually generic (status, code). It is not when it is the sole primary
+                # key of exactly one table and reads like an id (emp_no in employees, company_id in company): that is
+                # what a foreign key column looks like, and the reason it is common is that many tables point there.
+                if not _names_one_primary_key(holders):
+                    continue
+                rule = "pk_name"
             own_key = t.key_strength(c.name) is not None
             id_like = parse_id_column(c.name) is not None
             for parent, pc in ctx.prefer_same_schema(t, holders, lambda h: h[0]):
@@ -182,7 +204,7 @@ def same_column_name(ctx: Context) -> list[Candidate]:
                 if own_key and (not id_like or t.qualified.lower() > parent.qualified.lower()):
                     # both sides are keys: a shared key or a one-to-one. Say it once, and only for id-like names.
                     continue
-                out.append(Candidate(t.qualified, c.name, parent.qualified, pc.name, "same_name", WEIGHTS["same_name"], symmetric=own_key))
+                out.append(Candidate(t.qualified, c.name, parent.qualified, pc.name, rule, WEIGHTS[rule], symmetric=own_key))
     return out
 
 

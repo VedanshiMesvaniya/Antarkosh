@@ -1,0 +1,255 @@
+{
+ "counts": {
+  "tables": 16,
+  "total": 78,
+  "views": 7
+ },
+ "db_id": "pagila",
+ "engine": "postgresql",
+ "generated_by": "antarkosh-auto-catalog",
+ "tables": [
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "actor",
+   "primary_key": [
+    "actor_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "actor_info",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 8,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "address",
+   "primary_key": [
+    "address_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "category",
+   "primary_key": [
+    "category_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "city",
+   "primary_key": [
+    "city_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "country",
+   "primary_key": [
+    "country_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 11,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "customer",
+   "primary_key": [
+    "customer_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 9,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "customer_list",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 15,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "film",
+   "primary_key": [
+    "film_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "film_actor",
+   "primary_key": [
+    "actor_id",
+    "film_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "film_category",
+   "primary_key": [
+    "film_id",
+    "category_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "film_embedding",
+   "primary_key": [
+    "film_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 8,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "film_list",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "inventory",
+   "primary_key": [
+    "inventory_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "language",
+   "primary_key": [
+    "language_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 8,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "nicer_but_slower_film_list",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 7,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "payment",
+   "primary_key": [
+    "payment_date",
+    "payment_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 8,
+   "comment": null,
+   "foreign_key_count": 3,
+   "kind": "table",
+   "name": "rental",
+   "primary_key": [
+    "rental_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "sales_by_film_category",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "sales_by_store",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 11,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "staff",
+   "primary_key": [
+    "staff_id"
+   ],
+   "row_estimate": 0
+  },
+  {
+   "column_count": 8,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "view",
+   "name": "staff_list",
+   "primary_key": [],
+   "row_estimate": null
+  },
+  {
+   "column_count": 4,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "store",
+   "primary_key": [
+    "store_id"
+   ],
+   "row_estimate": 0
+  }
+ ],
+ "unavailable": []
+}

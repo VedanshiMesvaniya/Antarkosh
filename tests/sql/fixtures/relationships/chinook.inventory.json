@@ -1,0 +1,135 @@
+{
+ "counts": {
+  "tables": 11,
+  "total": 11,
+  "views": 0
+ },
+ "db_id": "chinook",
+ "engine": "postgresql",
+ "generated_by": "antarkosh-auto-catalog",
+ "tables": [
+  {
+   "column_count": 3,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "album",
+   "primary_key": [
+    "album_id"
+   ],
+   "row_estimate": 347
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "artist",
+   "primary_key": [
+    "artist_id"
+   ],
+   "row_estimate": 275
+  },
+  {
+   "column_count": 13,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "customer",
+   "primary_key": [
+    "customer_id"
+   ],
+   "row_estimate": 59
+  },
+  {
+   "column_count": 15,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "employee",
+   "primary_key": [
+    "employee_id"
+   ],
+   "row_estimate": 8
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "genre",
+   "primary_key": [
+    "genre_id"
+   ],
+   "row_estimate": 25
+  },
+  {
+   "column_count": 9,
+   "comment": null,
+   "foreign_key_count": 1,
+   "kind": "table",
+   "name": "invoice",
+   "primary_key": [
+    "invoice_id"
+   ],
+   "row_estimate": 412
+  },
+  {
+   "column_count": 5,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "invoice_line",
+   "primary_key": [
+    "invoice_line_id"
+   ],
+   "row_estimate": 2240
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "media_type",
+   "primary_key": [
+    "media_type_id"
+   ],
+   "row_estimate": 5
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 0,
+   "kind": "table",
+   "name": "playlist",
+   "primary_key": [
+    "playlist_id"
+   ],
+   "row_estimate": 18
+  },
+  {
+   "column_count": 2,
+   "comment": null,
+   "foreign_key_count": 2,
+   "kind": "table",
+   "name": "playlist_track",
+   "primary_key": [
+    "playlist_id",
+    "track_id"
+   ],
+   "row_estimate": 8715
+  },
+  {
+   "column_count": 9,
+   "comment": null,
+   "foreign_key_count": 3,
+   "kind": "table",
+   "name": "track",
+   "primary_key": [
+    "track_id"
+   ],
+   "row_estimate": 3503
+  }
+ ],
+ "unavailable": []
+}
