@@ -135,3 +135,41 @@ def test_auto_relationships_apply_included_in_db_feature_flags():
     assert "auto_relationships_apply" in ff.DB_FEATURE_FLAGS
     assert "auto_relationships" in ff.DB_FEATURE_FLAGS
 
+
+def test_db_id_numeric_suffix_stripping(cfg: Path):
+    cfg.write_text(
+        "db_features:\n"
+        "  qts_ais:\n"
+        "    auto_procedures: true\n"
+        "    auto_sp_mining: true\n",
+        encoding="utf-8",
+    )
+    assert ff.is_db_feature_enabled("auto_procedures", "qts_ais") is True
+    assert ff.is_db_feature_enabled("auto_procedures", "qts_ais_2") is True
+    assert ff.is_db_feature_enabled("auto_sp_mining", "qts_ais_99") is True
+
+
+def test_db_id_alias_prefix_matching(cfg: Path):
+    cfg.write_text(
+        "db_features:\n"
+        "  northwind:\n"
+        "    auto_procedures: true\n"
+        "    auto_relationships: true\n"
+        "  sakila:\n"
+        "    auto_catalog: true\n"
+        "  sakila_replica:\n"
+        "    auto_catalog: false\n",
+        encoding="utf-8",
+    )
+    # Prefix alias matching: northwind_orchard_erp inherits northwind
+    assert ff.is_db_feature_enabled("auto_procedures", "northwind_orchard_erp") is True
+    assert ff.is_db_feature_enabled("auto_relationships", "northwind_orchard_erp") is True
+
+    # Exact key wins over prefix
+    assert ff.is_db_feature_enabled("auto_catalog", "sakila_db") is True
+    assert ff.is_db_feature_enabled("auto_catalog", "sakila_replica") is False
+
+    # Special keys starting with _ (like _example_db) are never prefix matched
+    assert ff.is_db_feature_enabled("auto_procedures", "example_db_extra") is False
+
+

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import yaml
 
@@ -64,7 +65,7 @@ def _load_flags_from_yaml() -> dict[str, bool]:
                     _FLAGS_CACHE = {k: bool(v) for k, v in raw_flags.items()}
                     _CACHE_MTIME = mtime
                     return _FLAGS_CACHE
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning("Failed to load %s: %s — falling back to defaults", target_file, e)
 
     return _FLAGS_CACHE or {}
@@ -149,9 +150,61 @@ def _load_db_flags_from_yaml() -> dict[str, dict[str, bool]]:
         return {}
 
 
+def _resolve_db_candidates(db_id: str) -> list[str]:
+    """Generate candidate keys in preference order for db_features lookup."""
+    candidates = [db_id]
+
+    # 1. Strip numeric duplicate suffix (e.g. qts_ais_2 -> qts_ais)
+    m = re.match(r"^(.+)_\d+$", db_id)
+    if m:
+        candidates.append(m.group(1))
+
+    # 2. Connection metadata lookup (lazy import to keep module lightweight)
+    try:
+        from src.sql import registry
+
+        cfg = registry.get_connection(db_id)
+        raw_db = cfg.get("database") or cfg.get("service_name")
+        if raw_db:
+            slug = re.sub(r"[^a-z0-9]+", "_", str(raw_db).lower()).strip("_")
+            if slug and slug not in candidates:
+                candidates.append(slug)
+                m2 = re.match(r"^(.+)_\d+$", slug)
+                if m2 and m2.group(1) not in candidates:
+                    candidates.append(m2.group(1))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Could not resolve connection metadata for %s: %s", db_id, exc)
+
+    return candidates
+
+
+def _find_db_flags(all_flags: dict[str, dict[str, bool]], db_id: str) -> dict[str, bool]:
+    # 1. Check direct candidates (exact db_id, un-suffixed db_id, connection db name)
+    for cand in _resolve_db_candidates(db_id):
+        if cand in all_flags and not cand.startswith(("_", "*")):
+            return all_flags[cand]
+
+    # 2. Prefix matching against configured keys in db_features (longest prefix wins)
+    # E.g. db_id "northwind_orchard_erp" matches YAML key "northwind"
+    # E.g. db_id "sakila_db" matches YAML key "sakila"
+    prefix_matches = []
+    for k, v in all_flags.items():
+        if k.startswith(("_", "*")):
+            continue
+        if db_id.startswith(f"{k}_") or k.startswith(f"{db_id}_"):
+            prefix_matches.append((len(k), v))
+
+    if prefix_matches:
+        prefix_matches.sort(key=lambda item: item[0], reverse=True)
+        return prefix_matches[0][1]
+
+    return {}
+
+
 def is_db_feature_enabled(flag_name: str, db_id: str | None) -> bool:
     """True only if ``flag_name`` is literally ``true`` for ``db_id`` in the YAML (its own entry under
-    ``db_features``, else the ``db_defaults`` block).
+    ``db_features`` matched by exact id, base id without numeric suffix, connection database name,
+    prefix alias, or else the ``db_defaults`` block).
 
     Unknown flag, unknown/blank db_id, pinned db_id (erp_main), missing or
     unreadable file: all return False.
@@ -164,7 +217,7 @@ def is_db_feature_enabled(flag_name: str, db_id: str | None) -> bool:
     if db_id in _PINNED_DB_IDS:
         return False
     all_flags = _load_db_flags_from_yaml()
-    own = all_flags.get(db_id, {})
+    own = _find_db_flags(all_flags, db_id)
     if flag_name in own:
         return own[flag_name]
     return all_flags.get("*", {}).get(flag_name, False)  # db_defaults, else off
