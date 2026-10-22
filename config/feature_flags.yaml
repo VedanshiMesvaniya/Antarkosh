@@ -39,6 +39,7 @@ db_features:
     auto_procedures: false
     auto_sp_mining: false
     auto_relationships: false
+    auto_relationships_apply: false
     auto_table_profiles: false
     auto_join_paths: false
     auto_column_meaning: false

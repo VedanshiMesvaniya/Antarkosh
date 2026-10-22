@@ -33,19 +33,37 @@ def table(
     }
 
 
-def build(*tables: dict[str, Any], fks: tuple[tuple[str, str, str, str], ...] = (), proc: tuple[dict[str, Any], ...] = (), answering_schema: str | None = None) -> CatalogGraph:
-    """``fks`` are (from_table, from_column, to_table, to_column). ``proc`` are raw join_edges rows of sp_evidence.json."""
+def documents(
+    *tables: dict[str, Any],
+    fks: tuple[tuple[str, str, str, str], ...] = (),
+    proc: tuple[dict[str, Any], ...] = (),
+    answering_schema: str | None = None,
+    multi_schema: bool = False,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
+    """The three catalog documents (schema.json, table_inventory.json, sp_evidence.json) for a synthetic schema."""
     schema_doc = {
-        "engine": "postgresql", "default_schema": "public", "multi_schema": False,
+        "engine": "postgresql", "default_schema": "public", "multi_schema": multi_schema,
         "tables": [{k: v for k, v in t.items() if k != "_rows"} for t in tables],
         "relationships": [
             {"from_schema": None, "from_table": a, "from_column": b, "to_schema": None, "to_table": c, "to_column": d} for a, b, c, d in fks
         ],
     }
-    inventory = {"tables": [{"qualified_name": t["qualified_name"], "row_estimate": t["_rows"]} for t in tables if t["_rows"] is not None]}
+    inventory: dict[str, Any] = {"tables": [{"qualified_name": t["qualified_name"], "row_estimate": t["_rows"]} for t in tables if t["_rows"] is not None]}
     if answering_schema:
         inventory["answering_scope"] = {"schema": answering_schema, "tables_outside_scope": 0}
-    graph = graph_from_documents(schema_doc, inventory, {"join_edges": list(proc)} if proc else None, db_id="test")
+    return schema_doc, inventory, ({"join_edges": list(proc)} if proc else None)
+
+
+def build(
+    *tables: dict[str, Any],
+    fks: tuple[tuple[str, str, str, str], ...] = (),
+    proc: tuple[dict[str, Any], ...] = (),
+    answering_schema: str | None = None,
+    multi_schema: bool = False,
+) -> CatalogGraph:
+    """``fks`` are (from_table, from_column, to_table, to_column). ``proc`` are raw join_edges rows of sp_evidence.json."""
+    schema_doc, inventory, evidence = documents(*tables, fks=fks, proc=proc, answering_schema=answering_schema, multi_schema=multi_schema)
+    graph = graph_from_documents(schema_doc, inventory, evidence, db_id="test")
     assert graph is not None
     return graph
 

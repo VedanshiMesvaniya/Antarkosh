@@ -715,6 +715,21 @@ async def sync_live_schema(
             sp_evidence_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
     procedure_routines = []  # drop the routine text
 
+    # Auto-schema Phase 6: infer relationships from the files the earlier phases wrote (never connects to the
+    # database). auto_relationships writes the review file; auto_relationships_apply also publishes the
+    # high-confidence edges to relationships.json. Never fails the sync.
+    relationships_report: dict[str, Any] | None = None
+    if is_db_feature_enabled("auto_relationships", db_id):
+        try:
+            from src.sql.sa.relationships_phase import run_relationships_phase
+
+            relationships_report = await run_relationships_phase(
+                db_id=db_id, apply=is_db_feature_enabled("auto_relationships_apply", db_id)
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Relationship inference failed for %s: %s", db_id, exc)
+            relationships_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.sql.pipeline import SQLRetriever
@@ -747,5 +762,7 @@ async def sync_live_schema(
         result["procedures"] = procedures_report
     if sp_evidence_report is not None:
         result["sp_evidence"] = sp_evidence_report
+    if relationships_report is not None:
+        result["relationships"] = relationships_report
     return result
 

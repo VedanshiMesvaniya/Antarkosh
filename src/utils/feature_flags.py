@@ -94,6 +94,7 @@ DB_FEATURE_FLAGS: tuple[str, ...] = (
     "auto_procedures",
     "auto_sp_mining",
     "auto_relationships",
+    "auto_relationships_apply",
     "auto_table_profiles",
     "auto_join_paths",
     "auto_column_meaning",
