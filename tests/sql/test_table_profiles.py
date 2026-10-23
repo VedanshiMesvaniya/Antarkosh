@@ -85,13 +85,34 @@ def test_a_series_is_never_ranked():
     assert auth(r, "sales_2023") == auth(r, "sales_2024") == "equal" and r.groups[0].kind == "series" and r.groups[0].primary is None
 
 
-def test_tables_that_only_share_a_word_are_not_twins():
+def test_tables_that_only_share_a_word_are_not_twins_and_a_business_word_is_not_a_tag():
+    """``lab`` (the labs) and ``lab_sample`` (their samples) are different tables: different columns, so no group, and
+    "sample" here is a business word, so no ``test`` tag either."""
     _, r = profiles_of(
         table("lab", {"id": INT, "name": TXT, "site": TXT}),
         table("lab_sample", {"sample_id": INT, "qty": INT, "taken_on": TXT}),
     )
     assert r.groups == [] and auth(r, "lab") == auth(r, "lab_sample") == "standalone"
-    assert r.profiles["lab_sample"].tags == ("test",) and r.profiles["lab_sample"].tag_basis == "name"  # tagged by name only
+    assert r.profiles["lab_sample"].tags == () and r.profiles["lab_sample"].tag_basis is None
+
+
+def test_twins_need_ninety_percent_of_their_column_names_in_common():
+    base = {f"c{i}": INT for i in range(10)}
+    one_extra = {**base, "backed_up_on": TXT}  # 10 of 11 shared = 0.91
+    two_extra = {**base, "backed_up_on": TXT, "backed_up_by": TXT}  # 10 of 12 shared = 0.83
+    _, r = profiles_of(table("account", base, pk=("c0",)), table("account_bak", one_extra))
+    assert len(r.groups) == 1 and auth(r, "account_bak") == "secondary"
+    _, r = profiles_of(table("account", base, pk=("c0",)), table("account_bak", two_extra))
+    assert r.groups == [] and auth(r, "account_bak") == "standalone"
+    assert r.profiles["account_bak"].tags == ("backup",)  # an unambiguous word still tags the name alone
+
+
+def test_ambiguous_words_tag_only_next_to_a_look_alike_and_clear_words_tag_alone():
+    _, r = profiles_of(table("sample_results", {"id": INT, "v": INT}), table("tmp_stage", {"id": INT, "w": INT}), table("blood_test", {"id": INT, "x": INT}))
+    assert r.profiles["sample_results"].tags == () and r.profiles["blood_test"].tags == ()
+    assert r.profiles["tmp_stage"].tags == ("temp",) and r.profiles["tmp_stage"].tag_basis == "name"
+    _, r = profiles_of(table("blood", PRODUCT_COLS), table("blood_test", PRODUCT_COLS))
+    assert r.profiles["blood_test"].tags == ("test",) and r.profiles["blood_test"].tag_basis == "name+twin"
 
 
 def test_a_marked_table_is_never_primary_while_an_unmarked_sibling_exists():
@@ -143,6 +164,7 @@ def test_a_learned_table_prefix_is_the_databases_convention_not_a_marker():
 def test_every_marker_word_maps_to_a_tag():
     assert set(MARKERS) <= set(TAG_OF) and COPY_MARKERS <= MARKERS
     assert marker_tags(table_obj("customer_bak"), frozenset()) == ("backup",)
+    assert marker_tags(table_obj("customer_test"), frozenset()) == () and marker_tags(table_obj("customer_test"), frozenset(), backed=True) == ("test",)
 
 
 def table_obj(name):

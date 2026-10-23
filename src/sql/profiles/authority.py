@@ -32,7 +32,7 @@ from src.sql.relationships.context import COPY_MARKERS, Context, twin_key
 from src.sql.relationships.model import CatalogGraph, Table
 from src.sql.relationships.names import normalized_column_name, split_identifier
 
-RULESET_VERSION = 1  # bump when a rule or weight changes: it forces a rewrite even if the catalog did not
+RULESET_VERSION = 2  # bump when a rule or weight changes: it forces a rewrite even if the catalog did not
 
 # Phase 6's copy words plus a few common abbreviations. Built from COPY_MARKERS so additions there flow in here.
 EXTRA_MARKERS = frozenset({"bk", "bck", "bckp", "bkup"})
@@ -44,7 +44,11 @@ TAG_OF: dict[str, str] = {
     **dict.fromkeys(("tmp", "temp", "trash"), "temp"),
 }
 
-SIMILARITY_MIN = 0.6  # column-name overlap (Jaccard) two tables need to count as twins
+# Words that are also ordinary business words (a lab "sample" table, a blood "test" table, an "old" age benefit). They
+# become a tag only when a look-alike table without the word exists next to it. The rest tag on the name alone.
+WEAK_TAG_WORDS = frozenset({"test", "sample", "demo", "copy", "old", "archive", "archived", "trash"})
+
+SIMILARITY_MIN = 0.9  # column-name overlap (Jaccard) two tables need to count as twins: a copy has (almost) the same columns
 
 # Starting weights. Calibrated against real databases in Phase 10.
 W_MARKER = -3.0
@@ -104,8 +108,12 @@ class ProfileSet:
 # ---------------------------------------------------------------- tags
 
 
-def marker_tags(table: Table, prefixes: frozenset[str]) -> tuple[str, ...]:
-    """Tags from copy words in the name. A learned table prefix is the database's own convention, not a marker."""
+def marker_tags(table: Table, prefixes: frozenset[str], *, backed: bool = False) -> tuple[str, ...]:
+    """Tags from copy words in the name. A learned table prefix is the database's own convention, not a marker.
+
+    ``backed`` says a look-alike table without the word exists. Without it, ambiguous words (``WEAK_TAG_WORDS``) are not
+    tagged, so ``lab_sample`` (a table of lab samples) is never called a test table.
+    """
     toks = split_identifier(table.name)
     if len(toks) < 2:  # a table called just "test" or "old" is left alone
         return ()
@@ -113,7 +121,7 @@ def marker_tags(table: Table, prefixes: frozenset[str]) -> tuple[str, ...]:
         toks = toks[1:]
         if len(toks) < 2:
             return ()
-    return tuple(sorted({TAG_OF[t] for t in toks if t in TAG_OF}))
+    return tuple(sorted({TAG_OF[t] for t in toks if t in TAG_OF and (backed or t not in WEAK_TAG_WORDS)}))
 
 
 def _stem_flags(stem: tuple[str, ...]) -> tuple[bool, bool]:
@@ -330,13 +338,10 @@ def build_profiles(
     profiles: dict[str, Profile] = {}
     for q in sorted(graph.tables):
         t = graph.tables[q]
-        tags = marker_tags(t, prefixes)
         grouped = q in in_group
-        tag_basis = None
-        if tags:
-            tag_basis = "name"
-            if grouped and unmarked[group_of[q].id] > 0:
-                tag_basis = "name+twin"  # an unmarked sibling exists: the copy marker is backed by a real counterpart
+        backed = grouped and unmarked[group_of[q].id] > 0  # an unmarked look-alike exists: the copy word is backed by a real counterpart
+        tags = marker_tags(t, prefixes, backed=backed)
+        tag_basis = ("name+twin" if backed else "name") if tags else None
         if not grouped:
             profiles[q] = Profile(q, t.name, t.schema, t.kind, tags, tag_basis, None, "standalone", None, None, None, None)
             continue
@@ -390,6 +395,6 @@ def summary(result: ProfileSet) -> dict[str, Any]:
 
 
 __all__ = [
-    "EXTRA_MARKERS", "MARKERS", "RULESET_VERSION", "TAG_OF", "Group", "Profile", "ProfileSet", "Signals",
+    "EXTRA_MARKERS", "MARKERS", "RULESET_VERSION", "TAG_OF", "WEAK_TAG_WORDS", "Group", "Profile", "ProfileSet", "Signals",
     "build_profiles", "check_complete", "fresh_inferred_edges", "marker_tags", "procedure_use", "referenced_by", "summary", "twin_sets",
 ]
