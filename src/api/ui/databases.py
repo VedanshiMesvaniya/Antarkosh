@@ -242,7 +242,7 @@ async def _prepare_connect(body: DBConnectPayload, admin: str):
         if stored.get("password"):
             fields["password"] = stored["password"]
         else:
-            raise HTTPException(status_code=422, detail="Password is required.")
+            fields["password"] = ""
     return db_id, existing, engine, fields
 
 
@@ -339,10 +339,9 @@ async def test_database_connection_endpoint(
     _ensure_can_manage(db_id, admin)
 
     fields = body.model_dump()
-    if fields.get("password") is None or fields.get("password") == "":
+    if fields.get("password") in (None, ""):
         existing_cfg = get_connection(db_id)
-        if existing_cfg.get("password"):
-            fields["password"] = existing_cfg["password"]
+        fields["password"] = existing_cfg.get("password") or ""
 
     try:
         engine = Engine.from_value(fields["engine"])
@@ -393,10 +392,9 @@ async def save_database_connection_endpoint(
     _ensure_can_manage(db_id, admin)
 
     fields = body.model_dump()
-    if fields.get("password") is None or fields.get("password") == "":
+    if fields.get("password") in (None, ""):
         existing_cfg = get_connection(db_id)
-        if existing_cfg.get("password"):
-            fields["password"] = existing_cfg["password"]
+        fields["password"] = existing_cfg.get("password") or ""
 
     try:
         engine = Engine.from_value(fields["engine"])

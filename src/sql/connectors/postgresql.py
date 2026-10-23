@@ -45,7 +45,7 @@ class PostgreSQLConnector:
         host = c.get("host") or settings.db_host
         port = int(c.get("port") or settings.db_port)
         user = c.get("username") or settings.db_readonly_user
-        password = c.get("password") or settings.db_readonly_password
+        password = c["password"] if c.get("password") is not None else settings.db_readonly_password
         database = c.get("database") or settings.db_name
 
         schema = _schema_from(c)
@@ -101,7 +101,7 @@ class PostgreSQLConnector:
         host = c.get("host") or settings.db_host
         port = int(c.get("port") or settings.db_port)
         user = c.get("username") or settings.db_readonly_user
-        password = c.get("password") or settings.db_readonly_password
+        password = c["password"] if c.get("password") is not None else settings.db_readonly_password
         database = c.get("database") or settings.db_name
 
         server_settings = {

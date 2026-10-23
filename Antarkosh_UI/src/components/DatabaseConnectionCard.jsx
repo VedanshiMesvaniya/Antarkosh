@@ -18,7 +18,7 @@ const LABELS = {
   port: 'Port',
   database: 'Database',
   username: 'Username',
-  password: 'Password',
+  password: 'Password (optional)',
   service_name: 'Service name',
   schema_name: 'Schema (optional)',
   odbc_driver: 'ODBC driver',
@@ -204,7 +204,7 @@ export default function DatabaseConnectionCard({ editingId = null, editingName =
                     className="dialog-card__input db-form__password-input"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
-                    placeholder={passwordSet ? '•••••••• (unchanged)' : ''}
+                    placeholder={passwordSet ? '•••••••• (unchanged)' : 'Optional'}
                     value={form[f] ?? ''}
                     onChange={(e) => set({ [f]: e.target.value })}
                   />

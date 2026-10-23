@@ -497,7 +497,7 @@ def test_the_admin_list_and_strict_mode_can_also_come_from_the_env_file_settings
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("missing", ["host", "database", "username", "password"])
+@pytest.mark.parametrize("missing", ["host", "database", "username"])
 async def test_a_half_filled_connection_is_rejected_before_anything_is_saved(env: Path, missing: str):
     # env's connector always "succeeds", so a 422 here proves the form is checked before any connection is tried.
     body = {**BODY, missing: ""}
@@ -506,6 +506,16 @@ async def test_a_half_filled_connection_is_rejected_before_anything_is_saved(env
             res = await c.post(url, json=body, headers=VED)
             assert res.status_code == 422 and "required" in res.json()["detail"], url
     assert registry.get_connection("qts_ais") == {} and not (env / "qts_ais").exists()
+
+
+@pytest.mark.asyncio
+async def test_connecting_with_empty_password_is_allowed(env: Path):
+    body = {**BODY, "password": ""}
+    async with _client() as c:
+        for url in ("/api/databases/connect/test", "/api/databases/connect"):
+            res = await c.post(url, json=body, headers=VED)
+            assert res.status_code == 200, url
+    assert registry.get_connection("qts_ais")["password"] == ""
 
 
 @pytest.mark.asyncio

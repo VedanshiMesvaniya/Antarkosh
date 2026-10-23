@@ -49,7 +49,7 @@ class OracleConnector:
 
         c = cfg if cfg is not None else self._cfg
         user = c.get("username") or settings.db_readonly_user
-        password = c.get("password") or settings.db_readonly_password
+        password = c["password"] if c.get("password") is not None else settings.db_readonly_password
         host = c.get("host") or settings.db_host
         port = int(c.get("port") or settings.db_port)
         svc = c.get("service_name") or c.get("database") or settings.db_name
@@ -81,7 +81,7 @@ class OracleConnector:
 
         c = self._cfg or {}
         user = c.get("username") or settings.db_readonly_user
-        password = c.get("password") or settings.db_readonly_password
+        password = c["password"] if c.get("password") is not None else settings.db_readonly_password
         host = c.get("host") or settings.db_host
         port = int(c.get("port") or settings.db_port)
         svc = c.get("service_name") or c.get("database") or settings.db_name

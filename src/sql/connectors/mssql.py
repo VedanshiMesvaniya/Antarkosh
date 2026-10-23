@@ -27,7 +27,7 @@ class MSSQLConnector:
         port = c.get("port") or settings.db_port
         database = c.get("database") or settings.db_name
         user = c.get("username") or settings.db_readonly_user
-        password = c.get("password") or settings.db_readonly_password
+        password = c["password"] if c.get("password") is not None else settings.db_readonly_password
 
         return (
             f"DRIVER={{{driver}}};"
