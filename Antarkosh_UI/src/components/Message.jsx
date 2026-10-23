@@ -294,12 +294,16 @@ export default function Message({
   useEffect(() => {
     if (!isEditing) return undefined
     const frame = window.requestAnimationFrame(() => {
-      editRef.current?.focus()
-      editRef.current?.setSelectionRange?.(draft.length, draft.length)
+      const textarea = editRef.current
+      if (textarea) {
+        textarea.focus()
+        const len = textarea.value.length
+        textarea.setSelectionRange?.(len, len)
+      }
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [draft.length, isEditing])
+  }, [isEditing])
 
   useEffect(
     () => () => {
