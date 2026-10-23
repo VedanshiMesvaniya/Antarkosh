@@ -730,6 +730,19 @@ async def sync_live_schema(
             logger.warning("Relationship inference failed for %s: %s", db_id, exc)
             relationships_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
+    # Auto-schema Phase 7: tag test/backup/temp tables and say which of several similar tables holds the real
+    # data. Reads the same files, writes schema/table_profiles.json, hides nothing, and prompts do not read it
+    # yet. Per-DB flag, off by default. Never fails the sync.
+    table_profiles_report: dict[str, Any] | None = None
+    if is_db_feature_enabled("auto_table_profiles", db_id):
+        try:
+            from src.sql.sa.profiles_phase import run_profiles_phase
+
+            table_profiles_report = await run_profiles_phase(db_id=db_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Table profiles failed for %s: %s", db_id, exc)
+            table_profiles_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.sql.pipeline import SQLRetriever
@@ -764,5 +777,7 @@ async def sync_live_schema(
         result["sp_evidence"] = sp_evidence_report
     if relationships_report is not None:
         result["relationships"] = relationships_report
+    if table_profiles_report is not None:
+        result["table_profiles"] = table_profiles_report
     return result
 

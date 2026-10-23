@@ -34,16 +34,17 @@ COPY_MARKERS = frozenset({"bak", "backup", "bkp", "old", "tmp", "temp", "test", 
 _VERSION_WORDS = frozenset({"v", "ver", "version"})
 
 
-def twin_key(stem: tuple[str, ...]) -> tuple[tuple[str, ...], bool]:
+def twin_key(stem: tuple[str, ...], markers: frozenset[str] = COPY_MARKERS) -> tuple[tuple[str, ...], bool]:
     """A stem without copy markers, digits and version words, and whether anything was removed.
 
     ``(product, bak)`` -> ``((product,), True)``; ``(product,)`` -> ``((product,), False)``.
+    ``markers`` defaults to Phase 6's list; Phase 7 passes a slightly wider one.
     """
     kept: list[str] = []
     removed = False
     for i, tok in enumerate(stem):
         nxt = stem[i + 1] if i + 1 < len(stem) else ""
-        if tok in COPY_MARKERS or tok.isdigit() or (tok in _VERSION_WORDS and nxt.isdigit()):
+        if tok in markers or tok.isdigit() or (tok in _VERSION_WORDS and nxt.isdigit()):
             removed = True
             continue
         kept.append(tok)

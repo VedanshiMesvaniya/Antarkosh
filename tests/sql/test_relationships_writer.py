@@ -362,10 +362,13 @@ def test_both_flags_exist_and_erp_main_is_pinned_off_even_when_the_yaml_says_tru
     assert not ff.is_db_feature_enabled("auto_relationships_apply", "unlisted")
 
 
-def test_the_shipped_config_turns_neither_relationship_flag_on_for_any_database():
+def test_the_shipped_config_keeps_both_relationship_flags_off_for_every_new_database():
+    """New databases inherit ``db_defaults``, so it must keep both flags off. A database listed under ``db_features``
+    is an explicit choice by its owner and is not checked here; the example entry must stay off."""
     cfg = yaml.safe_load((ROOT / "config" / "feature_flags.yaml").read_text(encoding="utf-8"))
-    blocks = [cfg.get("db_defaults") or {}, *(cfg.get("db_features") or {}).values()]
-    assert not any(b.get(f) for b in blocks for f in ("auto_relationships", "auto_relationships_apply"))
+    defaults = cfg.get("db_defaults") or {}
+    assert not defaults.get("auto_relationships") and not defaults.get("auto_relationships_apply")
+    assert cfg["db_features"]["_example_db"]["auto_relationships"] is False
     assert cfg["db_features"]["_example_db"]["auto_relationships_apply"] is False
 
 

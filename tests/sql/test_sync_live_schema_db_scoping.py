@@ -21,6 +21,13 @@ COLUMN_ROWS = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _no_auto_schema_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests check the sync's core behaviour. The per-database schema-intelligence flags default to ON for databases
+    without their own entry (``db_defaults``), and each phase would add its own catalog queries, so pin them off here."""
+    monkeypatch.setattr("src.utils.feature_flags.is_db_feature_enabled", lambda flag, db: False)
+
+
 @pytest.fixture()
 def engines(monkeypatch: pytest.MonkeyPatch):
     """Fake registry: {db_id: {"conn": engine|None, "meta": engine|None}}; default engine mysql."""

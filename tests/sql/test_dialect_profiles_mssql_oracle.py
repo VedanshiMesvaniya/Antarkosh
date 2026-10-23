@@ -124,6 +124,13 @@ CATALOG = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _no_auto_schema_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests check the sync's core behaviour. The per-database schema-intelligence flags default to ON for databases
+    without their own entry (``db_defaults``), and each phase would add its own catalog queries, so pin them off here."""
+    monkeypatch.setattr("src.utils.feature_flags.is_db_feature_enabled", lambda flag, db: False)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine", NEW_ENGINES)
 async def test_sync_live_schema_builds_correct_chunks_for_engine(engine, monkeypatch):
