@@ -743,7 +743,7 @@ async def sync_live_schema(
             logger.warning("Table profiles failed for %s: %s", db_id, exc)
             table_profiles_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
-    # Auto-schema Phase 8: indirect join routes (2 to 3 joins) between tables that do not join directly, scored with hub
+    # Auto-schema Phase 8: indirect join routes (2 to 5 joins) between tables that do not join directly, scored with hub
     # damping, built only from trusted edges and left in schema/join_paths.json. Prompts do not read it yet. Per-DB flag,
     # off by default. Runs after relationships and profiles so it sees their fresh files. Never fails the sync.
     join_paths_report: dict[str, Any] | None = None

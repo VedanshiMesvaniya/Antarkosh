@@ -2,7 +2,7 @@
 
 Reads the files earlier phases already wrote (``schema.json``, ``table_inventory.json``, ``sp_evidence.json``,
 ``relationships.json`` and, when each is fresh, ``inferred_relationships.json`` and ``table_profiles.json``), searches
-for indirect join routes of 2 to 3 joins, and writes ``schema/join_paths.json``.
+for indirect join routes (2 to 3 joins, plus a stricter deep tier of 4 to 5 joins), and writes ``schema/join_paths.json``.
 
 Safety: it never connects to the database and never reads data rows. The work is CPU-bound, so it runs in a worker
 thread under a time budget that is checked between starting tables; on a timeout the thread stops before it writes
@@ -31,7 +31,13 @@ from src.sql.paths.links import (
     select_nodes,
 )
 from src.sql.paths.search import Params, check_routes, find_paths, summary_counts
-from src.sql.paths.writer import input_key, paths_document, write_paths_file
+from src.sql.paths.writer import (
+    MAX_FILE_BYTES,
+    fit_to_size,
+    input_key,
+    paths_document,
+    write_paths_file,
+)
 from src.sql.profiles.writer import PROFILES_REL
 from src.sql.relationships.model import EVIDENCE_FILE, load_graph
 from src.sql.relationships.writer import APPLIED_REL, INFERRED_REL
@@ -86,7 +92,6 @@ def _build(db_id: str, databases_dir: Path | None, cancel: threading.Event, para
         return {"ok": False, "error": "route check failed: " + "; ".join(problems[:3])}
     stop()  # last chance to stop: past this line the file is written
 
-    stats = summary_counts(adj, pairs, search_stats, params)
     used = {
         "tables_considered": len(graph.tables),
         "nodes": len(inputs.nodes),
@@ -102,10 +107,16 @@ def _build(db_id: str, databases_dir: Path | None, cancel: threading.Event, para
         relationships_hash=content_hash(relationships_doc),
         inferred_key=(inferred_doc or {}).get("input_key") if inputs.inferred_used else None,
         profiles_key=(profiles_doc or {}).get("input_key") if inputs.profiles_used else None,
+        size_limit=MAX_FILE_BYTES,
     )
-    doc = paths_document(graph, pairs, adj, params, stats, used, key)
+
+    def make(kept: dict) -> dict[str, Any]:
+        stats = {**summary_counts(adj, kept, search_stats, params), "size_trimmed_pairs": len(pairs) - len(kept)}
+        return paths_document(graph, kept, adj, params, stats, used, key)
+
+    doc = fit_to_size(make, pairs, params, MAX_FILE_BYTES)  # a very large result is trimmed (weakest pairs first), never written whole
     files = write_paths_file(db_id, doc, databases_dir=databases_dir)
-    return {"ok": True, **stats, **{k: used[k] for k in ("nodes", "inferred_edges_used", "table_profiles_used")}, "warnings": len(graph.warnings), "file": files}
+    return {"ok": True, **doc["stats"], **{k: used[k] for k in ("nodes", "inferred_edges_used", "table_profiles_used")}, "warnings": len(graph.warnings), "file": files}
 
 
 async def run_paths_phase(

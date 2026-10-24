@@ -17,6 +17,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -30,11 +31,22 @@ from src.sql.relationships.model import CatalogGraph
 GENERATED_BY = "auto_join_paths"
 PATHS_REL = "schema/join_paths.json"
 MAX_HUBS_LISTED = 50
+MAX_FILE_BYTES = 12_000_000  # about what a prompt-time loader can read quickly; larger results are trimmed, weakest pairs first
 
 
-def input_key(graph: CatalogGraph, params: Params, *, relationships_hash: str | None, inferred_key: str | None, profiles_key: str | None) -> str:
+def input_key(
+    graph: CatalogGraph,
+    params: Params,
+    *,
+    relationships_hash: str | None,
+    inferred_key: str | None,
+    profiles_key: str | None,
+    size_limit: int = MAX_FILE_BYTES,
+) -> str:
     """Changes only when something that would change the file changes. Timestamps are not part of it."""
-    raw = json.dumps([graph.inputs_hash, RULESET_VERSION, dataclasses.asdict(params), relationships_hash, inferred_key, profiles_key], sort_keys=True)
+    raw = json.dumps(
+        [graph.inputs_hash, RULESET_VERSION, dataclasses.asdict(params), relationships_hash, inferred_key, profiles_key, size_limit], sort_keys=True
+    )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
@@ -67,10 +79,10 @@ def paths_document(
     return {
         "generated_by": GENERATED_BY,
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "note": "Indirect join routes (2 or more joins) between tables that do not join directly, best first. Built only from "
+        "note": "Indirect join routes between tables that do not join directly: tier 'near' is 2 to 3 joins, tier 'deep' is 4 to 5 joins and appears only for pairs with no shorter route. Built only from "
                 "trusted edges (declared keys, relationships.json, high-confidence inferred edges, joins seen in 2+ procedures). "
                 "A route's score falls with each join, with every hub it passes through, and with a many-to-many or shared-parent "
-                "shape. Copies of another table (Phase 7) are left out. Advisory only: prompts do not read this file yet.",
+                "shape; deep routes also need a higher score and at most one change of direction. Copies of another table (Phase 7) are left out. Advisory only: prompts do not read this file yet.",
         "input_key": key,
         "inputs_hash": graph.inputs_hash,
         "ruleset_version": RULESET_VERSION,
@@ -81,11 +93,33 @@ def paths_document(
         "pairs": [
             {
                 "a": a, "b": b, "hops": len(routes[0].tables) - 1, "score": routes[0].score,
+                "tier": "deep" if len(routes[0].tables) - 1 > params.max_depth else "near",
                 "routes": [{"score": r.score, "shape": r.shape, "tables": list(r.tables), "joins": _join_entries(r, adj)} for r in routes],
             }
             for (a, b), routes in sorted(pairs.items())
         ],
     }
+
+
+def fit_to_size(
+    make: Callable[[dict[tuple[str, str], list[Route]]], dict[str, Any]],
+    pairs: dict[tuple[str, str], list[Route]],
+    params: Params,
+    limit: int = MAX_FILE_BYTES,
+) -> dict[str, Any]:
+    """Build the document and, if it would be larger than ``limit`` bytes on disk, rebuild it from fewer pairs: deep pairs go
+    first (weakest first), then the weakest near pairs. A pair is dropped whole, so every route that remains is intact."""
+    doc = make(pairs)
+    keep = pairs
+    for _ in range(4):  # the size per pair is only an estimate, so allow a few corrections
+        size = len(json.dumps(doc, indent=2))
+        if size <= limit or not keep:
+            return doc
+        n = max(0, int(len(keep) * limit * 0.9 / size))
+        ranked = sorted(keep, key=lambda k: (len(keep[k][0].tables) - 1 > params.max_depth, -keep[k][0].score, k))
+        keep = {k: keep[k] for k in sorted(ranked[:n])}
+        doc = make(keep)
+    return doc
 
 
 def _read(path: Path) -> Any:
@@ -120,4 +154,4 @@ def write_paths_file(db_id: str, doc: dict[str, Any], *, databases_dir: Path | N
     return out
 
 
-__all__ = ["GENERATED_BY", "MAX_HUBS_LISTED", "PATHS_REL", "input_key", "paths_document", "write_paths_file"]
+__all__ = ["GENERATED_BY", "MAX_FILE_BYTES", "MAX_HUBS_LISTED", "PATHS_REL", "fit_to_size", "input_key", "paths_document", "write_paths_file"]

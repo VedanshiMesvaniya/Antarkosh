@@ -25,7 +25,9 @@ from src.sql.paths.search import (
 )
 from src.sql.paths.writer import (
     GENERATED_BY,
+    MAX_FILE_BYTES,
     PATHS_REL,
+    fit_to_size,
     input_key,
     paths_document,
     write_paths_file,
@@ -85,9 +87,9 @@ def test_direct_neighbours_are_never_listed_as_indirect_jumps():
 
 
 def test_depth_limits_the_routes_and_depth_four_reaches_further():
-    two, *_ = run(*SHOP, fks=SHOP_FKS, params=Params(max_depth=2))
-    three, *_ = run(*SHOP, fks=SHOP_FKS)
-    four, *_ = run(*SHOP, fks=SHOP_FKS, params=Params(max_depth=4))
+    two, *_ = run(*SHOP, fks=SHOP_FKS, params=Params(max_depth=2, deep_depth=0))  # deep_depth=0: the deep tier is off here
+    three, *_ = run(*SHOP, fks=SHOP_FKS, params=Params(deep_depth=0))
+    four, *_ = run(*SHOP, fks=SHOP_FKS, params=Params(max_depth=4, deep_depth=0))
     assert ("order_item", "region") not in two and ("order_item", "region") in three
     assert ("region", "tag") not in three and ("region", "tag") not in two
     assert max(len(r.tables) - 1 for rs in four.values() for r in rs) == 4
@@ -157,7 +159,7 @@ def test_work_caps_cut_the_search_but_never_produce_a_false_route():
     pairs, stats = find_paths(adj, set(), tiny)
     assert stats.work_capped > 0 or stats.target_capped > 0
     assert check_routes(pairs, adj, inputs.nodes, tiny) == []
-    capped, st = find_paths(adj, set(), Params(max_pairs=2))
+    capped, st = find_paths(adj, set(), Params(max_pairs=2, deep_depth=0))
     assert len(capped) == 2 and st.pairs_dropped > 0
 
 
@@ -180,6 +182,119 @@ def test_the_stop_signal_is_honoured_between_tables():
 
     with pytest.raises(RuntimeError):
         find_paths(adj, set(), Params(), should_stop=boom)
+
+
+# ================================================================= the deep tier (4 to 5 joins)
+
+
+def _distance(adj, a, b):
+    seen, frontier, d = {a}, [a], 0
+    while frontier and b not in seen:
+        frontier = [v for u in frontier for v in adj[u] if v not in seen and not seen.add(v)]
+        d += 1
+    return d if b in seen else None
+
+
+def test_the_deep_tier_adds_four_and_five_join_routes_that_the_near_tier_does_not_reach():
+    pairs, *_ = run(*SHOP, fks=SHOP_FKS)
+    deep = pairs[("product", "region")][0]  # product -> order_item -> orders -> customer -> region
+    assert deep.tables == ("product", "order_item", "orders", "customer", "region") and deep.score == 0.6561 and deep.shape == "bridge"
+    assert len(pairs[("product", "region")]) == 1  # one route per deep pair
+    assert ("order_item", "region") in pairs and len(pairs[("order_item", "region")][0].tables) == 4  # the near tier is still there
+
+
+def test_a_route_that_zigzags_is_not_a_deep_route_unless_you_allow_more_turns():
+    off, *_ = run(*SHOP, fks=SHOP_FKS)
+    assert ("product_tag", "region") not in off  # up, down, up, up, up: two turns
+    on, adj, inputs, _ = run(*SHOP, fks=SHOP_FKS, params=Params(deep_max_turns=2))
+    assert on[("product_tag", "region")][0].shape == "mixed"
+    assert check_routes(on, adj, inputs.nodes, Params(deep_max_turns=2)) == []
+
+
+def test_the_deep_tier_never_changes_the_near_tier_and_never_covers_a_pair_that_has_a_short_route():
+    for name in ("pagila", "sakila", "chinook", "northwind", "employees"):
+        _, _, adj = _real(name)
+        with_deep, _ = find_paths(adj, set(), Params())
+        without, _ = find_paths(adj, set(), Params(deep_depth=0))
+        assert {k: v for k, v in with_deep.items() if len(v[0].tables) - 1 <= 3} == without, name
+        deep = {k: v for k, v in with_deep.items() if len(v[0].tables) - 1 > 3}
+        assert all(_distance(adj, a, b) > 3 for a, b in deep), name  # no shorter route exists anywhere in the graph
+        assert bool(deep) == (name != "employees"), name  # employees is small: nothing there is more than 3 joins apart
+
+
+@pytest.mark.parametrize("name", ["pagila", "sakila", "chinook", "northwind"])
+def test_every_deep_route_on_a_real_catalog_is_real_strong_and_has_at_most_one_turn(name):
+    graph, inputs, adj = _real(name)
+    p = Params()
+    pairs, stats = find_paths(adj, set(), p)
+    assert check_routes(pairs, adj, inputs.nodes, p) == []
+    deep = [r for rs in pairs.values() for r in rs if len(r.tables) - 1 > p.max_depth]
+    assert deep and all(4 <= len(r.tables) - 1 <= 5 and r.score >= 0.40 and r.shape in ("chain", "bridge", "siblings", "unknown") for r in deep)
+    views = {q for q, tb in graph.tables.items() if tb.is_view}
+    assert not any(set(r.tables) & views for r in deep) and stats.deep_work_capped == 0
+
+
+def test_the_deep_tier_can_be_switched_off():
+    for off in (0, 3):
+        pairs, *_ = run(*SHOP, fks=SHOP_FKS, params=Params(deep_depth=off))
+        assert max(len(r.tables) - 1 for rs in pairs.values() for r in rs) <= 3
+
+
+def test_deep_caps_cut_the_tier_but_never_produce_a_false_route():
+    _graph, inputs, adj = _real("sakila")
+    p = Params(deep_targets_per_table=1, max_deep_pairs=3)
+    pairs, stats = find_paths(adj, set(), p)
+    assert stats.deep_target_capped > 0 and stats.deep_pairs_dropped > 0
+    assert sum(1 for rs in pairs.values() if len(rs[0].tables) - 1 > 3) == 3 and check_routes(pairs, adj, inputs.nodes, p) == []
+    tiny = Params(max_pops_per_table=3)
+    capped, st = find_paths(adj, set(), tiny)
+    assert st.deep_work_capped > 0 and check_routes(capped, adj, inputs.nodes, tiny) == []
+
+
+def test_the_route_check_rejects_deep_routes_that_break_the_deep_rules():
+    pairs, adj, inputs, _ = run(*SHOP, fks=SHOP_FKS)
+    p = Params()
+    good = pairs[("product", "region")][0]
+    assert check_routes({("product", "region"): [good]}, adj, inputs.nodes, p) == []
+    assert check_routes({("product", "region"): [Route(good.tables, 0.35, good.shape)]}, adj, inputs.nodes, p)  # under the deep floor
+    assert check_routes({("product", "region"): [good, good]}, adj, inputs.nodes, p)  # two routes for a deep pair
+    zig = ("product_tag", "product", "order_item", "orders", "customer", "region")
+    assert check_routes({("product_tag", "region"): [Route(zig, 0.9, "mixed")]}, adj, inputs.nodes, p)  # two turns
+    assert check_routes({("product", "region"): [Route(good.tables, 0.9, "chain")]}, adj, inputs.nodes, Params(deep_depth=0, max_depth=3))  # too long when the tier is off
+
+
+def test_the_summary_and_the_file_label_each_pair_with_its_tier():
+    pairs, adj, _inputs, graph = run(*SHOP, fks=SHOP_FKS)
+    p = Params()
+    s = summary_counts(adj, pairs, find_paths(adj, set(), p)[1], p)
+    assert s["deep_pairs"] >= 1 and s["longest_route"] == 4
+    doc = paths_document(graph, pairs, adj, p, s, {}, "k")
+    tiers = {(x["a"], x["b"]): x["tier"] for x in doc["pairs"]}
+    assert tiers[("product", "region")] == "deep" and tiers[("customer", "order_item")] == "near"
+    assert doc["ruleset_version"] >= 2 and doc["params"]["deep_depth"] == 5 and "tier 'deep'" in doc["note"]
+
+
+def test_a_result_that_would_make_a_huge_file_is_trimmed_deep_pairs_first_and_never_cut_mid_route():
+    _graph, inputs, adj = _real("sakila")
+    p = Params()
+    pairs, st = find_paths(adj, set(), p)
+    graph = _real("sakila")[0]
+
+    def make(kept):
+        stats = {**summary_counts(adj, kept, st, p), "size_trimmed_pairs": len(pairs) - len(kept)}
+        return paths_document(graph, kept, adj, p, stats, {}, "k")
+
+    whole = fit_to_size(make, pairs, p, MAX_FILE_BYTES)
+    assert len(whole["pairs"]) == len(pairs) and whole["stats"]["size_trimmed_pairs"] == 0
+    full = len(json.dumps(make(pairs), indent=2))
+    small = fit_to_size(make, pairs, p, int(full * 0.6))
+    kept = {(x["a"], x["b"]) for x in small["pairs"]}
+    assert 0 < len(kept) < len(pairs) and len(json.dumps(small, indent=2)) <= int(full * 0.6)
+    assert small["stats"]["size_trimmed_pairs"] == len(pairs) - len(kept) and check_routes({k: pairs[k] for k in kept}, adj, inputs.nodes, p) == []
+    dropped = set(pairs) - kept
+    deep_all = {k for k in pairs if len(pairs[k][0].tables) - 1 > 3}
+    assert dropped & deep_all and (dropped <= deep_all or deep_all <= dropped)  # deep pairs go first; near pairs only after all deep ones
+    assert fit_to_size(make, {}, p, 1)["pairs"] == []
 
 
 # ================================================================= which tables and edges are trusted
@@ -411,6 +526,7 @@ def test_an_unchanged_input_is_not_rewritten_and_a_changed_one_is(paths_db: Path
     g = load_graph("pg_live", paths_db)
     assert input_key(g, Params(), relationships_hash="a", inferred_key=None, profiles_key=None) != input_key(g, Params(), relationships_hash="b", inferred_key=None, profiles_key=None)
     assert input_key(g, Params(), relationships_hash=None, inferred_key=None, profiles_key=None) != input_key(g, Params(max_depth=4), relationships_hash=None, inferred_key=None, profiles_key=None)
+    assert input_key(g, Params(), relationships_hash=None, inferred_key=None, profiles_key=None) != input_key(g, Params(), relationships_hash=None, inferred_key=None, profiles_key=None, size_limit=5)
 
 
 def test_a_curated_file_is_never_overwritten_and_pinned_or_missing_folders_are_skipped(paths_db: Path):
@@ -460,6 +576,18 @@ async def test_the_runner_uses_the_relationships_file_and_fresh_profiles_and_rew
     doc = read(paths_db)
     assert report["table_profiles_used"] is True and doc["inputs"]["excluded_tables"] == {"secondary_copy": 1} and doc["inputs"]["edges_dropped"] == {"not_a_node": 1}
     assert not any("customer_bak" in (p["a"], p["b"]) for p in doc["pairs"])
+
+
+@pytest.mark.asyncio
+async def test_the_runner_trims_an_oversized_result_and_reports_how_much(paths_db: Path, monkeypatch):
+    put(paths_db, *SHOP, fks=SHOP_FKS)
+    full = await pp.run_paths_phase(db_id="pg_live", databases_dir=paths_db)
+    size = (paths_db / "pg_live" / PATHS_REL).stat().st_size
+    monkeypatch.setattr(pp, "MAX_FILE_BYTES", int(size * 0.5))
+    trimmed = await pp.run_paths_phase(db_id="pg_live", databases_dir=paths_db)
+    doc = read(paths_db)
+    assert full["size_trimmed_pairs"] == 0 and trimmed["size_trimmed_pairs"] > 0 and trimmed["pairs"] < full["pairs"]
+    assert len(doc["pairs"]) == trimmed["pairs"] and (paths_db / "pg_live" / PATHS_REL).stat().st_size <= size * 0.5
 
 
 @pytest.mark.asyncio
