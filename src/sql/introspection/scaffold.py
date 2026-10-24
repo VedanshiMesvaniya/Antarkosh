@@ -144,6 +144,13 @@ def ensure_db_folder(
     finally:
         shutil.rmtree(tmp, ignore_errors=True)  # no-op after a successful rename
 
+    try:
+        from src.utils.feature_flags import register_db_feature_flags
+
+        register_db_feature_flags(db_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Could not register feature flags for %s: %s", db_id, exc)
+
     logger.info("Scaffolded database folder for %s (engine %s)", db_id, resolved_engine)
     return ScaffoldResult(db_id, target, created=True)
 

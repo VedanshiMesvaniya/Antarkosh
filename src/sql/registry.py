@@ -279,6 +279,12 @@ def save_connection(
         db_id,
         ", ".join(sorted(clean_updates.keys())),
     )
+    try:
+        from src.utils.feature_flags import register_db_feature_flags
+
+        register_db_feature_flags(db_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Could not register feature flags for %s: %s", db_id, exc)
 
 
 def get_database(

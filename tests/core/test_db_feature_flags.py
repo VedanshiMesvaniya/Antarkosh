@@ -173,3 +173,80 @@ def test_db_id_alias_prefix_matching(cfg: Path):
     assert ff.is_db_feature_enabled("auto_procedures", "example_db_extra") is False
 
 
+def test_register_db_feature_flags_creates_all_13_flags_true(cfg: Path, tmp_path: Path):
+    cfg.write_text(
+        "db_defaults:\n"
+        "  auto_scaffold: true\n"
+        "  auto_procedures: false\n"
+        "db_features:\n"
+        "  northwind:\n"
+        "    auto_scaffold: true\n",
+        encoding="utf-8",
+    )
+    result = ff.register_db_feature_flags("fresh_tenant_db", config_dir=tmp_path)
+    assert result is True
+
+    # Verify all 13 flags are active and true
+    expected_flags = (
+        "auto_scaffold",
+        "auto_catalog",
+        "auto_sqlalchemy",
+        "auto_procedures",
+        "auto_sp_mining",
+        "auto_relationships",
+        "auto_relationships_apply",
+        "auto_table_profiles",
+        "auto_join_paths",
+        "auto_column_meaning",
+        "auto_prompt_shadow",
+        "auto_prompt_inject",
+        "auto_learning",
+    )
+    assert len(expected_flags) == 13
+    for flag in expected_flags:
+        assert ff.is_db_feature_enabled(flag, "fresh_tenant_db") is True, f"Flag {flag} should be True"
+
+
+def test_register_db_feature_flags_does_not_overwrite_existing(cfg: Path, tmp_path: Path):
+    cfg.write_text(
+        "db_features:\n"
+        "  custom_db:\n"
+        "    auto_scaffold: false\n"
+        "    auto_catalog: false\n"
+        "    auto_procedures: false\n",
+        encoding="utf-8",
+    )
+    result = ff.register_db_feature_flags("custom_db", config_dir=tmp_path)
+    assert result is False  # did not overwrite
+    assert ff.is_db_feature_enabled("auto_catalog", "custom_db") is False
+    assert ff.is_db_feature_enabled("auto_procedures", "custom_db") is False
+
+
+def test_register_db_feature_flags_rejects_pinned_and_invalid(cfg: Path, tmp_path: Path):
+    assert ff.register_db_feature_flags("erp_main", config_dir=tmp_path) is False
+    assert ff.register_db_feature_flags("", config_dir=tmp_path) is False
+    assert ff.register_db_feature_flags(None, config_dir=tmp_path) is False
+    assert ff.register_db_feature_flags("_internal", config_dir=tmp_path) is False
+    assert ff.register_db_feature_flags("*", config_dir=tmp_path) is False
+
+
+def test_save_connection_triggers_flag_registration(cfg: Path, tmp_path: Path):
+    from src.sql import registry
+
+    cfg.write_text("db_features:\n", encoding="utf-8")
+    conn_file = tmp_path / "connections.json"
+
+    registry.save_connection(
+        "brand_new_db",
+        {"engine": "mysql", "database": "brand_new_db", "host": "localhost", "port": 3306},
+        conn_path=conn_file,
+    )
+
+    # Feature flags for brand_new_db should be automatically registered and True
+    assert ff.is_db_feature_enabled("auto_scaffold", "brand_new_db") is True
+    assert ff.is_db_feature_enabled("auto_procedures", "brand_new_db") is True
+    assert ff.is_db_feature_enabled("auto_relationships", "brand_new_db") is True
+    assert ff.is_db_feature_enabled("auto_learning", "brand_new_db") is True
+
+
+

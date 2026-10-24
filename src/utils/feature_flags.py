@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
+import tempfile
+from pathlib import Path
 
 import yaml
 
@@ -221,3 +224,115 @@ def is_db_feature_enabled(flag_name: str, db_id: str | None) -> bool:
     if flag_name in own:
         return own[flag_name]
     return all_flags.get("*", {}).get(flag_name, False)  # db_defaults, else off
+
+
+DEFAULT_NEW_DB_FLAGS: dict[str, bool] = {
+    "auto_scaffold": True,
+    "auto_catalog": True,
+    "auto_sqlalchemy": True,
+    "auto_procedures": True,
+    "auto_sp_mining": True,
+    "auto_relationships": True,
+    "auto_relationships_apply": True,
+    "auto_table_profiles": True,
+    "auto_join_paths": True,
+    "auto_column_meaning": True,
+    "auto_prompt_shadow": True,
+    "auto_prompt_inject": True,
+    "auto_learning": True,
+}
+
+
+def register_db_feature_flags(
+    db_id: str | None,
+    flags: dict[str, bool] | None = None,
+    config_dir: Path | None = None,
+) -> bool:
+    """Automatically ensure a newly connected database has its feature flags configured in feature_flags.yaml.
+
+    All flags default to True for newly connected databases. If db_id is already configured in
+    db_features, this function leaves it untouched (never overwrites existing customizations).
+    If db_id is pinned (erp_main) or empty, it returns False.
+    Returns True if new flags were written to the YAML file.
+    """
+    global _DB_FLAGS_CACHE, _DB_CACHE_MTIME
+    if not isinstance(db_id, str) or not db_id.strip():
+        return False
+    db_id = db_id.strip()
+    if db_id in _PINNED_DB_IDS or db_id.startswith(("_", "*")):
+        return False
+
+    base_dir = config_dir or CONFIG_DIR
+    target_file = None
+    for filename in ("feature_flags.yaml", "features.yaml"):
+        p = base_dir / filename
+        if p.exists():
+            target_file = p
+            break
+
+    if target_file is None:
+        target_file = base_dir / "feature_flags.yaml"
+
+    try:
+        content = ""
+        if target_file.exists():
+            content = target_file.read_text(encoding="utf-8")
+
+        existing_data = yaml.safe_load(content) if content.strip() else {}
+        if not isinstance(existing_data, dict):
+            existing_data = {}
+
+        db_features = existing_data.get("db_features")
+        if isinstance(db_features, dict) and db_id in db_features:
+            return False  # Already registered, do not overwrite
+
+        flags_to_apply = flags or DEFAULT_NEW_DB_FLAGS
+
+        # Format YAML block for db_id
+        entry_lines = [f"  {db_id}:"]
+        for flag in DB_FEATURE_FLAGS:
+            val = "true" if flags_to_apply.get(flag, True) else "false"
+            entry_lines.append(f"    {flag}: {val}")
+        entry_text = "\n".join(entry_lines) + "\n"
+
+        if "db_features:" in content:
+            if not content.endswith("\n"):
+                content += "\n"
+            new_content = content + entry_text
+        else:
+            if content and not content.endswith("\n"):
+                content += "\n"
+            new_content = content + "\ndb_features:\n" + entry_text
+
+        # Validate that the resulting YAML parses correctly before writing
+        verify_parsed = yaml.safe_load(new_content)
+        if not isinstance(verify_parsed, dict) or "db_features" not in verify_parsed:
+            logger.warning("Generated YAML invalid for %s; aborting write", db_id)
+            return False
+
+        # Atomic write
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=target_file.parent, prefix="." + target_file.stem + ".", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(new_content)
+            try:
+                os.chmod(tmp, 0o644)
+            except OSError:
+                pass
+            os.replace(tmp, target_file)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+
+        _DB_FLAGS_CACHE = None
+        _DB_CACHE_MTIME = 0.0
+        logger.info("Automatically registered feature flags for new database %s", db_id)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not register feature flags for %s: %s", db_id, exc)
+        return False
+

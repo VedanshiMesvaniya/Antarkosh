@@ -43,6 +43,11 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("ADMIN_USERS", "vedanshi,pm")
     monkeypatch.delenv("STRICT_DB_OWNERSHIP", raising=False)
 
+    shutil.copytree(ROOT / "config", tmp_path / "config")
+    monkeypatch.setattr("src.utils.feature_flags.CONFIG_DIR", tmp_path / "config")
+    monkeypatch.setattr("src.utils.feature_flags._DB_FLAGS_CACHE", None)
+    monkeypatch.setattr("src.utils.feature_flags._DB_CACHE_MTIME", 0.0)
+
     class _Connector:
         def __init__(self, cfg):
             self.cfg = cfg

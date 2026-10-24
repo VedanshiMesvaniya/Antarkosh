@@ -545,8 +545,15 @@ async def sync_live_schema(
     """
     validate_db_id(db_id)
 
-    # Auto-schema Phase 2: give a new database its folder first (per-DB flag, off by default;
-    # never raises, so a scaffolding problem cannot stop the sync).
+    # Auto-schema Phase 2: ensure feature flags are registered for the database,
+    # then scaffold folder if enabled.
+    try:
+        from src.utils.feature_flags import register_db_feature_flags
+
+        register_db_feature_flags(db_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Could not register feature flags for %s: %s", db_id, exc)
+
     from src.sql.introspection.scaffold import scaffold_if_enabled
 
     scaffold_if_enabled(db_id)
