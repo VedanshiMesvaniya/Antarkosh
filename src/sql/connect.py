@@ -93,7 +93,7 @@ def choose_db_id(
         n += 1
         if n > 99:
             raise ValueError("Could not find a free database id for this connection.")
-    candidate = f"{derive_db_id(cfg)}_{n}" if n > 1 else candidate
+        candidate = f"{derive_db_id(cfg)}_{n}"
     try:
         from src.utils.feature_flags import register_db_feature_flags
 

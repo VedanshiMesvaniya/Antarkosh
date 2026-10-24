@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import copy
+import json
 import logging
 import os
 import re
+import shutil
 import tempfile
+import threading
 from pathlib import Path
 
 import yaml
@@ -226,21 +230,82 @@ def is_db_feature_enabled(flag_name: str, db_id: str | None) -> bool:
     return all_flags.get("*", {}).get(flag_name, False)  # db_defaults, else off
 
 
-DEFAULT_NEW_DB_FLAGS: dict[str, bool] = {
-    "auto_scaffold": True,
-    "auto_catalog": True,
-    "auto_sqlalchemy": True,
-    "auto_procedures": True,
-    "auto_sp_mining": True,
-    "auto_relationships": True,
-    "auto_relationships_apply": True,
-    "auto_table_profiles": True,
-    "auto_join_paths": True,
-    "auto_column_meaning": True,
-    "auto_prompt_shadow": True,
-    "auto_prompt_inject": True,
-    "auto_learning": True,
-}
+# Every flag in DB_FEATURE_FLAGS is on for a newly connected database. Derived from DB_FEATURE_FLAGS, so a flag added there
+# is automatically part of the new-database template and of the backfill below: no second list to forget to update.
+DEFAULT_NEW_DB_FLAGS: dict[str, bool] = dict.fromkeys(DB_FEATURE_FLAGS, True)
+
+_REGISTER_LOCK = threading.Lock()
+_DB_FEATURES_HEADER = re.compile(r"^db_features[ \t]*:[ \t]*(?:#.*)?$")
+
+
+def _yaml_key(db_id: str) -> str:
+    """``db_id`` as a YAML mapping key that reads back as the same string (``yes``, ``null`` or ``2024`` need quotes)."""
+    try:
+        if yaml.safe_load(f"{db_id}: 1") == {db_id: 1}:
+            return db_id
+    except yaml.YAMLError:
+        pass
+    return json.dumps(db_id)
+
+
+def _indent_of(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def _is_content(line: str) -> bool:
+    stripped = line.strip()
+    return bool(stripped) and not stripped.startswith("#")
+
+
+def _edit_text(content: str, db_id: str, add: dict[str, bool], has_features_key: bool) -> str | None:
+    """Insert ``add`` (flag -> value) for ``db_id`` into the block-style ``db_features:`` section of ``content``, keeping every
+    comment and every other line as it was. Returns None when the file's layout is not plain block style (the caller then falls
+    back to a structured rewrite)."""
+    lines = content.split("\n")
+    header = next((i for i, line in enumerate(lines) if _DB_FEATURES_HEADER.match(line)), None)
+    key = _yaml_key(db_id)
+    if header is None:
+        if has_features_key:  # db_features exists but not as a plain block (flow style, anchor, ...)
+            return None
+        body = [f"  {key}:", *[f"    {flag}: {'true' if value else 'false'}" for flag, value in add.items()]]
+        head = content if content.endswith("\n") or not content else content + "\n"
+        return head + ("\n" if head else "") + "\n".join(["db_features:", *body]) + "\n"
+    end = next((i for i in range(header + 1, len(lines)) if _is_content(lines[i]) and _indent_of(lines[i]) == 0), len(lines))
+    block = [i for i in range(header + 1, end) if _is_content(lines[i])]
+    entry_indent = _indent_of(lines[block[0]]) if block else 2
+    plain = re.compile(rf"^ {{{entry_indent}}}(?:{re.escape(key)}|\"{re.escape(db_id)}\"|'{re.escape(db_id)}')[ \t]*:[ \t]*(?:#.*)?$")
+    at = next((i for i in block if plain.match(lines[i])), None)
+    if at is None:
+        if any(re.match(rf"^ {{{entry_indent}}}(?:{re.escape(db_id)}|\"{re.escape(db_id)}\"|'{re.escape(db_id)}')[ \t]*:", lines[i]) for i in block):
+            return None  # the entry exists but in flow style: {a: true, ...}
+        header_line = header  # a new entry goes first in the section
+        child = entry_indent + 2
+        new = [f"{' ' * entry_indent}{key}:", *[f"{' ' * child}{flag}: {'true' if value else 'false'}" for flag, value in add.items()]]
+        lines[header_line + 1 : header_line + 1] = new
+        return "\n".join(lines)
+    nxt = next((i for i in range(at + 1, end) if _is_content(lines[i])), None)
+    child = _indent_of(lines[nxt]) if nxt is not None and _indent_of(lines[nxt]) > entry_indent else entry_indent + 2
+    lines[at + 1 : at + 1] = [f"{' ' * child}{flag}: {'true' if value else 'false'}" for flag, value in add.items()]
+    return "\n".join(lines)
+
+
+def _atomic_write(target: Path, text: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=target.parent, prefix="." + target.stem + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        try:
+            os.chmod(tmp, 0o644)
+        except OSError:
+            pass
+        os.replace(tmp, target)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def register_db_feature_flags(
@@ -248,89 +313,80 @@ def register_db_feature_flags(
     flags: dict[str, bool] | None = None,
     config_dir: Path | None = None,
 ) -> bool:
-    """Automatically ensure a newly connected database has its feature flags configured in feature_flags.yaml.
+    """Make sure ``db_id`` has every per-database flag in ``feature_flags.yaml`` (the local, git-ignored file).
 
-    All flags default to True for newly connected databases. If db_id is already configured in
-    db_features, this function leaves it untouched (never overwrites existing customizations).
-    If db_id is pinned (erp_main) or empty, it returns False.
-    Returns True if new flags were written to the YAML file.
+    * A database with no entry gets a new one with every flag ``true`` (or the values in ``flags``).
+    * A database that already has an entry keeps every value it has, however it is set; only flags it does not have yet
+      (for example one added to the code later) are added, as ``true``. Nothing the owner set is ever changed.
+    * Comments and layout are kept. The edit is checked before it is written: the file must parse to exactly what it
+      parsed to before, plus the additions, otherwise nothing is written (a structured rewrite with a ``.bak`` copy is used
+      only for layouts a text edit cannot handle, such as ``db_features: {}``).
+    * Pinned databases (``erp_main``), ids starting with ``_`` or ``*``, and blank ids are never registered.
+
+    Returns True if the file was written. Cheap when there is nothing to do: one cached lookup, no file read.
     """
-    global _DB_FLAGS_CACHE, _DB_CACHE_MTIME
+    global _DB_FLAGS_CACHE, _DB_CACHE_MTIME, _FLAGS_CACHE, _CACHE_MTIME
     if not isinstance(db_id, str) or not db_id.strip():
         return False
     db_id = db_id.strip()
     if db_id in _PINNED_DB_IDS or db_id.startswith(("_", "*")):
         return False
+    wanted = {**DEFAULT_NEW_DB_FLAGS, **(flags or {})}
+
+    if config_dir is None:  # fast path: already complete in the cached file, nothing to read or write
+        have = _load_db_flags_from_yaml().get(db_id)
+        if have is not None and all(flag in have for flag in DB_FEATURE_FLAGS):
+            return False
 
     base_dir = config_dir or CONFIG_DIR
     target_file = base_dir / "feature_flags.yaml"
     example_file = base_dir / "feature_flags.example.yaml"
-
-    try:
-        content = ""
-        if target_file.exists():
-            content = target_file.read_text(encoding="utf-8")
-        elif example_file.exists():
-            content = example_file.read_text(encoding="utf-8")
-
-        existing_data = yaml.safe_load(content) if content.strip() else {}
-        if not isinstance(existing_data, dict):
-            existing_data = {}
-
-        db_features = existing_data.get("db_features")
-        if isinstance(db_features, dict) and db_id in db_features:
-            return False  # Already registered, do not overwrite
-
-        flags_to_apply = flags or DEFAULT_NEW_DB_FLAGS
-
-        # Format YAML block for db_id
-        entry_lines = [f"  {db_id}:"]
-        for flag in DB_FEATURE_FLAGS:
-            val = "true" if flags_to_apply.get(flag, True) else "false"
-            entry_lines.append(f"    {flag}: {val}")
-        entry_text = "\n".join(entry_lines) + "\n"
-
-        if "db_features:" in content:
-            idx = content.find("db_features:")
-            eol = content.find("\n", idx)
-            if eol != -1:
-                new_content = content[:eol + 1] + entry_text + content[eol + 1:]
-            else:
-                new_content = content + "\n" + entry_text
-        else:
-            if content and not content.endswith("\n"):
-                content += "\n"
-            new_content = content + "\ndb_features:\n" + entry_text
-
-        # Validate that the resulting YAML parses correctly before writing
-        verify_parsed = yaml.safe_load(new_content)
-        if not isinstance(verify_parsed, dict) or "db_features" not in verify_parsed:
-            logger.warning("Generated YAML invalid for %s; aborting write", db_id)
-            return False
-
-        # Atomic write
-        target_file.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=target_file.parent, prefix="." + target_file.stem + ".", suffix=".tmp")
+    with _REGISTER_LOCK:
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                fh.write(new_content)
-            try:
-                os.chmod(tmp, 0o644)
-            except OSError:
-                pass
-            os.replace(tmp, target_file)
-        except BaseException:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
-            raise
+            source = target_file if target_file.exists() else example_file if example_file.exists() else None
+            content = source.read_text(encoding="utf-8") if source else ""
+            old = yaml.safe_load(content) if content.strip() else {}
+            if not isinstance(old, dict):
+                old = {}
+            section = old.get("db_features")
+            section = section if isinstance(section, dict) else {}
+            existing_key = next((k for k in section if str(k) == db_id), None)
+            entry = section.get(existing_key) if existing_key is not None else None
+            if existing_key is not None and entry is not None and not isinstance(entry, dict):
+                logger.warning("Feature flags for %s are not a mapping; left untouched", db_id)
+                return False
+            add = {flag: wanted.get(flag, True) for flag in DB_FEATURE_FLAGS if flag not in (entry or {})}
+            if not add and existing_key is not None:
+                return False  # complete already (also covers the first read of a local file)
 
-        _DB_FLAGS_CACHE = None
-        _DB_CACHE_MTIME = 0.0
-        logger.info("Automatically registered feature flags for new database %s", db_id)
-        return True
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Could not register feature flags for %s: %s", db_id, exc)
-        return False
+            expected = copy.deepcopy(old)
+            expected_section = expected.get("db_features")
+            if not isinstance(expected_section, dict):
+                expected_section = expected["db_features"] = {}
+            expected_section.setdefault(existing_key if existing_key is not None else db_id, {})
+            if expected_section[existing_key if existing_key is not None else db_id] is None:
+                expected_section[existing_key if existing_key is not None else db_id] = {}
+            expected_section[existing_key if existing_key is not None else db_id].update(add)
 
+            new_text = _edit_text(content, db_id, add, "db_features" in old)
+            structured = False
+            if new_text is not None:
+                try:
+                    ok = yaml.safe_load(new_text) == expected
+                except yaml.YAMLError:
+                    ok = False
+                if not ok:
+                    new_text = None
+            if new_text is None:  # a layout a text edit cannot handle: rewrite the structure, after saving a copy
+                new_text = yaml.safe_dump(expected, sort_keys=False, allow_unicode=True, default_flow_style=False)
+                structured = True
+            if structured and target_file.exists():
+                shutil.copy2(target_file, target_file.with_name(target_file.name + ".bak"))
+            _atomic_write(target_file, new_text)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not register feature flags for %s: %s", db_id, exc)
+            return False
+        _DB_FLAGS_CACHE, _DB_CACHE_MTIME = None, 0.0
+        _FLAGS_CACHE, _CACHE_MTIME = None, 0.0
+    logger.info("Feature flags %s for database %s: %s", "backfilled" if existing_key is not None else "registered", db_id, ", ".join(add))
+    return True

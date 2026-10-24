@@ -17,3 +17,30 @@ os.environ["SESSION_STORE_FILE"] = os.path.join(tempfile.gettempdir(), "antarkos
 os.environ["DB_CONFIG_FILE"] = os.path.join(tempfile.gettempdir(), "antarkosh-tests-no-db-config.json")
 os.environ["CONNECTIONS_FILE"] = os.path.join(tempfile.gettempdir(), "antarkosh-tests-no-connections.json")
 os.environ["ACTIVE_DB_FILE"] = os.path.join(tempfile.gettempdir(), "antarkosh-tests-no-active-db.json")
+
+
+import shutil
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolated_feature_flag_config(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Give every test its own feature-flag config folder.
+
+    Connecting a database (``save_connection``, ``choose_db_id``, ``ensure_db_folder``, a schema sync) writes that database's
+    flags into ``config/feature_flags.yaml``. Without this, a test run would add its throwaway ids (``pg_live``, ``ghost_db`` ...)
+    to the developer's real, git-ignored file, and flags written by one test would leak into the next. The folder starts with
+    copies of the tracked files only (the example file and ``features.yaml``), which is what a fresh clone sees. A test that
+    needs its own folder still sets ``CONFIG_DIR`` itself and wins.
+    """
+    from src.core.config import CONFIG_DIR as real_config_dir
+    from src.utils import feature_flags as ff
+
+    folder = tmp_path_factory.mktemp("flag_config")
+    for name in ("feature_flags.example.yaml", "features.yaml"):
+        if (real_config_dir / name).exists():
+            shutil.copy2(real_config_dir / name, folder / name)
+    monkeypatch.setattr(ff, "CONFIG_DIR", folder)
+    for cache, value in (("_DB_FLAGS_CACHE", None), ("_DB_CACHE_MTIME", 0.0), ("_FLAGS_CACHE", None), ("_CACHE_MTIME", 0.0)):
+        monkeypatch.setattr(ff, cache, value)

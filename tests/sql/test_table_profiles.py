@@ -381,11 +381,12 @@ async def test_a_crash_in_the_phase_never_fails_the_sync(sqlite_db: Path, dbs: P
     assert result["status"] == "ok" and result["table_profiles"]["ok"] is False and "boom" in result["table_profiles"]["error"]
 
 
-def test_the_flag_exists_is_off_in_the_shipped_defaults_and_the_template_has_no_profiles_file():
+def test_the_flag_is_on_for_new_databases_off_for_the_pinned_one_and_the_template_has_no_profiles_file():
     from src.utils import feature_flags as ff
 
     assert "auto_table_profiles" in ff.DB_FEATURE_FLAGS
-    cfg = yaml.safe_load((ROOT / "config" / "feature_flags.yaml").read_text(encoding="utf-8"))
-    assert not cfg["db_defaults"]["auto_table_profiles"] and cfg["db_features"]["_example_db"]["auto_table_profiles"] is False
+    cfg = yaml.safe_load((ROOT / "config" / "feature_flags.example.yaml").read_text(encoding="utf-8"))
+    assert cfg["db_defaults"]["auto_table_profiles"] is True and cfg["db_features"]["_example_db"]["auto_table_profiles"] is False
+    assert ff.is_db_feature_enabled("auto_table_profiles", "a_new_database") is True and ff.is_db_feature_enabled("auto_table_profiles", "erp_main") is False
     assert not (ROOT / "databases" / "_template" / PROFILES_REL).exists()
     assert au.RULESET_VERSION >= 1

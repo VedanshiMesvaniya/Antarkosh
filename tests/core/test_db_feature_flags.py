@@ -208,6 +208,7 @@ def test_register_db_feature_flags_creates_all_13_flags_true(cfg: Path, tmp_path
 
 
 def test_register_db_feature_flags_does_not_overwrite_existing(cfg: Path, tmp_path: Path):
+    """Values the owner set are never changed. Flags the entry does not have yet are added, as true."""
     cfg.write_text(
         "db_features:\n"
         "  custom_db:\n"
@@ -216,10 +217,12 @@ def test_register_db_feature_flags_does_not_overwrite_existing(cfg: Path, tmp_pa
         "    auto_procedures: false\n",
         encoding="utf-8",
     )
-    result = ff.register_db_feature_flags("custom_db", config_dir=tmp_path)
-    assert result is False  # did not overwrite
+    assert ff.register_db_feature_flags("custom_db", config_dir=tmp_path) is True  # the missing flags were added
+    assert ff.is_db_feature_enabled("auto_scaffold", "custom_db") is False  # nothing the owner set was changed
     assert ff.is_db_feature_enabled("auto_catalog", "custom_db") is False
     assert ff.is_db_feature_enabled("auto_procedures", "custom_db") is False
+    assert ff.is_db_feature_enabled("auto_join_paths", "custom_db") is True  # a flag the entry lacked
+    assert ff.register_db_feature_flags("custom_db", config_dir=tmp_path) is False  # nothing left to add
 
 
 def test_register_db_feature_flags_rejects_pinned_and_invalid(cfg: Path, tmp_path: Path):

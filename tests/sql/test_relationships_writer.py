@@ -362,14 +362,15 @@ def test_both_flags_exist_and_erp_main_is_pinned_off_even_when_the_yaml_says_tru
     assert not ff.is_db_feature_enabled("auto_relationships_apply", "unlisted")
 
 
-def test_the_shipped_config_keeps_both_relationship_flags_off_for_every_new_database():
-    """New databases inherit ``db_defaults``, so it must keep both flags off. A database listed under ``db_features``
-    is an explicit choice by its owner and is not checked here; the example entry must stay off."""
-    cfg = yaml.safe_load((ROOT / "config" / "feature_flags.yaml").read_text(encoding="utf-8"))
-    defaults = cfg.get("db_defaults") or {}
-    assert not defaults.get("auto_relationships") and not defaults.get("auto_relationships_apply")
-    assert cfg["db_features"]["_example_db"]["auto_relationships"] is False
-    assert cfg["db_features"]["_example_db"]["auto_relationships_apply"] is False
+def test_the_shipped_config_turns_the_relationship_flags_on_for_new_databases_but_never_for_the_pinned_one():
+    """New databases inherit ``db_defaults`` (everything on). erp_main keeps its curated files whatever the file says, and
+    the ``_example_db`` template stays off."""
+    from src.utils import feature_flags as ff
+
+    cfg = yaml.safe_load((ROOT / "config" / "feature_flags.example.yaml").read_text(encoding="utf-8"))
+    for flag in ("auto_relationships", "auto_relationships_apply"):
+        assert cfg["db_defaults"][flag] is True and cfg["db_features"]["_example_db"][flag] is False
+        assert ff.is_db_feature_enabled(flag, "a_new_database") is True and ff.is_db_feature_enabled(flag, "erp_main") is False
 
 
 def test_loading_a_graph_for_a_database_without_files_is_none(dbs: Path):

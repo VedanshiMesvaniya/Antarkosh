@@ -38,6 +38,10 @@ db_defaults:
   auto_prompt_inject: true
   auto_learning: true
 
+# Per-database overrides. Each database you connect gets its own block here automatically, in your local
+# (git-ignored) config/feature_flags.yaml, with every flag true. Edit that file to turn a flag off for one database;
+# values you set are never changed. A flag added in a later version is added to each block as true.
+# The _example_db block below is only a template and is never used.
 db_features:
   _example_db:
     auto_scaffold: false
@@ -53,31 +57,3 @@ db_features:
     auto_prompt_shadow: false
     auto_prompt_inject: false
     auto_learning: false
-  northwind_orchard_erp:
-    auto_scaffold: true
-    auto_catalog: true
-    auto_sqlalchemy: true
-    auto_procedures: true
-    auto_sp_mining: true
-    auto_relationships: true
-    auto_relationships_apply: true
-    auto_table_profiles: true
-    auto_join_paths: true
-    auto_column_meaning: true
-    auto_prompt_shadow: true
-    auto_prompt_inject: true
-    auto_learning: true
-  qts_ais:
-    auto_scaffold: true
-    auto_catalog: true
-    auto_sqlalchemy: true
-    auto_procedures: true
-    auto_sp_mining: true
-    auto_relationships: true
-    auto_relationships_apply: true
-    auto_table_profiles: true
-    auto_join_paths: true
-    auto_column_meaning: true
-    auto_prompt_shadow: true
-    auto_prompt_inject: true
-    auto_learning: true

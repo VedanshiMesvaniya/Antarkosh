@@ -251,7 +251,7 @@ def _load_connections(conn_path: Path | None = None) -> dict[str, dict[str, Any]
                     if slug not in _PINNED_DB_IDS and not slug.startswith(("_", "*")):
                         register_db_feature_flags(slug)
                 except Exception as exc:  # noqa: BLE001
-                    logger.debug("Could not register feature flags for slug %s: %s", slug, exc)
+                    logger.debug("Could not register feature flags for the database name of %s: %s", db_id, exc)
     return connections
 
 
