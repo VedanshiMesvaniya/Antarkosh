@@ -10,12 +10,15 @@ Origin: new (no previous file)
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import Any
 
 from src.sql import registry
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
+
+logger = logging.getLogger(__name__)
 
 _MAX_BASE = 34  # leaves room for a "_NN" suffix inside the 40-character limit
 
@@ -90,7 +93,13 @@ def choose_db_id(
         n += 1
         if n > 99:
             raise ValueError("Could not find a free database id for this connection.")
-        candidate = f"{derive_db_id(cfg)}_{n}"
+    candidate = f"{derive_db_id(cfg)}_{n}" if n > 1 else candidate
+    try:
+        from src.utils.feature_flags import register_db_feature_flags
+
+        register_db_feature_flags(candidate)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Could not register feature flags for candidate %s: %s", candidate, exc)
     return candidate, False
 
 

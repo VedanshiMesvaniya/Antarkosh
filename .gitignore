@@ -69,6 +69,7 @@ evals/**/results/
 config/db_connection.json
 config/connections.json
 config/ingestion.json
+config/feature_flags.yaml
 qdrant/
 data/sessions.json
 data/sqlite/

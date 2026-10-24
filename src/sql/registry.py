@@ -20,6 +20,8 @@ DATABASES_DIR = PROJECT_ROOT / "databases"
 from src.sql.engine import Engine, validate_schema_name
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
 
+_PINNED_DB_IDS: frozenset[str] = frozenset({DEFAULT_DB_ID})
+
 logger = logging.getLogger(__name__)
 
 # Canonical keys allowed for a database connection entry
@@ -230,7 +232,26 @@ def _load_connections(conn_path: Path | None = None) -> dict[str, dict[str, Any]
     connections: dict[str, dict[str, Any]] = {}
     for db_id, fields in raw.items():
         if isinstance(fields, dict):
-            connections[db_id] = _normalize_fields(fields)
+            normalized = _normalize_fields(fields)
+            connections[db_id] = normalized
+            if db_id not in _PINNED_DB_IDS and not db_id.startswith(("_", "*")):
+                try:
+                    from src.utils.feature_flags import register_db_feature_flags
+
+                    register_db_feature_flags(db_id)
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("Could not register feature flags for connection %s: %s", db_id, exc)
+            raw_db = normalized.get("database") or normalized.get("service_name")
+            if raw_db:
+                try:
+                    from src.sql.connect import derive_db_id
+                    from src.utils.feature_flags import register_db_feature_flags
+
+                    slug = derive_db_id({"database": raw_db})
+                    if slug not in _PINNED_DB_IDS and not slug.startswith(("_", "*")):
+                        register_db_feature_flags(slug)
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("Could not register feature flags for slug %s: %s", slug, exc)
     return connections
 
 
@@ -283,6 +304,13 @@ def save_connection(
         from src.utils.feature_flags import register_db_feature_flags
 
         register_db_feature_flags(db_id)
+        raw_db = clean_updates.get("database") or clean_updates.get("db_name")
+        if raw_db:
+            from src.sql.connect import derive_db_id
+
+            slug = derive_db_id({"database": raw_db})
+            if slug and slug != db_id:
+                register_db_feature_flags(slug)
     except Exception as exc:  # noqa: BLE001
         logger.debug("Could not register feature flags for %s: %s", db_id, exc)
 

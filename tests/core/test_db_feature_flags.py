@@ -249,4 +249,85 @@ def test_save_connection_triggers_flag_registration(cfg: Path, tmp_path: Path):
     assert ff.is_db_feature_enabled("auto_learning", "brand_new_db") is True
 
 
+def test_save_connection_with_database_name_registers_derived_slug(cfg: Path, tmp_path: Path):
+    from src.sql import registry
+
+    cfg.write_text("db_features:\n", encoding="utf-8")
+    conn_file = tmp_path / "connections.json"
+
+    registry.save_connection(
+        "custom_alias",
+        {"engine": "mysql", "database": "my_sql_db", "host": "localhost", "port": 3306},
+        conn_path=conn_file,
+    )
+
+    # Both custom_alias and derived slug my_sql_db should be registered and True
+    assert ff.is_db_feature_enabled("auto_procedures", "custom_alias") is True
+    assert ff.is_db_feature_enabled("auto_procedures", "my_sql_db") is True
+
+
+def test_choose_db_id_registers_feature_flags(cfg: Path, tmp_path: Path):
+    from src.sql.connect import choose_db_id
+
+    cfg.write_text("db_features:\n", encoding="utf-8")
+    conn_file = tmp_path / "connections.json"
+    db_dir = tmp_path / "databases"
+    db_dir.mkdir(exist_ok=True)
+
+    db_id, exists = choose_db_id(
+        "admin",
+        {"engine": "mysql", "database": "fresh_chosen_db", "host": "127.0.0.1", "port": 3306},
+        databases_dir=db_dir,
+        conn_path=conn_file,
+    )
+    assert db_id == "fresh_chosen_db"
+    assert exists is False
+    assert ff.is_db_feature_enabled("auto_procedures", "fresh_chosen_db") is True
+
+
+def test_load_connections_registers_unlisted_connections(cfg: Path, tmp_path: Path):
+    import json
+
+    from src.sql import registry
+
+    cfg.write_text("db_features:\n", encoding="utf-8")
+    conn_file = tmp_path / "connections.json"
+    conn_file.write_text(
+        json.dumps({
+            "preexisting_db": {
+                "engine": "mysql",
+                "database": "preexisting_live_db",
+                "host": "127.0.0.1",
+                "port": 3306,
+            }
+        }),
+        encoding="utf-8",
+    )
+
+    # Loading connections should auto-register preexisting_db and preexisting_live_db
+    conns = registry._load_connections(conn_path=conn_file)
+    assert "preexisting_db" in conns
+    assert ff.is_db_feature_enabled("auto_procedures", "preexisting_db") is True
+    assert ff.is_db_feature_enabled("auto_procedures", "preexisting_live_db") is True
+
+
+def test_register_db_feature_flags_creates_from_example(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(ff, "CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(ff, "_DB_FLAGS_CACHE", None)
+    monkeypatch.setattr(ff, "_DB_CACHE_MTIME", 0.0)
+
+    # Only feature_flags.example.yaml exists, feature_flags.yaml does not exist
+    example_file = tmp_path / "feature_flags.example.yaml"
+    example_file.write_text("db_features:\n  demo_db:\n    auto_scaffold: true\n", encoding="utf-8")
+
+    yaml_file = tmp_path / "feature_flags.yaml"
+    assert not yaml_file.exists()
+
+    result = ff.register_db_feature_flags("auto_created_db", config_dir=tmp_path)
+    assert result is True
+    assert yaml_file.exists()
+    assert ff.is_db_feature_enabled("auto_scaffold", "auto_created_db") is True
+
+
+
 

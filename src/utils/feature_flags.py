@@ -46,7 +46,7 @@ def _load_flags_from_yaml() -> dict[str, bool]:
     """Load flags from feature_flags.yaml or features.yaml if present, cached by mtime."""
     global _FLAGS_CACHE, _CACHE_MTIME
     target_file = None
-    for filename in ("feature_flags.yaml", "features.yaml"):
+    for filename in ("feature_flags.yaml", "feature_flags.example.yaml", "features.yaml"):
         file_path = CONFIG_DIR / filename
         if file_path.exists():
             target_file = file_path
@@ -119,7 +119,7 @@ def _load_db_flags_from_yaml() -> dict[str, dict[str, bool]]:
     """Return {db_id: {flag: bool}} from ``db_features:`` with ``db_defaults:`` template under '*'; {} on any problem."""
     global _DB_FLAGS_CACHE, _DB_CACHE_MTIME
     target_file = None
-    for filename in ("feature_flags.yaml", "features.yaml"):
+    for filename in ("feature_flags.yaml", "feature_flags.example.yaml", "features.yaml"):
         file_path = CONFIG_DIR / filename
         if file_path.exists():
             target_file = file_path
@@ -263,20 +263,15 @@ def register_db_feature_flags(
         return False
 
     base_dir = config_dir or CONFIG_DIR
-    target_file = None
-    for filename in ("feature_flags.yaml", "features.yaml"):
-        p = base_dir / filename
-        if p.exists():
-            target_file = p
-            break
-
-    if target_file is None:
-        target_file = base_dir / "feature_flags.yaml"
+    target_file = base_dir / "feature_flags.yaml"
+    example_file = base_dir / "feature_flags.example.yaml"
 
     try:
         content = ""
         if target_file.exists():
             content = target_file.read_text(encoding="utf-8")
+        elif example_file.exists():
+            content = example_file.read_text(encoding="utf-8")
 
         existing_data = yaml.safe_load(content) if content.strip() else {}
         if not isinstance(existing_data, dict):
@@ -296,9 +291,12 @@ def register_db_feature_flags(
         entry_text = "\n".join(entry_lines) + "\n"
 
         if "db_features:" in content:
-            if not content.endswith("\n"):
-                content += "\n"
-            new_content = content + entry_text
+            idx = content.find("db_features:")
+            eol = content.find("\n", idx)
+            if eol != -1:
+                new_content = content[:eol + 1] + entry_text + content[eol + 1:]
+            else:
+                new_content = content + "\n" + entry_text
         else:
             if content and not content.endswith("\n"):
                 content += "\n"

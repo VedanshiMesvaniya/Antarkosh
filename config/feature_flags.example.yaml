@@ -1,6 +1,6 @@
 # Feature flags for SQL Pipeline Optimization
 # Production configuration — all optimizations enabled.
-# This file takes priority over features.yaml in the loading order.
+# Copy this file to config/feature_flags.yaml for local deployment customizations.
 
 features:
   delta_repair_enabled: true
@@ -24,22 +24,19 @@ features:
 # Default feature template for every database without its own override.
 # New databases automatically inherit these settings.
 db_defaults:
-  # Core schema setup — enabled by default
   auto_scaffold: true
   auto_catalog: true
   auto_sqlalchemy: true
-  # Optional schema intelligence — disabled by default
-  auto_procedures: false
-  auto_sp_mining: false
-  auto_relationships: false
-  auto_relationships_apply: false
-  auto_table_profiles: false
-  auto_join_paths: false
-  auto_column_meaning: false
-  auto_prompt_shadow: false
-  auto_prompt_inject: false
-  auto_learning: false
-
+  auto_procedures: true
+  auto_sp_mining: true
+  auto_relationships: true
+  auto_relationships_apply: true
+  auto_table_profiles: true
+  auto_join_paths: true
+  auto_column_meaning: true
+  auto_prompt_shadow: true
+  auto_prompt_inject: true
+  auto_learning: true
 
 db_features:
   _example_db:
@@ -84,4 +81,3 @@ db_features:
     auto_prompt_shadow: true
     auto_prompt_inject: true
     auto_learning: true
-

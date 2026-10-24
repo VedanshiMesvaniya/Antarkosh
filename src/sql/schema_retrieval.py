@@ -551,6 +551,16 @@ async def sync_live_schema(
         from src.utils.feature_flags import register_db_feature_flags
 
         register_db_feature_flags(db_id)
+        from src.sql.registry import get_connection
+
+        conn = get_connection(db_id)
+        raw_db = conn.get("database") or conn.get("service_name")
+        if raw_db:
+            from src.sql.connect import derive_db_id
+
+            slug = derive_db_id({"database": raw_db})
+            if slug != db_id:
+                register_db_feature_flags(slug)
     except Exception as exc:  # noqa: BLE001
         logger.debug("Could not register feature flags for %s: %s", db_id, exc)
 
