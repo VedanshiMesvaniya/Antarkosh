@@ -743,6 +743,19 @@ async def sync_live_schema(
             logger.warning("Table profiles failed for %s: %s", db_id, exc)
             table_profiles_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
+    # Auto-schema Phase 8: indirect join routes (2 to 3 joins) between tables that do not join directly, scored with hub
+    # damping, built only from trusted edges and left in schema/join_paths.json. Prompts do not read it yet. Per-DB flag,
+    # off by default. Runs after relationships and profiles so it sees their fresh files. Never fails the sync.
+    join_paths_report: dict[str, Any] | None = None
+    if is_db_feature_enabled("auto_join_paths", db_id):
+        try:
+            from src.sql.sa.paths_phase import run_paths_phase
+
+            join_paths_report = await run_paths_phase(db_id=db_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Join paths failed for %s: %s", db_id, exc)
+            join_paths_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.sql.pipeline import SQLRetriever
@@ -779,5 +792,7 @@ async def sync_live_schema(
         result["relationships"] = relationships_report
     if table_profiles_report is not None:
         result["table_profiles"] = table_profiles_report
+    if join_paths_report is not None:
+        result["join_paths"] = join_paths_report
     return result
 
