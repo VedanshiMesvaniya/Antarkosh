@@ -533,6 +533,45 @@ def _enrich_table_schema(
     return "\n".join(lines)
 
 
+def _chunk_table(chunk: Chunk) -> str:
+    """The table a schema chunk describes, lower-cased (its id is ``<db_id>_schema_<table>``)."""
+    prefix = f"{chunk.db_id}_schema_"
+    return (chunk.chunk_id[len(prefix):] if chunk.chunk_id.startswith(prefix) else chunk.source_file.rsplit("/", 1)[-1]).lower()
+
+
+def _embedding_texts(chunks: list[Chunk], extras: dict[str, str]) -> list[str]:
+    """The text each table chunk is EMBEDDED from: its content plus, when there is one, its block of column meanings.
+    The chunk's stored content is not changed, so the token budget and the prompts built from it are not affected."""
+    texts: list[str] = []
+    for c in chunks:
+        extra = extras.get(_chunk_table(c))
+        texts.append(f"{c.content}\n{extra}" if extra else c.content)
+    return texts
+
+
+async def _embed_with_meanings(embeddings: Any, chunks: list[Chunk], extras: dict[str, str]) -> tuple[Any, Any]:
+    """``embed_chunks`` exactly as before when there is nothing to add; otherwise embed the augmented text."""
+    if extras and hasattr(embeddings, "embed_texts"):
+        texts = _embedding_texts(chunks, extras)
+        if texts != [c.content for c in chunks]:
+            try:
+                return await embeddings.embed_texts(texts)
+            except Exception as exc:  # noqa: BLE001 - e.g. the model rejects the longer text: never worse than before this phase
+                logger.warning("Embedding with column meanings failed (%s); embedding the plain table text instead", exc)
+    return await embeddings.embed_chunks(chunks)
+
+
+async def _reembed_changed_tables(embeddings: Any, store: Any, chunks: list[Chunk], extras: dict[str, str], tables: list[str]) -> int:
+    """Re-embed only the chunks whose column meanings changed during this sync (same ids, so they are updated in place)."""
+    wanted = {t.lower() for t in tables}
+    subset = [c for c in chunks if _chunk_table(c) in wanted]
+    if not subset:
+        return 0
+    vectors, sparse_vectors = await _embed_with_meanings(embeddings, subset, extras)
+    await store.upsert(subset, vectors, sparse_vectors)
+    return len(subset)
+
+
 async def sync_live_schema(
     embedding_service: EmbeddingService | None = None,
     vector_store: QdrantStore | None = None,
@@ -665,7 +704,17 @@ async def sync_live_schema(
         return {"status": "error", "message": "No tables found in schema"}
 
     # 5. Embed all table chunks FIRST — if embedding fails/rate-limits, old schema remains safe
-    vectors, sparse_vectors = await embeddings.embed_chunks(chunks)
+    meaning_extras: dict[str, str] = {}
+    try:  # Auto-schema Phase 9c: column meanings from the previous sync make the tables easier to find
+        from src.utils.feature_flags import is_db_feature_enabled as _meaning_enabled
+
+        if _meaning_enabled("auto_column_meaning", db_id):
+            from src.sql.semantics.wiring import load_embedding_extras
+
+            meaning_extras = load_embedding_extras(db_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Could not load column meanings for embedding (%s): %s", db_id, exc)
+    vectors, sparse_vectors = await _embed_with_meanings(embeddings, chunks, meaning_extras)
 
     # 6. Upsert new chunks into Qdrant — with deterministic per-table IDs, existing chunks
     # are atomically updated in place with zero downtime or empty-store window
@@ -724,8 +773,11 @@ async def sync_live_schema(
         try:
             from src.sql.sa.mining_phase import run_mining_phase
 
+            mining_kwargs: dict[str, Any] = {}
+            if is_db_feature_enabled("auto_column_meaning", db_id):  # Phase 9a: also keep aliases, parameter names, CASE labels
+                mining_kwargs["collect_hints"] = True
             sp_evidence_report = await run_mining_phase(
-                db_id=db_id, engine_key=procedures_report.get("engine") or "", routines=procedure_routines
+                db_id=db_id, engine_key=procedures_report.get("engine") or "", routines=procedure_routines, **mining_kwargs
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Procedure mining failed for %s: %s", db_id, exc)
@@ -773,6 +825,30 @@ async def sync_live_schema(
             logger.warning("Join paths failed for %s: %s", db_id, exc)
             join_paths_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
+    # Auto-schema Phase 9: column meanings. Evidence from the earlier phases' files, one batched model call per table whose
+    # evidence changed (metadata only), strict checks, then the glossary (high confidence only) and re-embedding of just
+    # the tables whose meanings changed. A first run on a large database is spread over several syncs by design.
+    # Per-DB flag; never fails the sync.
+    column_meaning_report: dict[str, Any] | None = None
+    if is_db_feature_enabled("auto_column_meaning", db_id):
+        try:
+            from src.sql.sa.meaning_phase import run_meaning_phase
+            from src.sql.semantics.wiring import load_embedding_extras
+
+            column_meaning_report = await run_meaning_phase(db_id=db_id, inject=is_db_feature_enabled("auto_prompt_inject", db_id))
+            changed = column_meaning_report.pop("embed_tables", [])
+            if changed:
+                try:
+                    column_meaning_report["reembedded_tables"] = await _reembed_changed_tables(
+                        embeddings, store, chunks, load_embedding_extras(db_id), changed
+                    )
+                except Exception as exc:  # noqa: BLE001 - the old vectors stay valid
+                    logger.warning("Re-embedding changed column meanings failed for %s: %s", db_id, exc)
+                    column_meaning_report["reembed_error"] = f"{type(exc).__name__}: {str(exc)[:160]}"
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Column meaning failed for %s: %s", db_id, exc)
+            column_meaning_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.sql.pipeline import SQLRetriever
@@ -811,5 +887,7 @@ async def sync_live_schema(
         result["table_profiles"] = table_profiles_report
     if join_paths_report is not None:
         result["join_paths"] = join_paths_report
+    if column_meaning_report is not None:
+        result["column_meaning"] = column_meaning_report
     return result
 

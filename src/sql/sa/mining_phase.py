@@ -28,6 +28,7 @@ from src.sql.mining.evidence import Evidence, summary, write_evidence
 from src.sql.mining.extractor import extract_routine_facts
 from src.sql.mining.splitter import split_statements
 from src.sql.sa.routines import Routine
+from src.sql.semantics.hints import HintsCollector, write_hints
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ def mine_routines(
     engine: str,
     catalog: CatalogIndex | None,
     budget_seconds: float = MINING_BUDGET_SECONDS,
+    hints: HintsCollector | None = None,
 ) -> Evidence:
     """Synchronous and CPU-bound. Call it through ``asyncio.to_thread``."""
     evidence = Evidence(catalog)
@@ -64,6 +66,8 @@ def mine_routines(
             split = split_statements(routine.definition, engine, deadline=deadline)
             facts = extract_routine_facts(split.trees, engine, catalog)
             evidence.add_routine(split.found, split.parsed, split.dynamic, facts, truncated=split.truncated)
+            if hints is not None:  # Phase 9a: aliases, parameter names and CASE labels from the same parsed statements
+                hints.add(split.trees, catalog)
     finally:
         sqlglot_logger.setLevel(previous)
     return evidence
@@ -76,6 +80,7 @@ async def run_mining_phase(
     routines: list[Routine],
     databases_dir: Path | None = None,
     budget_seconds: float = MINING_BUDGET_SECONDS,
+    collect_hints: bool = False,
 ) -> dict[str, Any]:
     """Mine ``routines`` for ``db_id`` and record the evidence. Returns a counts-only report."""
     validate_db_id(db_id)
@@ -86,10 +91,20 @@ async def run_mining_phase(
 
     base = Path(databases_dir) if databases_dir is not None else registry.DATABASES_DIR
     catalog = CatalogIndex.from_schema_json(base / db_id / "schema" / "schema.json")
-    evidence = await asyncio.to_thread(mine_routines, routines, engine_key, catalog, budget_seconds)
+    collector = HintsCollector() if collect_hints and catalog is not None else None
+    if collector is not None:
+        evidence = await asyncio.to_thread(mine_routines, routines, engine_key, catalog, budget_seconds, collector)
+    else:  # exactly the call this phase always made
+        evidence = await asyncio.to_thread(mine_routines, routines, engine_key, catalog, budget_seconds)
     doc = evidence.document(db_id, engine_key)
     report = {"ok": True, **summary(doc)}
     report["files"] = write_evidence(db_id, doc, databases_dir)
+    if collector is not None:
+        try:
+            hints_doc = collector.document(db_id)
+            report["column_hints"] = {**hints_doc["stats"], "files": write_hints(db_id, hints_doc, databases_dir)}
+        except Exception as exc:  # noqa: BLE001 - optional output: it can never fail the mining phase
+            report["column_hints"] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
     return report
 
 

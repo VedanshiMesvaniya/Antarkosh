@@ -44,3 +44,15 @@ def _isolated_feature_flag_config(tmp_path_factory: pytest.TempPathFactory, monk
     monkeypatch.setattr(ff, "CONFIG_DIR", folder)
     for cache, value in (("_DB_FLAGS_CACHE", None), ("_DB_CACHE_MTIME", 0.0), ("_FLAGS_CACHE", None), ("_CACHE_MTIME", 0.0)):
         monkeypatch.setattr(ff, cache, value)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_language_model_in_tests(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The column-meaning phase would call a real model during any test that runs a full schema sync with the flag on.
+    Tests that exercise it pass a fake model explicitly (``run_meaning_phase(llm=...)``); nothing else may spend quota."""
+    from src.sql.sa import meaning_phase
+
+    def refuse() -> None:
+        raise RuntimeError("tests must not call a real language model")
+
+    monkeypatch.setattr(meaning_phase, "_default_llm", refuse)
