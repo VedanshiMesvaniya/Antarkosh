@@ -19,8 +19,8 @@ from src.utils.telemetry import get_current_query_id, log_telemetry, timed_stage
 
 logger = logging.getLogger(__name__)
 
-# Hard ceiling: maximum 2 repair attempts per query
-MAX_DELTA_REPAIR_ATTEMPTS = 2
+# Hard ceiling: maximum 3 repair attempts per query (raised from 2)
+MAX_DELTA_REPAIR_ATTEMPTS = 3  # raised from 2: three repair attempts before giving up
 
 
 def extract_sql_from_response(response: str) -> str:

@@ -113,20 +113,21 @@ async def test_audit_2_budget_exhaustion_max_repairs_exceeded(audit_test_db, mon
     - Mock initial SQL generation to fail DB execution.
     - Mock 1st Delta Repair to return failing SQL.
     - Mock 2nd Delta Repair to return failing SQL.
-    - Assert exactly 2 repairs are attempted (MAX_DELTA_REPAIR_ATTEMPTS=2).
-    - Assert no 3rd repair is attempted and query halts gracefully returning empty results.
+    - Assert exactly 3 repairs are attempted (MAX_DELTA_REPAIR_ATTEMPTS=3).
+    - Assert no 4th repair is attempted and query halts gracefully returning empty results.
     """
     mock_router = MagicMock(spec=ProviderRouter)
     mock_router.chat = AsyncMock(side_effect=[
         "SELECT id, bad_col_1 FROM customers",  # Initial generation
         "SELECT id, bad_col_2 FROM customers",  # Repair attempt 1
         "SELECT id, bad_col_3 FROM customers",  # Repair attempt 2
-        "SELECT id, bad_col_4 FROM customers",  # Should NOT be reached
+        "SELECT id, bad_col_4 FROM customers",  # Repair attempt 3
+        "SELECT id, bad_col_5 FROM customers",  # Should NOT be reached
     ])
 
     test_qid = "audit-q2-max-repairs"
     set_current_query_id(test_qid)
-    budget = QueryBudgetController(query_id=test_qid, max_llm_calls=4, max_repairs=2, max_tokens=15000)
+    budget = QueryBudgetController(query_id=test_qid, max_llm_calls=5, max_repairs=3, max_tokens=15000)
     set_current_budget_controller(budget)
 
     try:
@@ -137,12 +138,12 @@ async def test_audit_2_budget_exhaustion_max_repairs_exceeded(audit_test_db, mon
             # Must fail cleanly without crashing
             assert chunks == []
 
-            # 1 initial generation + 2 repairs = 3 LLM calls total
-            assert mock_router.chat.await_count == 3
+            # 1 initial generation + 3 repairs = 4 LLM calls total
+            assert mock_router.chat.await_count == 4
             active_budget = get_current_budget_controller()
             assert active_budget is not None
             assert active_budget.repair_attempts == MAX_DELTA_REPAIR_ATTEMPTS
-            assert active_budget.llm_calls == 3
+            assert active_budget.llm_calls == 4
     finally:
         set_current_query_id(None)
         set_current_budget_controller(None)
