@@ -28,11 +28,11 @@ class QueryBudgetController:
     def __init__(
         self,
         query_id: str = "",
-        hard_limit: int = 8000,
+        hard_limit: int = 30000,   # raised from 8000 — see max_tokens
         safety_buffer: int = 200,
         max_llm_calls: int = 4,
         max_repairs: int = 2,
-        max_tokens: int = 8000,
+        max_tokens: int = 30000,   # raised from 8000: gemini-3.5-flash SQL generation alone uses ~15k tokens, leaving no room for repair at 8k
         model_name: str = "",
         provider_name: str = "",
     ) -> None:
@@ -164,11 +164,11 @@ def set_current_budget_controller(
 
 def get_or_create_budget_controller(
     query_id: str | None = None,
-    hard_limit: int = 8000,
+    hard_limit: int = 30000,   # raised from 8000 — see max_tokens
     safety_buffer: int = 200,
     max_llm_calls: int = 4,
     max_repairs: int = 2,
-    max_tokens: int = 8000,
+    max_tokens: int = 30000,   # raised from 8000: gemini-3.5-flash SQL generation alone uses ~15k tokens, leaving no room for repair at 8k
     model_name: str = "",
     provider_name: str = "",
     force_new: bool = False,

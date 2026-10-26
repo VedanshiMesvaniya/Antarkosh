@@ -8,7 +8,7 @@ from src.utils.stream_token_counter import StreamTokenCounter, TokenBudgetExceed
 
 def test_query_budget_boundary_limits():
     """Verify behavior at 7999, 8000, 8200 (safety buffer), and 8201 tokens."""
-    controller = QueryBudgetController(hard_limit=8000, safety_buffer=200)
+    controller = QueryBudgetController(hard_limit=8000, max_tokens=8000, safety_buffer=200)
 
     # Set token count to 7999
     controller.counter.current_count = 7999
@@ -36,7 +36,7 @@ def test_query_budget_boundary_limits():
 
 def test_query_budget_increase_limit_for_retry():
     """Verify increase_limit allows +1K recovery during smart retry."""
-    controller = QueryBudgetController(hard_limit=8000, safety_buffer=200)
+    controller = QueryBudgetController(hard_limit=8000, max_tokens=8000, safety_buffer=200)
     controller.counter.current_count = 8150
 
     # Increase limit by 1000 -> new limit 9000 (+200 buffer = 9200)
