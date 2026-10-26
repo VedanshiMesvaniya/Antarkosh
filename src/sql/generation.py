@@ -58,7 +58,10 @@ from src.utils.trace_context import get_current_span
 from src.sql.repair.sql_repair import (
     MAX_DELTA_REPAIR_ATTEMPTS,
     attempt_delta_repair,
+    describe_missing_table,
     extract_schema_context_from_ddl,
+    extract_visible_schema_context,
+    repair_context_for_missing_table,
 )
 
 logger = logging.getLogger(__name__)
@@ -897,9 +900,15 @@ async def execute_with_delta_repair(
     for repair_attempt in range(MAX_DELTA_REPAIR_ATTEMPTS + 1):
         tables = _extract_table_names(current_sql, retriever._dialect.sqlglot_dialect)
         schema_context = extract_schema_context_from_ddl(schema, tables)
+        if schema_context:
+            # Table validation only ever runs when a referenced table appears as a raw TABLE block, and that trigger is kept
+            # exactly. What changes is what it can see: tables the prompt shows in compacted form (``name: col(type), ...``)
+            # were invisible, so a valid query that joined one of them with a raw-form table was rejected as "table not found".
+            schema_context = extract_visible_schema_context(schema, tables)
 
         val_error: str | None = None
         val_error_type: str | None = None
+        repair_schema_context = None  # set only for a missing table (see below)
 
         with timed_stage("sql_validation") as val_stage:
             curr_span = get_current_span()
@@ -937,6 +946,15 @@ async def execute_with_delta_repair(
                             logger.warning("Schema table/column validation failed: %s", schema_err)
                             val_error = schema_err
                             val_error_type = "column_not_found" if "Column" in schema_err else "table_not_found"
+                            if val_error_type == "table_not_found":
+                                # A genuinely missing table: tell the repair step what the schema really contains, not just the
+                                # tables the failed SQL mentioned, so it can pick a real one instead of guessing names.
+                                try:
+                                    available = extract_visible_schema_context(schema)
+                                    val_error = describe_missing_table(schema_err, available)
+                                    repair_schema_context = repair_context_for_missing_table(schema_err, available, schema_context)
+                                except Exception as ctx_err:  # noqa: BLE001 - feedback only; never affects the verdict
+                                    logger.debug("Could not enrich the missing-table feedback: %s", ctx_err)
 
                 if val_error:
                     val_stage["success"] = False
@@ -1068,7 +1086,7 @@ async def execute_with_delta_repair(
                 failed_sql=current_sql,
                 error_message=val_error,
                 error_type=val_error_type or "sql_validation_error",
-                schema_context=schema_context,
+                schema_context=repair_schema_context or schema_context,
                 user_intent=query,
                 attempt_number=next_attempt,
             )

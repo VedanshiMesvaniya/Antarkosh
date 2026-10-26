@@ -5,6 +5,7 @@ Origin: moved from src/stages/sql_repair.py
 
 from __future__ import annotations
 
+import difflib
 import logging
 import re
 import time
@@ -105,6 +106,108 @@ def extract_schema_context_from_ddl(
         schema_dict[tbl_name] = columns
 
     return schema_dict
+
+
+# A table the schema prompt shows in its COMPACTED form: ``table: col(type, PK), col2(type, FK->t.c)`` (one line per table).
+_COMPACT_LINE = re.compile(r"^\s*([A-Za-z0-9_]+)\s*:\s*(.+?)\s*$")
+_COMPACT_COLUMN = re.compile(r"(?:^|,\s*)([A-Za-z0-9_]+)\(")
+# The "Join Hints:" block appended after the tables: ``- orders.user_id -> users.id``. It is not part of any table.
+_JOIN_HINT_LINE = re.compile(r"^\s*(?:Join Hints:|-\s+\S+\.\S+\s*->\s*\S+\.\S+)\s*$")
+
+
+def extract_visible_schema_context(
+    full_schema: str,
+    relevant_tables: list[str] | set[str] | None = None,
+) -> dict[str, list[str]]:
+    """Every table the schema text the model was shown describes, as ``{table: [columns]}``.
+
+    ``extract_schema_context_from_ddl`` only understands raw ``TABLE name (...)`` blocks. The prompt, however, mixes two
+    forms: tables that compacted cleanly are one ``name: col(type), ...`` line, while tables whose DDL could not be parsed
+    (for example a chunk that starts with a comment header) stay raw. A validator that reads only the raw form cannot see the
+    compacted tables and reports them as missing. This reads both forms.
+
+    The two forms are separated line by line first, so a compacted line that follows a raw block is never mistaken for one of
+    that block's columns. A table present in both forms keeps its raw columns.
+    """
+    if not full_schema:
+        return {}
+    wanted = {t.lower() for t in relevant_tables} if relevant_tables else None
+    raw_lines: list[str] = []
+    compact: list[tuple[str, str]] = []
+    for line in full_schema.splitlines():
+        if _JOIN_HINT_LINE.match(line):
+            continue
+        match = _COMPACT_LINE.match(line)
+        if match and (match.group(2) == "(no columns)" or _COMPACT_COLUMN.search(match.group(2))):
+            compact.append((match.group(1).lower(), match.group(2)))
+        else:
+            raw_lines.append(line)
+    context = extract_schema_context_from_ddl("\n".join(raw_lines), relevant_tables)
+    for name, rest in compact:
+        if (wanted and name not in wanted) or name in context:
+            continue
+        context[name] = [] if rest == "(no columns)" else [c.lower() for c in _COMPACT_COLUMN.findall(rest)]
+    return context
+
+
+def closest_tables(missing: str, available: list[str] | set[str], limit: int = 5) -> list[str]:
+    """The existing tables whose names are most like ``missing``: shared words count as much as shared letters."""
+    wanted = set(missing.lower().split("_")) - {""}
+    scored: list[tuple[float, str]] = []
+    for name in available:
+        words = set(name.lower().split("_")) - {""}
+        overlap = len(wanted & words) / len(wanted | words) if wanted | words else 0.0
+        ratio = difflib.SequenceMatcher(None, missing.lower(), name.lower()).ratio()
+        score = 0.5 * ratio + 0.5 * overlap
+        if score >= 0.25:
+            scored.append((-score, name))
+    return [name for _, name in sorted(scored)[:limit]]
+
+
+_MISSING_TABLE = re.compile(r"Table '([^']+)'")
+
+
+def missing_table_name(error: str) -> str | None:
+    match = _MISSING_TABLE.search(error or "")
+    return match.group(1).lower() if match else None
+
+
+def describe_missing_table(error: str, available: dict[str, list[str]]) -> str:
+    """The validator's "table does not exist" message, made truthful: the validator lists only the tables the SQL happened to
+    mention, which hides the rest of the schema from the repair step. This names the tables that really exist and the closest
+    ones. Anything it cannot improve is returned unchanged."""
+    name = missing_table_name(error)
+    if not name or not available:
+        return error
+    close = closest_tables(name, list(available))
+    message = f"Table '{name}' does not exist in the provided schema ({len(available)} tables are provided)."
+    if close:
+        message += f" Closest existing tables: {', '.join(close)}."
+    return message
+
+
+def repair_context_for_missing_table(
+    error: str,
+    available: dict[str, list[str]],
+    referenced: dict[str, list[str]],
+    *,
+    with_columns: int = 3,
+    extra_names: int = 10,
+) -> dict[str, list[str]]:
+    """What the repair step is shown after a missing table: the tables the SQL already uses (with columns), the closest
+    existing tables (with columns), then the names of other tables in the schema. The repair prompt has a tight token budget
+    and falls back to names only by itself, so listing names here is cheap."""
+    name = missing_table_name(error)
+    ctx: dict[str, list[str]] = dict(referenced)
+    for t in closest_tables(name, list(available), limit=with_columns) if name else []:
+        ctx.setdefault(t, available[t])
+    for t in closest_tables(name, list(available), limit=with_columns + 2) if name else []:
+        ctx.setdefault(t, [])
+    for t in sorted(available):
+        if len(ctx) >= len(referenced) + with_columns + extra_names:
+            break
+        ctx.setdefault(t, [])
+    return ctx
 
 
 async def attempt_delta_repair(
