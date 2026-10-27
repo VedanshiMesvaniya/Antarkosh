@@ -265,3 +265,9 @@ def test_a_planner_crash_never_breaks_retrieval(dbs: Path, monkeypatch: pytest.M
 
     monkeypatch.setattr(ri, "plan_route_bridges", boom)
     assert _retrieve(tables, full) == off
+
+
+def test_route_bridge_telemetry_stages_are_kept_and_not_recorded_as_unknown() -> None:
+    from src.utils.telemetry import ALLOWED_STAGES
+
+    assert {"route_bridge_shadow", "route_bridge_applied"} <= ALLOWED_STAGES

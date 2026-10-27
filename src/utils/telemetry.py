@@ -41,6 +41,8 @@ ALLOWED_STAGES = frozenset({
     "schema_budget_shadow",
     "schema_budget_applied",
     "schema_compaction_applied",
+    "route_bridge_shadow",
+    "route_bridge_applied",
     "sql_generation",
     "sql_validation",
     "sql_execution",
