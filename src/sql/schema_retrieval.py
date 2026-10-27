@@ -32,6 +32,44 @@ from src.utils.telemetry import log_telemetry
 logger = logging.getLogger(__name__)
 
 
+def _route_bridge_mode(db_id: str) -> str:
+    """How route-aware bridge tables (Phase 12, part 1) run for this database: "apply", "shadow" or "" (off).
+
+    Uses the Phase 12 flags that already exist: ``auto_prompt_inject`` applies the bridges, ``auto_prompt_shadow`` only logs
+    what would be added. Both are off for ``erp_main`` and for any database that has not been given the flags.
+    """
+    try:
+        from src.utils.feature_flags import is_db_feature_enabled
+
+        if is_db_feature_enabled("auto_prompt_inject", db_id):
+            return "apply"
+        if is_db_feature_enabled("auto_prompt_shadow", db_id):
+            return "shadow"
+    except Exception as exc:  # noqa: BLE001 - a flag problem must never break retrieval
+        logger.debug("Route bridge flags unreadable for %s: %s", db_id, exc)
+    return ""
+
+
+def _compacted_cost_fn(dialect_key: str | None) -> Any:
+    """Token cost of a candidate as the prompt will show it (compacted), memoised per table for one retrieval."""
+    memo: dict[str, int] = {}
+
+    def cost(cand: Any) -> int:
+        ddl = cand["ddl"] if isinstance(cand, dict) else str(cand)
+        key = cand.get("table_name") if isinstance(cand, dict) else None
+        if key is not None and key in memo:
+            return memo[key]
+        try:
+            value = estimate_schema_tokens(compact_ddl(ddl, dialect=dialect_key))
+        except Exception:  # noqa: BLE001 - fall back to the raw estimate for this table
+            value = estimate_schema_tokens(ddl)
+        if key is not None:
+            memo[key] = value
+        return value
+
+    return cost
+
+
 def extract_schema_table_names(schema: str) -> set[str]:
     """Extract table names present in a DDL schema string."""
     names: set[str] = set()
@@ -328,9 +366,53 @@ async def retrieve_schema_from_qdrant(
         if anchor_extra:
             retrieved_schema += "\n\n-- Domain Anchor & Glossary Tables:\n" + "\n\n".join(anchor_extra)
 
+        # Route-aware bridge tables (Phase 12, part 1): when two chosen tables only connect through other tables, offer those
+        # tables to the budget right after the retrieved ones and before the 1-hop neighbours. Needs join_paths.json (Phase 8);
+        # without it, or with the flags off, nothing here changes.
+        route_mode = _route_bridge_mode(db_id)
+        route_plan = None
+        route_bridge_tables: list[str] = []
+        if route_mode:
+            try:
+                from src.sql.paths.route_index import plan_route_bridges
+
+                route_plan = plan_route_bridges(
+                    [c["table_name"] for c in candidate_list], db_id, available=set(full_ddls)
+                )
+                if route_plan is not None:
+                    if route_mode == "apply":
+                        for bridge in route_plan.bridges:
+                            if bridge in full_ddls and bridge not in seen_tables:
+                                seen_tables.add(bridge)
+                                route_bridge_tables.append(bridge)
+                                candidate_list.append({
+                                    "table_name": bridge,
+                                    "ddl": full_ddls[bridge],
+                                    "source": "route_bridge",
+                                })
+                        if route_bridge_tables:
+                            retrieved_schema += "\n\n-- Bridge tables on an indirect join route:\n" + "\n\n".join(
+                                full_ddls[b] for b in route_bridge_tables
+                            )
+                    log_telemetry(
+                        query_id="",
+                        stage="route_bridge_applied" if route_mode == "apply" else "route_bridge_shadow",
+                        extra={
+                            "db_id": db_id,
+                            "bridges": list(route_plan.bridges),
+                            "added": route_bridge_tables,
+                            "pairs_checked": route_plan.pairs_checked,
+                            "pairs_routed": route_plan.pairs_routed,
+                        },
+                    )
+            except Exception as route_err:  # noqa: BLE001 - routes are an extra; retrieval carries on without them
+                logger.warning("Route bridge planning failed for %s: %s", db_id, route_err)
+                route_plan = None
+                route_bridge_tables = []
+
         # 1-hop graph expansion: add directly connected neighbor tables if missing
         neighbors = get_1hop_neighbors(retrieved_tables, db_id=db_id)
-        needed_neighbors = neighbors - retrieved_tables
+        needed_neighbors = neighbors - retrieved_tables - set(route_bridge_tables)
 
         if needed_neighbors and full_ddls:
             # Rank neighbors by how many active tables they connect to (bridge priority)
@@ -362,10 +444,15 @@ async def retrieve_schema_from_qdrant(
                 retrieved_schema += "\n\n-- Directly connected related tables:\n" + "\n\n".join(extra_ddls)
 
         # --- Dynamic Schema Token Budget Selection & Shadow Mode ---
+        # With route bridges applied and compaction on, the budget is spent on the compacted text the model will see
+        # (the raw DDL of a wide table is several times larger). Everything else keeps the original raw estimate.
+        dialect_key_for_budget = dialect.sqlglot_dialect if hasattr(dialect, "sqlglot_dialect") else None
+        use_compacted_cost = route_mode == "apply" and is_feature_enabled("schema_compaction_enabled")
         selected, dropped = select_schema_within_budget(
             candidate_list,
             token_budget=DEFAULT_SCHEMA_TOKEN_BUDGET,
             id_key="table_name",
+            cost_fn=_compacted_cost_fn(dialect_key_for_budget) if use_compacted_cost else None,
         )
 
         original_table_count = len(candidate_list)
@@ -397,6 +484,14 @@ async def retrieve_schema_from_qdrant(
             ]
             raw_ddls = [c["ddl"] if isinstance(c, dict) else str(c) for c in selected]
             join_hints = extract_join_hints(raw_ddls, dialect=dialect_key)
+            if route_plan is not None and route_bridge_tables:
+                # Join conditions of each applied route, only for routes whose every table survived the budget.
+                from src.sql.paths.route_index import merge_join_hints
+
+                join_hints = merge_join_hints(
+                    join_hints,
+                    route_plan.hint_lines(c["table_name"] for c in selected if isinstance(c, dict)),
+                )
 
             compacted_schema = "\n\n".join(compact_ddls)
             if join_hints:

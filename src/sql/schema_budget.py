@@ -9,6 +9,7 @@ Origin: moved from src/utils/schema_budget.py
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from src.sql.schema_token_estimator import estimate_schema_tokens
@@ -22,6 +23,7 @@ def select_schema_within_budget(
     candidates: list[dict[str, Any] | str | Any],
     token_budget: int = DEFAULT_SCHEMA_TOKEN_BUDGET,  # 4000 tokens (~30 avg tables); override per-call if needed
     id_key: str = "table_name",
+    cost_fn: Callable[[Any], int] | None = None,
 ) -> tuple[list[Any], list[Any]]:
     """Iterate through candidate tables/chunks and select them until token_budget is reached.
 
@@ -29,6 +31,8 @@ def select_schema_within_budget(
         candidates: List of schema candidate chunks, DDL strings, or metadata dicts.
         token_budget: Maximum allowed token ceiling for selected schema (default: 1500).
         id_key: Key name used to extract identifier from dictionary candidates.
+        cost_fn: Optional replacement for the token estimate of one candidate. Used when the prompt will show the compacted
+            form of a table, so the budget is spent on what the model really sees. None keeps the original estimate.
 
     Returns:
         tuple[list[Any], list[Any]]:
@@ -44,7 +48,7 @@ def select_schema_within_budget(
 
     for idx, cand in enumerate(candidates):
         try:
-            cost = estimate_schema_tokens(cand)
+            cost = cost_fn(cand) if cost_fn is not None else estimate_schema_tokens(cand)
         except Exception as err:
             logger.warning("Failed to estimate schema tokens for candidate %r: %s", cand, err)
             cost = 100
