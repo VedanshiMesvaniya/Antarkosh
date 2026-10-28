@@ -36,6 +36,8 @@ from src.sql.safety.result_validator import ResultValidator, ValidationSeverity
 from src.sql.learning.pattern_learner import PatternLearner
 from src.sql.safety.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
+from src.sql.late_schema import expand_schema_with_live_tables
+from src.sql.repair.join_context import build_repair_join_context
 from src.sql.prompt_builder import build_sql_prompt
 from src.sql.soft_delete import detect_soft_delete_intent, enforce_soft_delete_filter
 from src.sql.safety.empty_result_classifier import classify_empty_result
@@ -874,6 +876,14 @@ async def execute_with_retry(
     return []
 
 
+def _repair_join_context(retriever: Any, tables: Any, shown: Any) -> str:
+    """Known join conditions for the repair prompt; empty unless the Phase 12 flags are on (never raises)."""
+    try:
+        return build_repair_join_context(getattr(retriever, "db_id", ""), tables or (), list((shown or {}).keys()))
+    except Exception:  # noqa: BLE001 - extra context only
+        return ""
+
+
 async def execute_with_delta_repair(
     retriever: Any,
     query: str,
@@ -899,6 +909,9 @@ async def execute_with_delta_repair(
 
     for repair_attempt in range(MAX_DELTA_REPAIR_ATTEMPTS + 1):
         tables = _extract_table_names(current_sql, retriever._dialect.sqlglot_dialect)
+        # A real table the model named but retrieval missed is shown to validation and repair instead of being rejected
+        # (Phase 12 flags only; unchanged otherwise).
+        schema, _late_added = await expand_schema_with_live_tables(retriever, schema, tables)
         schema_context = extract_schema_context_from_ddl(schema, tables)
         if schema_context:
             # Table validation only ever runs when a referenced table appears as a raw TABLE block, and that trigger is kept
@@ -1089,6 +1102,7 @@ async def execute_with_delta_repair(
                 schema_context=repair_schema_context or schema_context,
                 user_intent=query,
                 attempt_number=next_attempt,
+                join_context=_repair_join_context(retriever, tables, repair_schema_context or schema_context),
             )
             if not repaired_sql:
                 logger.warning("Delta repair attempt %d returned no SQL. Halting.", next_attempt)
@@ -1157,6 +1171,7 @@ async def execute_with_delta_repair(
                                 schema_context=schema_context,
                                 user_intent=query,
                                 attempt_number=next_attempt,
+                                join_context=_repair_join_context(retriever, tables, schema_context),
                             )
                             if repaired_sql and repaired_sql != current_sql:
                                 current_sql = repaired_sql
@@ -1255,6 +1270,7 @@ async def execute_with_delta_repair(
                 schema_context=schema_context,
                 user_intent=query,
                 attempt_number=next_attempt,
+                join_context=_repair_join_context(retriever, tables, schema_context),
             )
             if not repaired_sql:
                 logger.warning("Delta repair attempt %d returned no SQL after exec error. Halting.", next_attempt)

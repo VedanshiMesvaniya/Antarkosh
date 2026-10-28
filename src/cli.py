@@ -22,6 +22,8 @@ def main() -> None:
         format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
         datefmt="%H:%M:%S",
     )
+    for _http_logger in ("httpx", "httpcore"):  # request URLs can carry API keys (Gemini)
+        logging.getLogger(_http_logger).setLevel(logging.WARNING)
 
     if len(sys.argv) < 2:
         _print_usage()

@@ -219,6 +219,7 @@ async def attempt_delta_repair(
     user_intent: str | None = None,
     attempt_number: int = 1,
     query_id: str | None = None,
+    join_context: str = "",
 ) -> str | None:
     """Attempt to repair a failed SQL query using a surgical Delta Repair prompt.
 
@@ -231,6 +232,7 @@ async def attempt_delta_repair(
         user_intent: Natural language user question.
         attempt_number: The current repair attempt index (1 or 2).
         query_id: Active query correlation ID.
+        join_context: Optional block of known join conditions (see ``join_context.py``); empty keeps the prompt unchanged.
 
     Returns:
         Repaired SQL string on success, or None on failure / budget exhaustion.
@@ -270,6 +272,7 @@ async def attempt_delta_repair(
         error_type=error_type,
         schema_context=schema_context,
         user_intent=user_intent,
+        join_context=join_context,
     )
 
     prompt_tokens = count_tokens(payload[0]["content"]) + count_tokens(payload[1]["content"])

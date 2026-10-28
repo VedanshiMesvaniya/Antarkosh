@@ -50,6 +50,17 @@ def _route_bridge_mode(db_id: str) -> str:
     return ""
 
 
+# Tables taken from the vector index per question. 4 is the long-standing value and stays the default. With the Phase 12 prompt
+# flags on, a wider net is used: the token budget (not this number) is what bounds the prompt, and on a database with hundreds
+# of tables a question about "plants" or "teams" often has its real table ranked 5th to 8th behind look-alike names.
+SCHEMA_VECTOR_TOP_K = 4
+SCHEMA_VECTOR_TOP_K_WIDE = 8
+
+
+def _vector_top_k(route_mode: str) -> int:
+    return SCHEMA_VECTOR_TOP_K_WIDE if route_mode == "apply" else SCHEMA_VECTOR_TOP_K
+
+
 def _compacted_cost_fn(dialect_key: str | None) -> Any:
     """Token cost of a candidate as the prompt will show it (compacted), memoised per table for one retrieval."""
     memo: dict[str, int] = {}
@@ -283,12 +294,13 @@ async def retrieve_schema_from_qdrant(
         return build_scoped_schema_fallback(full_schema, query, db_id=db_id)
 
     try:
+        route_mode = _route_bridge_mode(db_id)
         dense_vec, sparse_vec = await embeddings.embed_query(query)
         chunks = await vector_store.search_hybrid(
             query_vector=dense_vec,
             sparse_vector=sparse_vec,
             query_text=query,
-            top_k=4,
+            top_k=_vector_top_k(route_mode),
             filters={
                 "chunk_type": ChunkType.SQL_SCHEMA.value,
                 "db_id": db_id,
@@ -369,7 +381,6 @@ async def retrieve_schema_from_qdrant(
         # Route-aware bridge tables (Phase 12, part 1): when two chosen tables only connect through other tables, offer those
         # tables to the budget right after the retrieved ones and before the 1-hop neighbours. Needs join_paths.json (Phase 8);
         # without it, or with the flags off, nothing here changes.
-        route_mode = _route_bridge_mode(db_id)
         route_plan = None
         route_bridge_tables: list[str] = []
         if route_mode:

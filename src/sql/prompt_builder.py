@@ -560,6 +560,60 @@ SELECT so.sales_order_no AS sales_order_number, so.sales_order_date AS order_dat
 """
 
 
+# Rules written for the ERP schema. They are kept word for word for the ERP database, and for any database whose schema in the
+# prompt actually contains the tables they talk about; with the Phase 12 flags in apply mode they are left out of other
+# databases' prompts, where they described tables that do not exist.
+_RULE_STATUS = """- Status Flags: Active='Y', Inactive='N'. Stock booked='B', dispatched='D'.
+"""
+_RULE_PARTY = """- Customer vs Supplier: In party table, join to sales_order for Customers, or purchase for Suppliers.
+"""
+_RULE_TEMPORAL = """- Temporal Scope & Financial Year Filtering:
+  * ONLY add `financial_year.current_year = 'Y'` if the user query contains explicit temporal markers such as 'current', 'this year', 'latest', 'active', or 'ongoing'.
+  * Negative Constraint: If the query asks for 'total', 'all', 'history', or implies a cumulative sum without a time qualifier (e.g. 'quantity adjusted', 'total sales', 'overall quantity'), DO NOT filter by current_year. Sum across all available years.
+  * Ambiguity Handling: If the temporal intent is ambiguous between current vs all-time, PREFER the broader scope (all-time). NEVER silently narrow cumulative or aggregate queries to the current financial year.
+"""
+_ERP_STATUS_ANCHORS = frozenset({"stock", "party", "sales_order", "purchase"})
+_ERP_PARTY_ANCHORS = frozenset({"party"})
+_ERP_TEMPORAL_ANCHORS = frozenset({"financial_year"})
+
+
+def _prompt_table_names(schema: str) -> set[str]:
+    """Tables the prompt schema shows, in raw ``TABLE x (...)`` form or compacted ``x: col(type), ...`` form."""
+    names = set(extract_schema_table_names(schema))
+    names.update(m.group(1).lower() for m in re.finditer(r"(?m)^(\w+):\s", schema))
+    return names
+
+
+def _erp_rule(db_id: str, shown_tables: set[str], anchors: frozenset[str], text: str) -> str:
+    """The rule text, unless this is a non-ERP database in Phase 12 apply mode whose schema has none of the rule's tables."""
+    if db_id == DEFAULT_DB_ID or (shown_tables & anchors):
+        return text
+    try:
+        from src.sql.schema_retrieval import _route_bridge_mode
+
+        return "" if _route_bridge_mode(db_id) == "apply" else text
+    except Exception:  # noqa: BLE001 - on any doubt keep the rule exactly as it always was
+        return text
+
+
+def _log_prompt_sections(db_id: str, parts: dict[str, str]) -> None:
+    """Record how many tokens each part of the SQL prompt adds, so a large prompt can be traced to its source.
+
+    Only when the Phase 12 flags (shadow or apply) are on for the database; changes nothing in the prompt and never raises.
+    """
+    try:
+        from src.sql.schema_retrieval import _route_bridge_mode
+        from src.sql.schema_token_estimator import estimate_schema_tokens
+        from src.utils.telemetry import log_telemetry
+
+        if not _route_bridge_mode(db_id):
+            return
+        sizes = {name: (estimate_schema_tokens(text) if text else 0) for name, text in parts.items()}
+        log_telemetry(query_id="", stage="prompt_sections", extra={"db_id": db_id, "tokens": sizes})
+    except Exception as exc:  # noqa: BLE001 - diagnostics only
+        logger.debug("Prompt section telemetry skipped: %s", exc)
+
+
 def build_sql_prompt(
     query: str,
     schema: str,
@@ -618,6 +672,10 @@ def build_sql_prompt(
     column_glossary = build_column_glossary_for_query(query, db_id=db_id)
 
     dialect_name = getattr(dialect, "name", "SQL")
+    shown_tables = _prompt_table_names(schema)
+    rule_status = _erp_rule(db_id, shown_tables, _ERP_STATUS_ANCHORS, _RULE_STATUS)
+    rule_party = _erp_rule(db_id, shown_tables, _ERP_PARTY_ANCHORS, _RULE_PARTY)
+    rule_temporal = _erp_rule(db_id, shown_tables, _ERP_TEMPORAL_ANCHORS, _RULE_TEMPORAL)
 
     system_prompt = f"""You are Antarkosh, an expert Enterprise Business Intelligence Agent for {dialect_name}.
 Your goal is to translate the business question into a valid, executable, read-only {dialect_name} SELECT query.
@@ -633,19 +691,14 @@ Rules:
   * Exception Rule (Audit / History / Archived Data): If the user query explicitly mentions 'archived', 'history', 'audit', or 'past records', DO NOT add the `deleted_at IS NULL` filter. Allow all records (both active and deleted) to be returned.
 - Casting: Use CAST(col AS DECIMAL(10,2)) for numeric operations on VARCHAR columns (e.g. stock.qty).
 - Aliases: Use descriptive aliases (e.g. AS customer_name, AS total_revenue). Never return raw IDs without names.
-- Status Flags: Active='Y', Inactive='N'. Stock booked='B', dispatched='D'.
-- Customer vs Supplier: In party table, join to sales_order for Customers, or purchase for Suppliers.
-- Current Date: {current_date_str} (Use for relative date calculations like 'this year', 'last month').
-- Temporal Scope & Financial Year Filtering:
-  * ONLY add `financial_year.current_year = 'Y'` if the user query contains explicit temporal markers such as 'current', 'this year', 'latest', 'active', or 'ongoing'.
-  * Negative Constraint: If the query asks for 'total', 'all', 'history', or implies a cumulative sum without a time qualifier (e.g. 'quantity adjusted', 'total sales', 'overall quantity'), DO NOT filter by current_year. Sum across all available years.
-  * Ambiguity Handling: If the temporal intent is ambiguous between current vs all-time, PREFER the broader scope (all-time). NEVER silently narrow cumulative or aggregate queries to the current financial year.
-
+{rule_status}{rule_party}- Current Date: {current_date_str} (Use for relative date calculations like 'this year', 'last month').
+{rule_temporal}
 {intent_section}
 Schema:
 {schema}
 """
-    system_prompt += "\n\n" + get_scoped_readability_rules(query, sorted(schema_tables))
+    readability_text = get_scoped_readability_rules(query, sorted(schema_tables))
+    system_prompt += "\n\n" + readability_text
 
     if behavioral_atlas_text:
         system_prompt += (
@@ -680,6 +733,17 @@ Schema:
     if last_error:
         system_prompt += f"\n\nWARNING: Your previous attempt failed with this error: {last_error}\nPlease fix the SQL query and try again."
 
+    _log_prompt_sections(
+        db_id,
+        {
+            "schema": schema,
+            "behavioral_atlas": behavioral_atlas_text,
+            "column_glossary": column_glossary,
+            "relationships": rels_to_inject or "",
+            "readability_rules": readability_text,
+            "total_prompt": system_prompt,
+        },
+    )
     return system_prompt
 
 

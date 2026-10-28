@@ -77,6 +77,7 @@ def build_delta_repair_payload(
     error_type: str = "sql_error",
     schema_context: dict[str, Any] | None = None,
     user_intent: str | None = None,
+    join_context: str = "",
 ) -> list[dict[str, str]]:
     """Assemble a surgical, budget-enforced message array for Delta Repair.
 
@@ -92,6 +93,11 @@ def build_delta_repair_payload(
     system_content = DELTA_REPAIR_SYSTEM_PROMPT.strip()
     system_tokens = count_tokens(system_content)
 
+    # Known join conditions (empty unless the caller has them). They get their own token allowance on top of the normal
+    # ceiling, so adding them never forces the column lists out of the prompt; with none, the budget is exactly as before.
+    join_block = join_context.strip()
+    budget = MAX_TOTAL_REPAIR_TOKENS + (count_tokens(join_block) if join_block else 0)
+
     # 1. Attempt Full Compact Schema Context
     schema_str = format_compact_schema(schema_context)
     intent_line = f"Goal: {user_intent.strip()}\n\n" if user_intent and user_intent.strip() else ""
@@ -105,6 +111,8 @@ def build_delta_repair_payload(
         ]
         if schema_part.strip():
             parts.append(f"\n{schema_part.strip()}\n")
+        if join_block:
+            parts.append(f"\n{join_block}\n")
         parts.append("\nProvide only the corrected SQL statement.")
         return "".join(parts).strip()
 
@@ -112,20 +120,20 @@ def build_delta_repair_payload(
     total_tokens = system_tokens + count_tokens(user_content)
 
     # 2. Budget Enforcement — Level 1: Truncate columns, retain table names only
-    if total_tokens > MAX_TOTAL_REPAIR_TOKENS and schema_context:
+    if total_tokens > budget and schema_context:
         table_names = list(schema_context.keys())
         schema_fallback_1 = "Schema Context (Table names only):\n" + "\n".join(f"- Table '{t}'" for t in table_names)
         user_content = _assemble_user_msg(schema_fallback_1)
         total_tokens = system_tokens + count_tokens(user_content)
 
     # 3. Budget Enforcement — Level 2: Omit schema completely
-    if total_tokens > MAX_TOTAL_REPAIR_TOKENS and schema_context:
+    if total_tokens > budget and schema_context:
         schema_fallback_2 = "(Schema context omitted to preserve token budget)"
         user_content = _assemble_user_msg(schema_fallback_2)
         total_tokens = system_tokens + count_tokens(user_content)
 
     # 4. Budget Enforcement — Level 3: Hard truncate failed SQL if pathological
-    if total_tokens > MAX_TOTAL_REPAIR_TOKENS:
+    if total_tokens > budget:
         max_allowed_sql_len = 500
         truncated_sql = clean_sql[:max_allowed_sql_len] + "\n-- [truncated to stay in token budget]"
         user_content = (

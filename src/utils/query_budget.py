@@ -31,7 +31,7 @@ class QueryBudgetController:
         hard_limit: int = 30000,   # raised from 8000 — see max_tokens
         safety_buffer: int = 200,
         max_llm_calls: int = 4,
-        max_repairs: int = 2,
+        max_repairs: int = 3,  # keep equal to MAX_DELTA_REPAIR_ATTEMPTS (sql_repair.py): a lower cap silently blocks the last attempt
         max_tokens: int = 30000,   # raised from 8000: gemini-3.5-flash SQL generation alone uses ~15k tokens, leaving no room for repair at 8k
         model_name: str = "",
         provider_name: str = "",
@@ -167,7 +167,7 @@ def get_or_create_budget_controller(
     hard_limit: int = 30000,   # raised from 8000 — see max_tokens
     safety_buffer: int = 200,
     max_llm_calls: int = 4,
-    max_repairs: int = 2,
+    max_repairs: int = 3,  # keep equal to MAX_DELTA_REPAIR_ATTEMPTS (sql_repair.py): a lower cap silently blocks the last attempt
     max_tokens: int = 30000,   # raised from 8000: gemini-3.5-flash SQL generation alone uses ~15k tokens, leaving no room for repair at 8k
     model_name: str = "",
     provider_name: str = "",

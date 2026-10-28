@@ -35,6 +35,10 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
+# httpx logs every request URL at INFO, and Gemini's REST URL carries the API key as a query parameter: keep keys out of logs.
+for _http_logger in ("httpx", "httpcore"):
+    logging.getLogger(_http_logger).setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 
