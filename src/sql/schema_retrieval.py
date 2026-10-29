@@ -414,6 +414,7 @@ async def retrieve_schema_from_qdrant(
                             "added": route_bridge_tables,
                             "pairs_checked": route_plan.pairs_checked,
                             "pairs_routed": route_plan.pairs_routed,
+                            "skipped": dict(route_plan.skipped),
                         },
                     )
             except Exception as route_err:  # noqa: BLE001 - routes are an extra; retrieval carries on without them

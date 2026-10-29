@@ -67,6 +67,7 @@ class RoutePlan:
     routes: tuple[PlannedRoute, ...]  # the routes that justify them
     pairs_checked: int  # seed pairs that were looked up
     pairs_routed: int  # of those, pairs that have an indirect route in the file
+    skipped: tuple[tuple[str, int], ...] = ()  # why routes that exist were not used: (reason, count), for telemetry only
 
     def hint_lines(self, present: Iterable[str]) -> list[str]:
         """Join conditions of every planned route whose tables are ALL in ``present`` (a route cut by the budget is not shown)."""
@@ -217,6 +218,7 @@ def plan_route_bridges(
 
     candidates: list[tuple[float, int, str, str, IndexedRoute]] = []
     checked = routed = 0
+    skipped: dict[str, int] = {"low_score": 0, "siblings": 0, "missing_table": 0, "already_present": 0, "over_cap": 0}
     for i, a in enumerate(ordered):
         for b in ordered[i + 1 :]:
             checked += 1
@@ -224,12 +226,18 @@ def plan_route_bridges(
             if route is None:
                 continue
             routed += 1
-            if route.score < min_score or route.shape in EXCLUDED_SHAPES:
+            if route.score < min_score:
+                skipped["low_score"] += 1
+                continue
+            if route.shape in EXCLUDED_SHAPES:
+                skipped["siblings"] += 1
                 continue
             middle = route.tables[1:-1]
             if exist is not None and any(t not in exist for t in middle):
+                skipped["missing_table"] += 1
                 continue
             if all(t in seed_set for t in middle):
+                skipped["already_present"] += 1
                 continue  # nothing to add: the whole route is already in the prompt
             candidates.append((-route.score, len(route.tables), a, b, route))
     candidates.sort(key=lambda c: (c[0], c[1], c[2], c[3]))  # best score, then fewest joins, then names (deterministic)
@@ -239,10 +247,11 @@ def plan_route_bridges(
     for _neg_score, _hops, _a, _b, route in candidates:
         new = [t for t in route.tables[1:-1] if t not in seed_set and t not in chosen]
         if len(chosen) + len(new) > max_add:
+            skipped["over_cap"] += 1
             continue  # a route is added whole or not at all
         chosen.extend(new)
         planned.append(PlannedRoute(route.tables, route.score, tuple(f"- {left} -> {right}" for left, right in route.steps)))
-    return RoutePlan(tuple(chosen), tuple(planned), checked, routed)
+    return RoutePlan(tuple(chosen), tuple(planned), checked, routed, tuple((k, v) for k, v in skipped.items() if v))
 
 
 def merge_join_hints(existing: str, extra_lines: Sequence[str]) -> str:
