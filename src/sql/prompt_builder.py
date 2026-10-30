@@ -584,6 +584,24 @@ def _prompt_table_names(schema: str) -> set[str]:
     return names
 
 
+# Largest whole-database relationship map (in characters, about 4 per token) that may be placed in the prompt when no
+# per-table scoping is possible. A small database fits and behaves exactly as before; a large one (hundreds of tables)
+# would add thousands of tokens and push the prompt over the free-tier limits of the fallback models, so it is left out.
+_MAX_UNSCOPED_RELATIONSHIP_CHARS = 6000
+
+
+def _bounded_unscoped_relationships(relationships: str) -> str:
+    """The unscoped relationship map, or "" when it is too large to be useful inside one prompt."""
+    if not relationships or len(relationships) <= _MAX_UNSCOPED_RELATIONSHIP_CHARS:
+        return relationships or ""
+    logger.info(
+        "Unscoped relationship map skipped for the SQL prompt: %d chars exceeds the %d char limit.",
+        len(relationships),
+        _MAX_UNSCOPED_RELATIONSHIP_CHARS,
+    )
+    return ""
+
+
 def _erp_rule(db_id: str, shown_tables: set[str], anchors: frozenset[str], text: str) -> str:
     """The rule text, unless this is a non-ERP database in Phase 12 apply mode whose schema has none of the rule's tables."""
     if db_id == DEFAULT_DB_ID or (shown_tables & anchors):
@@ -667,7 +685,7 @@ def build_sql_prompt(
         else ""
     )
 
-    schema_tables = extract_schema_table_names(schema)
+    schema_tables = _prompt_table_names(schema)  # raw `TABLE x (...)` and compacted `x: col(type)` forms
     behavioral_atlas_text = build_behavioral_atlas_for_query(schema_tables, query, db_id=db_id)
     column_glossary = build_column_glossary_for_query(query, db_id=db_id)
 
@@ -707,7 +725,7 @@ Schema:
         )
 
     scoped_rels = format_scoped_relationships(schema_tables, query, db_id=db_id) if schema_tables else ""
-    rels_to_inject = scoped_rels or relationships
+    rels_to_inject = scoped_rels or _bounded_unscoped_relationships(relationships)
     if rels_to_inject:
         system_prompt += (
             f"\n\nTable relationships:\n{rels_to_inject}"

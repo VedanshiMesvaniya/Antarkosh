@@ -514,6 +514,12 @@ async def generate_sql(
 
         raw = (response or "").strip()
 
+        # A provider that answered with no text at all is a failed call, not an abstention: report it as an
+        # infrastructure problem so the user sees "unavailable" instead of a misleading "no records found".
+        if not raw:
+            logger.warning("SQL generation: the model returned an empty reply (no text, no SQL).")
+            return "", None, "empty_llm_response"
+
         # Abstention check
         if _ABSTAIN_RE.match(raw):
             return "", None, None

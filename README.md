@@ -714,12 +714,12 @@ QDRANT_TEST_URL=http://localhost:6333 pytest tests/rag/test_local_qdrant_integra
 
 | Variable | Description | Default / Example | Required |
 |---|---|---|:---:|
-| `GEMINI_API_KEY` | Google AI Studio API key (Gemini 2.5/3.5 Flash). | `AIzaSy...` | **Yes** |
+| `GEMINI_API_KEY` | Google AI Studio API key(s) (Gemini 2.5/3.5 Flash). Comma-separate multiple keys for auto-rotation. | `AIzaSy...,AIzaSy...` | **Yes** |
 | `GROQ_API_KEY` | Groq API key(s). Comma-separate multiple keys for auto-rotation. | `gsk_key1,gsk_key2` | **Yes** |
 | `NVIDIA_NIM_API_KEY` | NVIDIA NIM API key (Nemotron, Llama Vision). | `nvapi-...` | **Yes** |
 | `QDRANT_URL` | Qdrant Cloud cluster endpoint or local server. | `http://localhost:6333` | **Yes** |
 | `QDRANT_API_KEY` | Qdrant Cloud API key; leave empty for local Qdrant. | `your_qdrant_key` | **Yes for cloud** |
-| `OPENROUTER_API_KEY` | OpenRouter API key for aggregator models. | `sk-or-...` | Optional |
+| `OPENROUTER_API_KEY` | OpenRouter API key(s) for aggregator models. Comma-separate multiple keys for auto-rotation. | `sk-or-key1,sk-or-key2` | Optional |
 | `DEFAULT_PROVIDER` | Soft-pin provider (`openrouter`, `gemini`, `groq`, `nvidia_nim`, or `auto`). | `openrouter` | No |
 | `DB_ENGINE` | Database engine for Text-to-SQL (`sqlite` or `mysql`). | `sqlite` | No |
 | `DB_HOST` | MySQL database hostname. | `localhost` | If MySQL |

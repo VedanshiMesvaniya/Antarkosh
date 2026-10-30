@@ -175,6 +175,32 @@ def _apply_gemini_usage(sink: TokenUsage, meta: dict[str, Any] | None, *, provid
     sink.model = model
 
 
+def _log_empty_completion(provider: str, model: str, response: Any, max_tokens: int) -> None:
+    """Warn when a model returns no text, saying why (output cut off by max_tokens vs. nothing generated).
+
+    Diagnostics only: never raises and never changes what the caller receives. A reasoning model that spends its whole
+    output budget on thinking finishes with reason "length" and empty content, which otherwise looks like a success.
+    """
+    try:
+        choice = response.choices[0]
+        message = choice.message
+        extra = getattr(message, "model_extra", None) or {}
+        reasoning = getattr(message, "reasoning_content", None) or getattr(message, "reasoning", None) \
+            or extra.get("reasoning_content") or extra.get("reasoning")
+        usage = getattr(response, "usage", None)
+        logger.warning(
+            "Empty completion from %s/%s: finish_reason=%s, reasoning_text_present=%s, completion_tokens=%s, max_tokens=%s",
+            provider,
+            model,
+            getattr(choice, "finish_reason", None),
+            bool(reasoning),
+            getattr(usage, "completion_tokens", None),
+            max_tokens,
+        )
+    except Exception as exc:  # noqa: BLE001 - diagnostics must never break a call
+        logger.debug("Could not describe empty completion from %s/%s: %s", provider, model, exc)
+
+
 # ---------------------------------------------------------------------------
 # Provider Protocol — the interface all providers implement
 # ---------------------------------------------------------------------------
@@ -302,7 +328,10 @@ class OpenAICompatibleProvider:
                 # Proactive round-robin: advance to next key for the next call
                 if len(self._api_keys) > 1:
                     self._current_key_idx = (self._current_key_idx + 1) % len(self._api_keys)
-                return response.choices[0].message.content or ""
+                text = response.choices[0].message.content or ""
+                if not text:
+                    _log_empty_completion(self._name, model, response, max_tokens)
+                return text
             except Exception as e:
                 last_exc = e
                 # Check for rate-limit / token quota
@@ -403,9 +432,23 @@ class GeminiProvider:
     BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
     def __init__(self, rate_limiter: RateLimiter) -> None:
-        self._api_key = settings.gemini_api_key
+        # GEMINI_API_KEY may hold several comma-separated keys; calls rotate across them (a single key behaves as before).
+        self._api_keys = [k.strip() for k in (settings.gemini_api_key or "").split(",") if k.strip()]
+        self._key_idx = 0
         self._rate_limiter = rate_limiter
         self._http: httpx.AsyncClient | None = None
+
+    @property
+    def _api_key(self) -> str:
+        """The key the next call uses (the first key when only one is configured)."""
+        if not self._api_keys:
+            return ""
+        return self._api_keys[self._key_idx % len(self._api_keys)]
+
+    @_api_key.setter
+    def _api_key(self, value: str) -> None:
+        self._api_keys = [k.strip() for k in (value or "").split(",") if k.strip()]
+        self._key_idx = 0
 
     @property
     def name(self) -> str:
@@ -413,7 +456,7 @@ class GeminiProvider:
 
     @property
     def is_available(self) -> bool:
-        return bool(self._api_key)
+        return bool(self._api_keys)
 
     def _get_http(self) -> httpx.AsyncClient:
         # An injected/pre-set client (tests) always wins. Otherwise reuse a
@@ -472,11 +515,35 @@ class GeminiProvider:
         if response_format and response_format.get("type") == "json_object":
             body["generationConfig"]["responseMimeType"] = "application/json"
 
-        url = f"{self.BASE_URL}/models/{model}:generateContent?key={self._api_key}"
-        headers = {"x-goog-api-key": self._api_key}
-        resp = await http.post(url, json=body, headers=headers)
-        resp.raise_for_status()
-        data = resp.json()
+        num_keys = max(len(self._api_keys), 1)
+        data: dict[str, Any] | None = None
+        last_exc: Exception | None = None
+        for _ in range(num_keys):
+            key = self._api_key
+            url = f"{self.BASE_URL}/models/{model}:generateContent?key={key}"
+            headers = {"x-goog-api-key": key}
+            try:
+                resp = await http.post(url, json=body, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+            except httpx.HTTPStatusError as exc:
+                # Quota hit on this key: try the next one. Any other error (or a single key) behaves exactly as before.
+                if len(self._api_keys) > 1 and exc.response.status_code == 429:
+                    logger.warning(
+                        "Gemini key index %d is rate-limited; rotating to key index %d",
+                        self._key_idx % len(self._api_keys), (self._key_idx + 1) % len(self._api_keys),
+                    )
+                    self._key_idx = (self._key_idx + 1) % len(self._api_keys)
+                    last_exc = exc
+                    continue
+                raise
+            # Spread the load: the next call starts on the next key.
+            if len(self._api_keys) > 1:
+                self._key_idx = (self._key_idx + 1) % len(self._api_keys)
+            break
+        if data is None:
+            assert last_exc is not None
+            raise last_exc
 
         if usage is not None:
             _apply_gemini_usage(usage, data.get("usageMetadata"), provider=self.name, model=model)

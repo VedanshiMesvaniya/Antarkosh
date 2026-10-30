@@ -98,6 +98,14 @@ tasks:
       - provider: groq
         model: qwen/qwen3.8-27b
         priority: 4
+      # Free OpenRouter models: last-resort fallbacks, only reached when every provider above has failed.
+      # OPENROUTER_API_KEY may hold several comma-separated keys (rotated per call, like GROQ_API_KEY).
+      - provider: openrouter
+        model: qwen/qwen3.6-plus-preview:free
+        priority: 5
+      - provider: openrouter
+        model: qwen/qwq-32b:free
+        priority: 6
 
   extraction:
     providers:
@@ -208,7 +216,7 @@ tasks:
 provider_routing:
   reasoning:
     preferred: ["gemini", "groq"]
-    fallback: ["nvidia_nim"]
+    fallback: ["nvidia_nim", "openrouter"]
   repair:
     preferred: ["gemini", "groq"]
     fallback: ["nvidia_nim"]

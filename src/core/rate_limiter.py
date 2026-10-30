@@ -255,10 +255,48 @@ class RateLimiter:
 
 _shared_rate_limiter: RateLimiter | None = None
 
+# Settings field holding each provider's API key(s); several keys may be given comma-separated.
+_PROVIDER_KEY_SETTINGS = {
+    "gemini": "gemini_api_key",
+    "groq": "groq_api_key",
+    "openrouter": "openrouter_api_key",
+    "nvidia_nim": "nvidia_nim_api_key",
+}
+
+
+def _scaled_default_limits() -> dict[str, ProviderLimits]:
+    """DEFAULT_LIMITS with each provider's quota multiplied by its number of configured keys.
+
+    The limits above are for one key. When several comma-separated keys are configured the calls rotate across them, so
+    the provider as a whole can serve proportionally more; without this the limiter would stop traffic at one key's
+    quota and the extra keys would never be used. One key (or none) gives exactly DEFAULT_LIMITS, unchanged.
+    """
+    try:
+        from src.core.config import settings
+    except Exception:  # noqa: BLE001 - never let a settings problem disable rate limiting
+        return dict(DEFAULT_LIMITS)
+
+    scaled: dict[str, ProviderLimits] = {}
+    for name, limits in DEFAULT_LIMITS.items():
+        raw = getattr(settings, _PROVIDER_KEY_SETTINGS.get(name, ""), "") or ""
+        keys = max(1, len([k for k in str(raw).split(",") if k.strip()]))
+        scaled[name] = (
+            limits
+            if keys == 1
+            else ProviderLimits(
+                rpm=limits.rpm * keys,
+                rpd=limits.rpd * keys,
+                tpm=limits.tpm * keys,
+                tpd=limits.tpd * keys,
+                min_interval_ms=limits.min_interval_ms,
+            )
+        )
+    return scaled
+
 
 def get_shared_rate_limiter() -> RateLimiter:
     """Return the process-wide :class:`RateLimiter` singleton (lazily created)."""
     global _shared_rate_limiter
     if _shared_rate_limiter is None:
-        _shared_rate_limiter = RateLimiter()
+        _shared_rate_limiter = RateLimiter(_scaled_default_limits())
     return _shared_rate_limiter
