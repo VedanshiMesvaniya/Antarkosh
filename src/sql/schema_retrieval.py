@@ -679,7 +679,54 @@ async def _reembed_changed_tables(embeddings: Any, store: Any, chunks: list[Chun
     return len(subset)
 
 
-async def sync_live_schema(
+def _relationship_fk_map(db_id: str) -> dict[str, list[str]]:
+    """The foreign-key lines the sync falls back to when the database declares none: read from relationships.json."""
+    fk_map: dict[str, list[str]] = {}
+    try:
+        rel_path = get_knowledge_path("relationships", db_id=db_id)
+        if rel_path.exists():
+            rel_data = json.loads(rel_path.read_text(encoding="utf-8"))
+            rels = rel_data.get("relationships") if isinstance(rel_data, dict) else rel_data
+            for r in rels or []:
+                frm, fcol, to, tcol = r.get("from_table"), r.get("from_column"), r.get("to_table"), r.get("to_column")
+                if frm and fcol and to and tcol:
+                    fk_map.setdefault(frm, []).append(f"  FOREIGN KEY ({fcol}) REFERENCES {to}({tcol})")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Could not load inferred relationships: %s", e)
+    return fk_map
+
+
+async def _refresh_relationship_text(
+    db_id: str,
+    embeddings: Any,
+    store: Any,
+    chunks: list[Chunk],
+    table_schemas: dict[str, str],
+    meta_map: dict[str, Any],
+    extras: dict[str, str],
+) -> int:
+    """Auto-schema Phase 11: the table text was built from relationships.json as it stood BEFORE Phase 6 rewrote it. Rebuild the
+    text from the file as it is now and re-embed only the tables whose text changed (same ids, updated in place)."""
+    fk_map = _relationship_fk_map(db_id)
+    by_lower = {name.lower(): name for name in table_schemas}
+    changed: list[str] = []
+    for chunk in chunks:
+        name = by_lower.get(_chunk_table(chunk))
+        if name is None:
+            continue
+        content = _enrich_table_schema(
+            table_name=name, schema_text=table_schemas[name], table_meta=meta_map.get(name.lower()), fk_lines=fk_map.get(name)
+        )
+        if content != chunk.content:
+            chunk.content = content
+            chunk.token_count = len(content) // 4
+            changed.append(name)
+    if not changed:
+        return 0
+    return await _reembed_changed_tables(embeddings, store, chunks, extras, changed)
+
+
+async def _sync_live_schema_body(
     embedding_service: EmbeddingService | None = None,
     vector_store: QdrantStore | None = None,
     db_id: str = DEFAULT_DB_ID,
@@ -690,6 +737,9 @@ async def sync_live_schema(
     Returns a summary dict with table count and status.
     """
     validate_db_id(db_id)
+    from src.sql.sync.orchestrate import orchestration_enabled
+
+    orchestration_on = orchestration_enabled(db_id)
 
     # Auto-schema Phase 2: ensure feature flags are registered for the database,
     # then scaffold folder if enabled.
@@ -932,6 +982,16 @@ async def sync_live_schema(
             logger.warning("Join paths failed for %s: %s", db_id, exc)
             join_paths_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
+    # Auto-schema Phase 11: the table text embedded above used relationships.json from BEFORE Phase 6 ran. When Phase 6 produced
+    # the file this sync, rebuild that text and re-embed only the tables whose lines changed. Only for databases without declared
+    # keys (declared keys do not depend on Phase 6). Flag-gated; a failure leaves the old vectors, which stay valid.
+    relationship_refresh: int | None = None
+    if orchestration_on and not fk_rows and relationships_report is not None and relationships_report.get("ok"):
+        try:
+            relationship_refresh = await _refresh_relationship_text(db_id, embeddings, store, chunks, table_schemas, meta_map, meaning_extras)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Re-embedding tables whose relationship lines changed failed for %s: %s", db_id, exc)
+
     # Auto-schema Phase 9: column meanings. Evidence from the earlier phases' files, one batched model call per table whose
     # evidence changed (metadata only), strict checks, then the glossary (high confidence only) and re-embedding of just
     # the tables whose meanings changed. A first run on a large database is spread over several syncs by design.
@@ -996,5 +1056,34 @@ async def sync_live_schema(
         result["join_paths"] = join_paths_report
     if column_meaning_report is not None:
         result["column_meaning"] = column_meaning_report
+    if orchestration_on:
+        from src.sql.sync.report import schema_fingerprint
+
+        result["_sync"] = {
+            "schema_hash": schema_fingerprint(table_schemas),
+            "reembedded_for_relationships": relationship_refresh,
+        }
     return result
 
+
+async def sync_live_schema(
+    embedding_service: EmbeddingService | None = None,
+    vector_store: QdrantStore | None = None,
+    db_id: str = DEFAULT_DB_ID,
+    synced_by: str | None = None,
+) -> dict[str, Any]:
+    """Fetch the live DB schema, chunk per table, embed, and upsert to Qdrant; return a summary dict.
+
+    With the per-database ``auto_sync_orchestration`` flag on (Phase 11), the sync runs under a guard that snapshots the generated
+    files, validates what the phases wrote, rolls a broken result back, clears caches and adds an ``orchestration`` report.
+    With it off this is exactly the sync body, as before.
+    """
+    validate_db_id(db_id)
+    from src.sql.sync.orchestrate import orchestration_enabled, run_orchestrated
+
+    async def body() -> dict[str, Any]:
+        return await _sync_live_schema_body(embedding_service, vector_store, db_id, synced_by)
+
+    if not orchestration_enabled(db_id):
+        return await body()
+    return await run_orchestrated(body, db_id)

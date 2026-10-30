@@ -109,6 +109,7 @@ DB_FEATURE_FLAGS: tuple[str, ...] = (
     "auto_prompt_shadow",
     "auto_prompt_inject",
     "auto_learning",
+    "auto_sync_orchestration",
 )
 
 # Databases pinned to their curated files: these flags are always False here,

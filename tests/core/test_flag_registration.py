@@ -36,7 +36,7 @@ def write_entry(db_id: str, flags: dict[str, bool], extra: str = "") -> None:
 
 
 def test_the_new_database_template_is_derived_from_the_flag_list_so_a_new_flag_is_never_forgotten():
-    assert tuple(ff.DEFAULT_NEW_DB_FLAGS) == ALL and all(ff.DEFAULT_NEW_DB_FLAGS.values()) and len(ALL) == 13
+    assert tuple(ff.DEFAULT_NEW_DB_FLAGS) == ALL and all(ff.DEFAULT_NEW_DB_FLAGS.values()) and len(ALL) == 14
 
 
 def test_a_new_database_gets_every_flag_on_and_nothing_else_in_the_file_changes():

@@ -37,6 +37,7 @@ db_defaults:
   auto_prompt_shadow: true
   auto_prompt_inject: true
   auto_learning: true
+  auto_sync_orchestration: true
 
 # Per-database overrides. Each database you connect gets its own block here automatically, in your local
 # (git-ignored) config/feature_flags.yaml, with every flag true. Edit that file to turn a flag off for one database;
@@ -57,3 +58,4 @@ db_features:
     auto_prompt_shadow: false
     auto_prompt_inject: false
     auto_learning: false
+    auto_sync_orchestration: false

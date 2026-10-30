@@ -186,7 +186,7 @@ def test_register_db_feature_flags_creates_all_13_flags_true(cfg: Path, tmp_path
     result = ff.register_db_feature_flags("fresh_tenant_db", config_dir=tmp_path)
     assert result is True
 
-    # Verify all 13 flags are active and true
+    # Verify all 14 flags are active and true
     expected_flags = (
         "auto_scaffold",
         "auto_catalog",
@@ -201,8 +201,9 @@ def test_register_db_feature_flags_creates_all_13_flags_true(cfg: Path, tmp_path
         "auto_prompt_shadow",
         "auto_prompt_inject",
         "auto_learning",
+        "auto_sync_orchestration",
     )
-    assert len(expected_flags) == 13
+    assert len(expected_flags) == 14
     for flag in expected_flags:
         assert ff.is_db_feature_enabled(flag, "fresh_tenant_db") is True, f"Flag {flag} should be True"
 
