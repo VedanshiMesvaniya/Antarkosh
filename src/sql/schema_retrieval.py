@@ -378,6 +378,46 @@ async def retrieve_schema_from_qdrant(
         if anchor_extra:
             retrieved_schema += "\n\n-- Domain Anchor & Glossary Tables:\n" + "\n\n".join(anchor_extra)
 
+        # Table authority (Phase 12, part 2): when retrieval chose a copy of a table (product_bak) whose real table (product) is
+        # clearly decided in table_profiles.json, offer the real table too. The copy is never removed. Apply mode adds it;
+        # shadow mode (the default with the Phase 12 flags) only logs what would be added. No profile file: nothing changes.
+        authority_added: list[str] = []
+        try:
+            from src.sql.profiles.hints import hints_mode, plan_authority
+
+            authority_mode = hints_mode(db_id)
+            if authority_mode:
+                authority_plan = plan_authority([c["table_name"] for c in candidate_list], db_id, available=set(full_ddls))
+                if authority_plan is not None:
+                    if authority_mode == "apply":
+                        for primary in authority_plan.add:
+                            if primary in full_ddls and primary not in seen_tables:
+                                seen_tables.add(primary)
+                                authority_added.append(primary)
+                                candidate_list.append({
+                                    "table_name": primary,
+                                    "ddl": full_ddls[primary],
+                                    "source": "table_authority",
+                                })
+                        if authority_added:
+                            retrieved_schema += "\n\n-- Real-data tables for look-alike copies:\n" + "\n\n".join(
+                                full_ddls[t] for t in authority_added
+                            )
+                    log_telemetry(
+                        query_id="",
+                        stage="table_authority_applied" if authority_mode == "apply" else "table_authority_shadow",
+                        extra={
+                            "db_id": db_id,
+                            "would_add": list(authority_plan.add),
+                            "added": authority_added,
+                            "pairs": [list(p) for p in authority_plan.pairs],
+                            "skipped": dict(authority_plan.skipped),
+                        },
+                    )
+        except Exception as authority_err:  # noqa: BLE001 - authority is an extra; retrieval carries on without it
+            logger.warning("Table authority planning failed for %s: %s", db_id, authority_err)
+            authority_added = []
+
         # Route-aware bridge tables (Phase 12, part 1): when two chosen tables only connect through other tables, offer those
         # tables to the budget right after the retrieved ones and before the 1-hop neighbours. Needs join_paths.json (Phase 8);
         # without it, or with the flags off, nothing here changes.
@@ -424,7 +464,7 @@ async def retrieve_schema_from_qdrant(
 
         # 1-hop graph expansion: add directly connected neighbor tables if missing
         neighbors = get_1hop_neighbors(retrieved_tables, db_id=db_id)
-        needed_neighbors = neighbors - retrieved_tables - set(route_bridge_tables)
+        needed_neighbors = neighbors - retrieved_tables - set(route_bridge_tables) - set(authority_added)
 
         if needed_neighbors and full_ddls:
             # Rank neighbors by how many active tables they connect to (bridge priority)
@@ -511,6 +551,12 @@ async def retrieve_schema_from_qdrant(
 
             before_tokens = estimate_schema_tokens(budgeted_schema)
             after_tokens = estimate_schema_tokens(compacted_schema)
+            # Tables the compactor could not parse come back as their raw DDL: named here so the cause can be fixed on evidence.
+            uncompacted = [
+                (c["table_name"] if isinstance(c, dict) else str(c)[:40])
+                for c, raw_ddl, compact in zip(selected, raw_ddls, compact_ddls, strict=False)
+                if compact.strip() == raw_ddl.strip()
+            ]
 
             log_telemetry(
                 query_id="",
@@ -522,6 +568,7 @@ async def retrieve_schema_from_qdrant(
                     "token_savings": max(0, before_tokens - after_tokens),
                     "table_count": len(selected),
                     "has_join_hints": bool(join_hints),
+                    "uncompacted_tables": uncompacted,
                 },
             )
             return compacted_schema

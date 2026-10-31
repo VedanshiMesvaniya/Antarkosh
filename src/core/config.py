@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     qdrant_api_key: str = ""
     openrouter_api_key: str = ""
 
+    # --- Phase 12 rollout: databases whose table-authority hints are APPLIED (comma-separated ids, or "*" for all).
+    # Everything else with the prompt flags on only logs what the hints would do (shadow mode). Empty = shadow everywhere.
+    prompt_hints_apply_dbs: str = ""
+
     # --- Local models (embeddings + reranking run on this machine; vision stays online) ---
     # Embeddings: BGE-M3 (dense + sparse in one model), run through FlagEmbedding.
     bge_m3_model: str = "BAAI/bge-m3"

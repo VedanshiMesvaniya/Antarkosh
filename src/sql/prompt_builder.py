@@ -632,6 +632,33 @@ def _log_prompt_sections(db_id: str, parts: dict[str, str]) -> None:
         logger.debug("Prompt section telemetry skipped: %s", exc)
 
 
+def _table_notes_block(db_id: str, shown_tables: set[str]) -> str:
+    """The ``Table notes`` block (Phase 12, part 2), or "" - never raises and never changes anything outside apply mode.
+
+    Apply mode returns the block; shadow mode only records what it would have said. No profile file, no decided copy/real
+    pair in this prompt, flags off, or any error: "".
+    """
+    try:
+        from src.sql.profiles.hints import note_lines_for_prompt
+
+        mode, lines = note_lines_for_prompt(shown_tables, db_id)
+        if not lines:
+            return ""
+        from src.utils.telemetry import log_telemetry
+
+        log_telemetry(
+            query_id="",
+            stage="table_authority_applied" if mode == "apply" else "table_authority_shadow",
+            extra={"db_id": db_id, "notes": lines, "mode": mode},
+        )
+        if mode != "apply":
+            return ""
+        return "\n\nTable notes (similar tables):\n" + "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001 - a hint problem must never break a prompt
+        logger.debug("Table notes skipped: %s", exc)
+        return ""
+
+
 def build_sql_prompt(
     query: str,
     schema: str,
@@ -730,6 +757,9 @@ Schema:
         system_prompt += (
             f"\n\nTable relationships:\n{rels_to_inject}"
         )
+
+    table_notes_text = _table_notes_block(db_id, shown_tables)
+    system_prompt += table_notes_text
 
     if column_glossary:
         system_prompt += (
