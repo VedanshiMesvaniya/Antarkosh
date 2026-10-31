@@ -37,7 +37,9 @@ from src.sql.learning.pattern_learner import PatternLearner
 from src.sql.safety.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
 from src.sql.late_schema import expand_schema_with_live_tables
+from src.sql.repair.column_owners import column_owner_context
 from src.sql.repair.join_context import build_repair_join_context
+from src.sql.schema_compactor import flatten_comment
 from src.sql.prompt_builder import build_sql_prompt
 from src.sql.soft_delete import detect_soft_delete_intent, enforce_soft_delete_filter
 from src.sql.safety.empty_result_classifier import classify_empty_result
@@ -199,7 +201,7 @@ def format_schema_rows(profile: SQLDialectProfile, rows: list[dict[str, Any]]) -
     if profile.key in (Engine.MYSQL, Engine.POSTGRESQL, Engine.MSSQL, Engine.ORACLE):
         tables: dict[str, list[str]] = {}
         for row in rows:
-            comment = row.get("column_comment") or ""
+            comment = flatten_comment(row.get("column_comment"))
             suffix = f"  -- {comment}" if comment else ""
             tables.setdefault(row["table_name"], []).append(
                 f"  {row['column_name']} {row['data_type']}{suffix}"
@@ -1100,6 +1102,12 @@ async def execute_with_delta_repair(
                 break
 
             next_attempt = repair_attempt + 1
+            repair_join_context = _repair_join_context(retriever, tables, repair_schema_context or schema_context)
+            if val_error_type in ("column_not_found", "column_hallucination"):
+                # A column used on the wrong table: show where it really lives (Phase 12 flags only; "" otherwise).
+                owner_block = await column_owner_context(retriever, val_error, tables)
+                if owner_block:
+                    repair_join_context = (repair_join_context + "\n\n" + owner_block).strip()
             repaired_sql = await attempt_delta_repair(
                 router=retriever._router,
                 failed_sql=current_sql,
@@ -1108,7 +1116,7 @@ async def execute_with_delta_repair(
                 schema_context=repair_schema_context or schema_context,
                 user_intent=query,
                 attempt_number=next_attempt,
-                join_context=_repair_join_context(retriever, tables, repair_schema_context or schema_context),
+                join_context=repair_join_context,
             )
             if not repaired_sql:
                 logger.warning("Delta repair attempt %d returned no SQL. Halting.", next_attempt)

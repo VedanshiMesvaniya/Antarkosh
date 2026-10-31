@@ -40,6 +40,18 @@ AUDIT_COLUMNS = frozenset({
 })
 
 
+def flatten_comment(comment: Any) -> str:
+    """A column comment as ONE line, safe to put after ``--`` in schema text.
+
+    A comment that spans lines (a SQL Server ``MS_Description`` or a MySQL column comment often does) puts its second line
+    outside the ``--`` comment. The schema text then has a bogus "column" and the DDL no longer parses, so the table could not
+    be compacted and showed up in the prompt as raw DDL. Every kind of line break becomes a single space; empty gives "".
+    """
+    if comment is None:
+        return ""
+    return " ".join(part.strip() for part in str(comment).splitlines() if part.strip())
+
+
 def _clean_identifier(name: Any) -> str:
     """Strip quotes and whitespace from identifiers."""
     if not name:

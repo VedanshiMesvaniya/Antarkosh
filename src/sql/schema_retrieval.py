@@ -23,7 +23,7 @@ from src.sql.dialects import SQLDialectProfile, get_dialect_profile
 from src.sql.engine import Engine
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, get_knowledge_path, validate_db_id
 from src.sql.schema_budget import DEFAULT_SCHEMA_TOKEN_BUDGET, select_schema_within_budget
-from src.sql.schema_compactor import compact_ddl, extract_join_hints
+from src.sql.schema_compactor import compact_ddl, extract_join_hints, flatten_comment
 from src.sql.schema_token_estimator import estimate_schema_tokens
 from src.sql.table_router import route_anchor_tables, route_tables_for_query
 from src.utils.feature_flags import is_feature_enabled
@@ -613,7 +613,7 @@ def _split_mysql_tables(rows: list[dict[str, Any]]) -> dict[str, str]:
         ctype = row.get("data_type") or row.get("DATA_TYPE", "")
         if not tname:
             continue
-        comment = row.get("column_comment") or ""
+        comment = flatten_comment(row.get("column_comment"))
         suffix = f"  -- {comment}" if comment else ""
         tables.setdefault(tname, []).append(
             f"  {cname} {ctype}{suffix}".strip()
