@@ -877,6 +877,17 @@ async def _sync_live_schema_body(
         except Exception as e:  # noqa: BLE001
             logger.warning("Could not load fallback inferred relationships: %s", e)
 
+    # Auto-schema Phase 13: with orchestration on, fingerprint every table and (when a database is listed in RESYNC_APPLY_DBS) let a
+    # planner skip the phases whose inputs did not change since the last good sync. Without the flag, resync is None and every
+    # phase runs as always. In shadow mode the planner only records what it would skip.
+    from src.sql.sync.resync import phase13_info, skip_phase, start_resync
+
+    schema_complete = len(schema_rows) < 20000  # the query above reads at most 20000 rows: a result that long may be cut short
+    resync = None
+    table_fps: dict[str, str] = {}
+    if orchestration_on:
+        resync, table_fps = start_resync(db_id, table_schemas, fk_rows, schema_complete=schema_complete)
+
     # 4. Build Chunk objects — one per table, enriched with domain metadata and FKs
     meta_map = _load_table_metadata(db_id=db_id)
     chunks: list[Chunk] = []
@@ -924,12 +935,21 @@ async def _sync_live_schema_body(
     # are atomically updated in place with zero downtime or empty-store window
     await store.upsert(chunks, vectors, sparse_vectors)
 
+    # Auto-schema Phase 13: tables that were in the last good sync and are gone now leave their chunk behind in the store.
+    # Reported in shadow mode, removed only for databases listed in STALE_CHUNKS_APPLY_DBS. Never fails the sync.
+    stale_report: dict[str, Any] | None = None
+    if orchestration_on and table_fps:
+        from src.sql.sync.stale import cleanup_stale_chunks
+
+        stale_report = await cleanup_stale_chunks(db_id, store, doc_id, table_fps, schema_complete=schema_complete)
+
     # Auto-schema Phase 3: write schema.json and table_inventory.json from the catalog and check
     # they agree with what was just embedded. Per-DB flag, off by default; never fails the sync.
     catalog_report: dict[str, Any] | None = None
     from src.utils.feature_flags import is_db_feature_enabled
 
-    if is_db_feature_enabled("auto_catalog", db_id):
+    skip_catalog = skip_phase(resync, "catalog", is_db_feature_enabled("auto_catalog", db_id))
+    if is_db_feature_enabled("auto_catalog", db_id) and not skip_catalog:
         from src.sql.introspection.catalog import run_catalog_phase
 
         sa_failure: str | None = None
@@ -958,6 +978,8 @@ async def _sync_live_schema_body(
                 catalog_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
             if sa_failure is not None:
                 catalog_report["sqlalchemy_fallback"] = sa_failure
+    elif skip_catalog:
+        catalog_report = resync.skipped_report("catalog")
 
     procedures_report: dict[str, Any] | None = None
     procedure_routines: list[Any] = []  # the routines stay in memory only; Phase 5 mines them and they are then dropped
@@ -992,7 +1014,8 @@ async def _sync_live_schema_body(
     # database). auto_relationships writes the review file; auto_relationships_apply also publishes the
     # high-confidence edges to relationships.json. Never fails the sync.
     relationships_report: dict[str, Any] | None = None
-    if is_db_feature_enabled("auto_relationships", db_id):
+    skip_relationships = skip_phase(resync, "relationships", is_db_feature_enabled("auto_relationships", db_id))
+    if is_db_feature_enabled("auto_relationships", db_id) and not skip_relationships:
         try:
             from src.sql.sa.relationships_phase import run_relationships_phase
 
@@ -1002,12 +1025,15 @@ async def _sync_live_schema_body(
         except Exception as exc:  # noqa: BLE001
             logger.warning("Relationship inference failed for %s: %s", db_id, exc)
             relationships_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+    elif skip_relationships:
+        relationships_report = resync.skipped_report("relationships")
 
     # Auto-schema Phase 7: tag test/backup/temp tables and say which of several similar tables holds the real
     # data. Reads the same files, writes schema/table_profiles.json, hides nothing, and prompts do not read it
     # yet. Per-DB flag, off by default. Never fails the sync.
     table_profiles_report: dict[str, Any] | None = None
-    if is_db_feature_enabled("auto_table_profiles", db_id):
+    skip_profiles = skip_phase(resync, "table_profiles", is_db_feature_enabled("auto_table_profiles", db_id))
+    if is_db_feature_enabled("auto_table_profiles", db_id) and not skip_profiles:
         try:
             from src.sql.sa.profiles_phase import run_profiles_phase
 
@@ -1015,12 +1041,15 @@ async def _sync_live_schema_body(
         except Exception as exc:  # noqa: BLE001
             logger.warning("Table profiles failed for %s: %s", db_id, exc)
             table_profiles_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+    elif skip_profiles:
+        table_profiles_report = resync.skipped_report("table_profiles")
 
     # Auto-schema Phase 8: indirect join routes (2 to 5 joins) between tables that do not join directly, scored with hub
     # damping, built only from trusted edges and left in schema/join_paths.json. Prompts do not read it yet. Per-DB flag,
     # off by default. Runs after relationships and profiles so it sees their fresh files. Never fails the sync.
     join_paths_report: dict[str, Any] | None = None
-    if is_db_feature_enabled("auto_join_paths", db_id):
+    skip_paths = skip_phase(resync, "join_paths", is_db_feature_enabled("auto_join_paths", db_id))
+    if is_db_feature_enabled("auto_join_paths", db_id) and not skip_paths:
         try:
             from src.sql.sa.paths_phase import run_paths_phase
 
@@ -1028,12 +1057,14 @@ async def _sync_live_schema_body(
         except Exception as exc:  # noqa: BLE001
             logger.warning("Join paths failed for %s: %s", db_id, exc)
             join_paths_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+    elif skip_paths:
+        join_paths_report = resync.skipped_report("join_paths")
 
     # Auto-schema Phase 11: the table text embedded above used relationships.json from BEFORE Phase 6 ran. When Phase 6 produced
     # the file this sync, rebuild that text and re-embed only the tables whose lines changed. Only for databases without declared
     # keys (declared keys do not depend on Phase 6). Flag-gated; a failure leaves the old vectors, which stay valid.
     relationship_refresh: int | None = None
-    if orchestration_on and not fk_rows and relationships_report is not None and relationships_report.get("ok"):
+    if orchestration_on and not fk_rows and relationships_report is not None and relationships_report.get("ok") and not relationships_report.get("unchanged"):
         try:
             relationship_refresh = await _refresh_relationship_text(db_id, embeddings, store, chunks, table_schemas, meta_map, meaning_extras)
         except Exception as exc:  # noqa: BLE001
@@ -1110,6 +1141,10 @@ async def _sync_live_schema_body(
             "schema_hash": schema_fingerprint(table_schemas),
             "reembedded_for_relationships": relationship_refresh,
         }
+        try:
+            result["_sync"].update(phase13_info(db_id, table_fps, resync, stale_report, schema_complete=schema_complete))
+        except Exception as exc:  # noqa: BLE001 - the record of a sync must never fail it
+            logger.warning("Phase 13 information unavailable for %s: %s", db_id, exc)
     return result
 
 

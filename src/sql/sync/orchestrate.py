@@ -16,9 +16,12 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from src.sql.sync.drift import diff_tables, load_state, save_state
 from src.sql.sync.guard import SyncBusy, SyncGuard
-from src.sql.sync.report import build_sync_report, record_sync_report
+from src.sql.sync.report import PHASES, build_sync_report, phase_status, record_sync_report
+from src.sql.sync.resync import file_digests
 from src.sql.sync.validate import validate_generation
+from src.sql.sync.versions import save_version
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +76,59 @@ def refresh_caches(db_id: str) -> list[str]:
     return cleared
 
 
+def persist_generation(
+    result: dict[str, Any], sync_info: dict[str, Any], validation: Any, db_id: str, *, committed: bool
+) -> dict[str, Any]:
+    """Phase 13: work out the drift, keep the record of this sync and a version of its files. Never raises.
+
+    Returns ``{"drift": ..., "version": ...}`` (keys only when there is something to say). Only a committed sync is recorded:
+    after a rollback the old record stays, because the files are the old ones.
+    """
+    out: dict[str, Any] = {}
+    try:
+        fps = sync_info.get("table_fingerprints")
+        if not fps:
+            return out
+        old = load_state(db_id)
+        drift = diff_tables(old["tables"] if old else None, fps).as_dict()
+        if sync_info.get("schema_complete") is False:
+            drift["partial"] = True
+        out["drift"] = drift
+        if not committed:
+            return out
+
+        statuses = {name: phase_status(result.get(key))[0] for name, key in PHASES}
+        statuses.update((sync_info.get("resync") or {}).get("carried") or {})  # a phase skipped as unchanged keeps its last result
+        errors = bool(getattr(validation, "errors", None))
+        clean = bool(sync_info.get("schema_complete", True)) and not errors and "failed" not in statuses.values()
+        saved = save_state(
+            db_id,
+            {
+                "schema_hash": sync_info.get("schema_hash"),
+                "structure_hash": sync_info.get("structure_hash"),
+                "tables": fps,
+                "files": file_digests(db_id),
+                "phases": statuses,
+                "enabled": sync_info.get("enabled") or [],
+                "phase_versions": sync_info.get("phase_versions") or {},
+                "clean": clean,
+            },
+        )
+        if saved:  # a committed sync's files are what is live now, so they are worth being able to return to, clean or not
+            version = save_version(
+                db_id,
+                schema_hash=sync_info.get("schema_hash"),
+                structure=sync_info.get("structure_hash"),
+                tables=len(fps),
+                note="after a committed sync",
+            )
+            if version:
+                out["version"] = version
+    except Exception as exc:  # noqa: BLE001 - keeping records must never fail a sync
+        logger.warning("Could not keep the sync record for %s: %s", db_id, exc)
+    return out
+
+
 async def run_orchestrated(body: Callable[[], Awaitable[dict[str, Any]]], db_id: str) -> dict[str, Any]:
     started = time.monotonic()
     guard = SyncGuard(db_id)
@@ -115,6 +171,7 @@ async def run_orchestrated(body: Callable[[], Awaitable[dict[str, Any]]], db_id:
             guard.commit()
         guard_info["snapshot"] = guard.active
         guard_info["caches_cleared"] = refresh_caches(db_id)
+        sync_info.update(persist_generation(result, sync_info, validation, db_id, committed=not rolled_back))
 
         report = build_sync_report(
             result, db_id=db_id, duration_s=time.monotonic() - started, validation=validation, guard=guard_info, sync_info=sync_info
