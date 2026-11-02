@@ -10,7 +10,7 @@ tasks:
   semantic_classification:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: groq
         model: openai/gpt-oss-20b
@@ -23,7 +23,7 @@ tasks:
   ocr_vision:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
@@ -32,7 +32,7 @@ tasks:
   layout_analysis:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
@@ -42,7 +42,7 @@ tasks:
   table_extraction:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
@@ -52,7 +52,7 @@ tasks:
   chart_analysis:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
@@ -62,7 +62,7 @@ tasks:
   image_understanding:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
@@ -72,7 +72,7 @@ tasks:
   general_qa:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: groq
         model: qwen/qwen3.8-27b
@@ -87,7 +87,7 @@ tasks:
   reasoning:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
@@ -110,7 +110,7 @@ tasks:
   extraction:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
@@ -125,7 +125,7 @@ tasks:
   summarization:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
@@ -140,7 +140,7 @@ tasks:
         model: openai/gpt-oss-20b
         priority: 1
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 2
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
@@ -153,7 +153,7 @@ tasks:
         model: openai/gpt-oss-20b
         priority: 1
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 2
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
@@ -165,7 +165,7 @@ tasks:
         model: openai/gpt-oss-20b
         priority: 1
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 2
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
@@ -174,7 +174,7 @@ tasks:
   repair:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: groq
         model: qwen/qwen3.8-27b
@@ -189,7 +189,7 @@ tasks:
   synthesis:
     providers:
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 1
       - provider: groq
         model: qwen/qwen3.8-27b
@@ -207,7 +207,7 @@ tasks:
         model: openai/gpt-oss-20b
         priority: 1
       - provider: gemini
-        model: gemini-3.5-flash
+        model: gemini-2.5-flash
         priority: 2
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b

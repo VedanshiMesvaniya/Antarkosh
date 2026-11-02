@@ -16,7 +16,7 @@ from src.sql.schema_token_estimator import estimate_schema_tokens
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SCHEMA_TOKEN_BUDGET = 4000  # raised from 1500: gemini-3.5-flash can handle ~30 tables; 1500 was too tight and caused status/lookup tables to be dropped before the model ever saw them
+DEFAULT_SCHEMA_TOKEN_BUDGET = 4000  # raised from 1500: gemini-2.5-flash can handle ~30 tables; 1500 was too tight and caused status/lookup tables to be dropped before the model ever saw them
 
 
 def select_schema_within_budget(

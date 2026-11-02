@@ -33,7 +33,7 @@ _PROVIDER_ORDER = ["openrouter", "gemini", "groq", "nvidia_nim"]
 
 _PROVIDER_METADATA = {
     "gemini": {
-        "model": "gemini-3.5-flash",
+        "model": "gemini-2.5-flash",
         "role": "General RAG & Vision",
     },
     "groq": {

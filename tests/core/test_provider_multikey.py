@@ -52,33 +52,33 @@ _MSG = [{"role": "user", "content": "hi"}]
 
 async def test_single_key_behaves_as_before():
     p = _provider("k1")
-    assert p.is_available and await p.chat(_MSG, model="gemini-3.5-flash") == "answer"
+    assert p.is_available and await p.chat(_MSG, model="gemini-2.5-flash") == "answer"
     assert p._http.keys_used == ["k1"]
 
 
 async def test_calls_are_spread_across_keys():
     p = _provider("k1,k2")
     for _ in range(4):
-        await p.chat(_MSG, model="gemini-3.5-flash")
+        await p.chat(_MSG, model="gemini-2.5-flash")
     assert p._http.keys_used == ["k1", "k2", "k1", "k2"]
 
 
 async def test_rate_limited_key_rotates_to_the_next_one():
     p = _provider("k1,k2", {"k1": 429})
-    assert await p.chat(_MSG, model="gemini-3.5-flash") == "answer"
+    assert await p.chat(_MSG, model="gemini-2.5-flash") == "answer"
     assert p._http.keys_used == ["k1", "k2"]
 
 
 async def test_all_keys_rate_limited_raises_like_before():
     p = _provider("k1,k2", {"k1": 429, "k2": 429})
     with pytest.raises(httpx.HTTPStatusError):
-        await p.chat(_MSG, model="gemini-3.5-flash")
+        await p.chat(_MSG, model="gemini-2.5-flash")
 
 
 async def test_non_429_error_is_not_retried_on_another_key():
     p = _provider("k1,k2", {"k1": 503})
     with pytest.raises(httpx.HTTPStatusError):
-        await p.chat(_MSG, model="gemini-3.5-flash")
+        await p.chat(_MSG, model="gemini-2.5-flash")
     assert p._http.keys_used == ["k1"]
 
 
