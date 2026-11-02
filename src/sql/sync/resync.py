@@ -29,13 +29,14 @@ from pathlib import Path
 from typing import Any
 
 from src.sql.sync.drift import (
+    content_digest,
     db_root,
     load_state,
     phase_versions,
     structure_hash,
     table_fingerprints,
 )
-from src.sql.sync.guard import GENERATED_FILES, _digest, _read
+from src.sql.sync.guard import GENERATED_FILES, _read
 from src.sql.sync.modes import resync_mode
 
 logger = logging.getLogger(__name__)
@@ -89,9 +90,9 @@ def enabled_phases(db_id: str) -> list[str]:
 
 
 def file_digests(db_id: str, databases_dir: Path | None = None) -> dict[str, str | None]:
-    """sha256 of every tracked file (None when it does not exist)."""
+    """Content digest of every tracked file, ignoring the ``generated_at`` stamp (None when the file does not exist)."""
     root = db_root(db_id, databases_dir)
-    return {rel: _digest(_read(root / rel)) for rel in TRACKED_FILES}
+    return {rel: content_digest(_read(root / rel)) for rel in TRACKED_FILES}
 
 
 class ResyncPlanner:

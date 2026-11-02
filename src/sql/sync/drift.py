@@ -40,6 +40,30 @@ def db_root(db_id: str, databases_dir: Path | None = None) -> Path:
     return (Path(databases_dir) if databases_dir is not None else registry.DATABASES_DIR) / db_id
 
 
+# --------------------------------------------------------------------------- content digests
+
+VOLATILE_KEYS = ("generated_at",)  # written fresh on every run by the phases; says when, not what
+
+
+def content_digest(data: bytes | None) -> str | None:
+    """sha256 of a file's CONTENT: a JSON document without its top-level ``generated_at`` (and with a canonical key order).
+
+    Several phases (the catalog above all) stamp ``generated_at`` into their files and rewrite them on every run, so the raw
+    bytes differ between two runs that found exactly the same thing. Comparing raw bytes would make every sync look like a
+    change: a new kept version each time, and phases that read the file never judged unchanged. A file that is not a JSON
+    object is digested as it is. ``None`` for a missing file.
+    """
+    if data is None:
+        return None
+    try:
+        doc = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return hashlib.sha256(data).hexdigest()
+    if isinstance(doc, dict):
+        doc = {k: v for k, v in doc.items() if k not in VOLATILE_KEYS}
+    return hashlib.sha256(json.dumps(doc, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
 # --------------------------------------------------------------------------- fingerprints
 
 
@@ -195,7 +219,9 @@ __all__ = [
     "MAX_LISTED",
     "SCHEMA_ROW_LIMIT",
     "STATE_FILE",
+    "VOLATILE_KEYS",
     "Drift",
+    "content_digest",
     "db_root",
     "diff_tables",
     "invalidate_state",

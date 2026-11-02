@@ -42,6 +42,14 @@ current files as a new version first (so you can roll forward again), restores o
 overwrites a valid file a person put in their place, and marks the record untrusted so the next sync runs every phase.
 **The vector store is not rolled back**: run a sync afterwards to rebuild it.
 
+## What counts as "unchanged"
+
+Files are compared by what they say, not by their bytes: the top-level `generated_at` stamp that every phase writes (the catalog
+rewrites it on every run) is ignored, as are key order and spacing. Without that, every sync would look like a change: a new kept
+version each time, and no phase reading the catalog could ever be judged unchanged. Restoring a version still checks the raw
+bytes it was saved with. After upgrading from a release that compared raw bytes, the first sync runs every phase once and keeps one
+extra version, then settles.
+
 ## Limits to know about
 
 - Skipping the catalog means row estimates can be up to 7 days old.

@@ -158,6 +158,42 @@ def test_the_pinned_database_is_never_on() -> None:
     assert modes.resync_mode("erp_main") == "" and modes.stale_chunks_mode("erp_main") == ""  # the real flag lookup: pinned off
 
 
+# ----------------------------------------------------------------------------------------------- content digests
+
+
+def _stamped(stamp: str, **fields: Any) -> bytes:
+    return json.dumps({"generated_by": "x", "generated_at": stamp, **fields}).encode("utf-8")
+
+
+def test_content_digest_ignores_the_generation_stamp_and_key_order_but_nothing_else() -> None:
+    a = _stamped("2026-01-01T00:00:00Z", tables=[1])
+    b = json.dumps({"tables": [1], "generated_at": "2030-12-31T23:59:59Z", "generated_by": "x"}).encode("utf-8")
+    assert drift.content_digest(a) == drift.content_digest(b)  # same findings, different clock and key order
+    assert drift.content_digest(a) != drift.content_digest(_stamped("2026-01-01T00:00:00Z", tables=[2]))  # a real change
+    nested = lambda stamp: json.dumps({"generated_by": "x", "tables": [{"generated_at": stamp}]}).encode("utf-8")
+    assert drift.content_digest(nested("t1")) != drift.content_digest(nested("t2"))  # only the top-level stamp is ignored
+
+
+def test_content_digest_handles_files_that_are_not_json_objects() -> None:
+    import hashlib
+
+    assert drift.content_digest(None) is None
+    raw = b"not json \xff\xfe"
+    assert drift.content_digest(raw) == hashlib.sha256(raw).hexdigest()
+    assert drift.content_digest(b"plain text") != drift.content_digest(b"other text")
+    assert drift.content_digest(b"[1, 2]") == drift.content_digest(b"[1,2]")  # a JSON list is digested whole, spacing aside
+    assert drift.content_digest(b"[1, 2]") != drift.content_digest(b"[1, 3]")
+
+
+def test_the_tracked_file_digests_do_not_move_when_only_a_stamp_does(root: Path) -> None:
+    _put(root, "schema/schema.json", _stamped("2026-01-01T00:00:00Z", tables=["a"]))
+    before = resync.file_digests(DB)["schema/schema.json"]
+    _put(root, "schema/schema.json", _stamped("2026-06-30T10:11:12Z", tables=["a"]))
+    assert resync.file_digests(DB)["schema/schema.json"] == before
+    _put(root, "schema/schema.json", _stamped("2026-06-30T10:11:12Z", tables=["a", "b"]))
+    assert resync.file_digests(DB)["schema/schema.json"] != before
+
+
 # ----------------------------------------------------------------------------------------------- the planner
 
 
@@ -250,6 +286,16 @@ def test_a_changed_input_runs_every_phase_that_reads_it_and_only_those(root: Pat
     assert "sp_evidence.json" in p.ran["relationships"]
 
 
+def test_a_new_stamp_alone_is_not_a_changed_input(root: Path) -> None:
+    _write_generation(root)
+    p = _planner(root)
+    _put(root, "schema/sp_evidence.json", _doc("auto_sp_mining", facts=[], generated_at="2031-01-01T00:00:00Z"))  # re-stamped, same findings
+    _put(root, "schema/schema.json", _doc("antarkosh-auto-catalog", tables=[{"name": "a"}], x="", generated_at="2031-01-01T00:00:00Z"))
+    assert [p.should_run(ph) for ph in resync.SKIPPABLE] == [False] * 4
+    _put(root, "schema/sp_evidence.json", _doc("auto_sp_mining", facts=["new"], generated_at="2031-01-01T00:00:00Z"))  # a real change
+    assert p.should_run("relationships") is True
+
+
 def test_a_missing_output_is_a_change(root: Path) -> None:
     _write_generation(root)
     p = _planner(root)
@@ -327,6 +373,36 @@ def test_a_second_identical_generation_is_not_stored_again(root: Path) -> None:
     assert len(versions.list_versions(DB)) == 1
     _generation(root, "two")
     assert _keep("two")["id"] == "v0002"
+
+
+def test_a_new_stamp_alone_does_not_create_a_new_version(root: Path) -> None:
+    _put(root, "schema/schema.json", _doc("antarkosh-auto-catalog", tables=["a"], generated_at="2026-01-01T00:00:00Z"))
+    assert _keep("one")["id"] == "v0001"
+    _put(root, "schema/schema.json", _doc("antarkosh-auto-catalog", tables=["a"], generated_at="2026-02-02T02:02:02Z"))
+    assert _keep("two") == {"id": "v0001", "unchanged": True}  # same findings, later clock: nothing new to keep
+    _put(root, "schema/schema.json", _doc("antarkosh-auto-catalog", tables=["a", "b"], generated_at="2026-02-02T02:02:02Z"))
+    assert _keep("three")["id"] == "v0002"
+
+
+def test_a_version_still_restores_the_exact_bytes_it_was_saved_with(root: Path) -> None:
+    original = _doc("antarkosh-auto-catalog", tables=["a"], generated_at="2026-01-01T00:00:00Z")
+    _put(root, "schema/schema.json", original)
+    _keep("one")
+    _put(root, "schema/schema.json", _doc("antarkosh-auto-catalog", tables=["a", "b"], generated_at="2026-03-03T03:03:03Z"))
+    versions.rollback_to_version(DB, "v0001")
+    assert (root / "schema/schema.json").read_bytes() == original  # the integrity checksum is still over the raw bytes
+
+
+def test_a_version_saved_before_content_digests_existed_is_replaced_once_not_trusted(root: Path) -> None:
+    _generation(root, "one")
+    _keep("one")
+    manifest_path = root / ".sync/versions/v0001/version.json"
+    manifest = json.loads(manifest_path.read_text())
+    for entry in manifest["files"].values():
+        entry.pop("content")  # what an earlier release wrote
+    manifest_path.write_text(json.dumps(manifest))
+    assert _keep("again")["id"] == "v0002"  # one extra copy, then the new manifests carry the content digest
+    assert _keep("again") == {"id": "v0002", "unchanged": True}
 
 
 def test_nothing_generated_means_nothing_kept(root: Path) -> None:

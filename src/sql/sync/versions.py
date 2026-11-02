@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from src.sql import registry
-from src.sql.sync.drift import db_root, invalidate_state, load_state
+from src.sql.sync.drift import content_digest, db_root, invalidate_state, load_state
 from src.sql.sync.guard import (
     GENERATED_FILES,
     PINNED_DB_IDS,
@@ -118,11 +118,12 @@ def save_version(
         files = _current_ours(db_id, databases_dir)
         if not files:
             return None
-        digests = {rel: _digest(data) for rel, data in files.items()}
+        digests = {rel: _digest(data) for rel, data in files.items()}  # raw bytes: checked when a version is restored
+        contents = {rel: content_digest(data) for rel, data in files.items()}  # what they say: decides whether anything changed
         newest = list_versions(db_id, databases_dir)
         if newest:
             last = _read_manifest(_vroot(db_id, databases_dir) / newest[0]["id"])
-            if last is not None and {r: e.get("sha256") for r, e in last["files"].items()} == digests and last.get("structure_hash") == structure:
+            if last is not None and {r: e.get("content") for r, e in last["files"].items()} == contents and last.get("structure_hash") == structure:
                 return {"id": newest[0]["id"], "unchanged": True}
         root = _vroot(db_id, databases_dir)
         ids = _all_ids(root)
@@ -140,7 +141,7 @@ def save_version(
             "structure_hash": structure,
             "tables": tables,
             "note": note,
-            "files": {rel: {"sha256": digests[rel]} for rel in files},
+            "files": {rel: {"sha256": digests[rel], "content": contents[rel]} for rel in files},
         }
         _write_atomic(vdir / VERSION_FILE, json.dumps(manifest, indent=1).encode("utf-8"))  # last: its presence means "complete"
         _prune(db_id, protect=(vid, *protect), databases_dir=databases_dir)

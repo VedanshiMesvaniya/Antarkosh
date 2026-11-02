@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import itertools
+import json
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -113,7 +115,12 @@ async def test_an_edited_generated_file_makes_its_phase_run_again(shop: Path, db
     _flags(monkeypatch, *ON, APPLY)
     await _sync()
     target = dbs / DB / "schema/inferred_relationships.json"
-    target.write_text(target.read_text() + " ", encoding="utf-8")  # same content, different bytes: still "edited"
+    target.write_text(target.read_text() + " ", encoding="utf-8")  # a spacing-only change says nothing new
+    rep = (await _sync())["orchestration"]
+    assert {"catalog", "relationships"} <= set(rep["resync"]["skipped"])
+    doc = json.loads(target.read_text(encoding="utf-8"))
+    doc["edited_by_a_person"] = True  # a real change to what the file says
+    target.write_text(json.dumps(doc), encoding="utf-8")
     rep = (await _sync())["orchestration"]
     assert "catalog" in rep["resync"]["skipped"] and "relationships" not in rep["resync"]["skipped"]
     assert "inferred_relationships.json" in rep["resync"]["ran"]["relationships"]
@@ -186,3 +193,34 @@ async def test_a_sync_that_is_rolled_back_by_validation_keeps_the_old_record(sho
     rep = (await _sync())["orchestration"]
     assert rep["status"] == "rolled_back" and "version" not in rep
     assert drift.load_state(DB) == good  # the record still describes the files that are on disk
+
+
+def _moving_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The catalog stamps its files with the time: let it change on every run, as it does outside the tests."""
+    ticks = itertools.count(1)
+    monkeypatch.setattr("src.sql.introspection.catalog._now", lambda: f"2026-11-02T12:00:{next(ticks):02d}Z")
+
+
+@pytest.mark.asyncio
+async def test_in_shadow_mode_a_moving_clock_neither_piles_up_versions_nor_hides_what_would_be_skipped(shop: Path, dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _flags(monkeypatch, *ON)
+    _moving_clock(monkeypatch)
+    reps = [(await _sync())["orchestration"] for _ in range(4)]
+    assert [v["id"] for v in versions.list_versions(DB)] == ["v0001"]  # four syncs found the same thing: one version
+    assert all(r["version"]["id"] == "v0001" for r in reps) and all(r["version"].get("unchanged") for r in reps[1:])
+    for r in reps[1:]:
+        assert {"catalog", "relationships"} <= set(r["resync"]["would_skip"]) and r["resync"]["ran"] == {}  # what apply mode would skip
+
+
+@pytest.mark.asyncio
+async def test_in_apply_mode_a_moving_clock_changes_nothing_and_a_real_change_still_runs_everything(shop: Path, dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _flags(monkeypatch, *ON, APPLY)
+    _moving_clock(monkeypatch)
+    await _sync()
+    rep = (await _sync())["orchestration"]
+    assert {"catalog", "relationships"} <= set(rep["resync"]["skipped"])
+    _sql(shop, "CREATE TABLE payment(id INTEGER PRIMARY KEY)")
+    rep = (await _sync())["orchestration"]
+    assert rep["resync"]["skipped"] == [] and rep["drift"]["added"] == ["payment"] and rep["version"]["id"] == "v0002"
+    rep = (await _sync())["orchestration"]  # and the new structure settles again
+    assert {"catalog", "relationships"} <= set(rep["resync"]["skipped"]) and rep["version"]["unchanged"] is True
