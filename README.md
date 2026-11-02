@@ -721,8 +721,6 @@ QDRANT_TEST_URL=http://localhost:6333 pytest tests/rag/test_local_qdrant_integra
 | `QDRANT_API_KEY` | Qdrant Cloud API key; leave empty for local Qdrant. | `your_qdrant_key` | **Yes for cloud** |
 | `OPENROUTER_API_KEY` | OpenRouter API key(s) for aggregator models. Comma-separate multiple keys for auto-rotation. | `sk-or-key1,sk-or-key2` | Optional |
 | `PROMPT_HINTS_APPLY_DBS` | Databases whose table-authority hints (Phase 12 part 2) are applied: comma-separated ids, or `*` for all. Empty = shadow mode only (logs what would change, changes nothing). Needs the Phase 12 flags. | `qts_ais` | Optional |
-| `RESYNC_APPLY_DBS` | Databases whose sync skips phases whose inputs did not change (Phase 13). Comma-separated ids or `*`. Empty = shadow (reports what it would skip). Needs `auto_sync_orchestration`. | `qts_ais` | Optional |
-| `STALE_CHUNKS_APPLY_DBS` | Databases whose sync removes the vector chunks of dropped tables (Phase 13). Comma-separated ids or `*`. Empty = shadow. Needs `auto_sync_orchestration`. | `qts_ais` | Optional |
 | `DEFAULT_PROVIDER` | Soft-pin provider (`openrouter`, `gemini`, `groq`, `nvidia_nim`, or `auto`). | `openrouter` | No |
 | `DB_ENGINE` | Database engine for Text-to-SQL (`sqlite` or `mysql`). | `sqlite` | No |
 | `DB_HOST` | MySQL database hostname. | `localhost` | If MySQL |

@@ -52,11 +52,6 @@ class Settings(BaseSettings):
     # Everything else with the prompt flags on only logs what the hints would do (shadow mode). Empty = shadow everywhere.
     prompt_hints_apply_dbs: str = ""
 
-    # --- Phase 13 rollout (needs the per-database auto_sync_orchestration flag). Comma-separated database ids, or "*" for all.
-    # Empty = shadow mode: the sync reports what it WOULD skip / remove and changes nothing.
-    resync_apply_dbs: str = ""  # skip phases whose inputs did not change since the last good sync
-    stale_chunks_apply_dbs: str = ""  # delete the vector chunks of tables that no longer exist
-
     # --- Local models (embeddings + reranking run on this machine; vision stays online) ---
     # Embeddings: BGE-M3 (dense + sparse in one model), run through FlagEmbedding.
     bge_m3_model: str = "BAAI/bge-m3"

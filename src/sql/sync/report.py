@@ -139,7 +139,7 @@ def build_sync_report(
     unknowns: list[str] = []
     for name, info in phases.items():
         detail = info.get("detail", "")
-        if info["status"] in ("failed", "skipped") and "pinned" not in detail and not detail.startswith("unchanged"):
+        if info["status"] in ("failed", "skipped") and "pinned" not in detail:
             unknowns.append(f"{name}: {info['status']}" + (f" ({detail})" if detail else ""))
     if catalog:
         for schema, why in (catalog.get("skipped_schemas") or {}).items():
@@ -188,9 +188,6 @@ def build_sync_report(
         report["validation"] = validation.as_dict()
     if sync_info.get("schema_hash"):
         report["schema_hash"] = sync_info["schema_hash"]
-    for key in ("drift", "resync", "stale_chunks", "version"):  # Phase 13
-        if sync_info.get(key):
-            report[key] = sync_info[key]
     return report
 
 
@@ -226,10 +223,6 @@ def record_sync_report(db_id: str, report: dict[str, Any], *, committed: bool, s
             "validation_errors": len((report.get("validation") or {}).get("errors") or []),
             "rolled_back": bool((report.get("guard") or {}).get("rolled_back")),
         }
-        if report.get("drift"):  # Phase 13: how much of the schema moved since the last good sync
-            sync_meta["last_sync"]["drift"] = report["drift"].get("counts")
-        if (report.get("version") or {}).get("id"):
-            sync_meta["last_sync"]["version"] = report["version"]["id"]
         meta["schema_sync"] = sync_meta
         registry.atomic_write_yaml(path, meta)
         return True
