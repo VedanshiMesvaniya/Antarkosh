@@ -1,6 +1,5 @@
-# Feature flags for SQL Pipeline Optimization
-# Production configuration — all optimizations enabled.
-# Copy this file to config/feature_flags.yaml for local deployment customizations.
+# Feature flags for SQL Pipeline Optimization & Schema Intelligence
+# Copy this file to config/feature_flags.yaml for your local configuration.
 
 features:
   delta_repair_enabled: true
@@ -9,6 +8,7 @@ features:
   sql_safety_enabled: true
   zero_row_handling_enabled: true
   fast_path_enabled: true
+  sql_micro_synthesis_enabled: false
   provider_routing_v2_enabled: true
   enable_branching_traces: true
   guard_sql_safety_enforce: true
@@ -19,10 +19,9 @@ features:
   guard_schema_sufficiency_enforce: false
   guard_rag_citation_shadow: true
   guard_rag_citation_enforce: true
+  guard_decomposition_shadow: true
   enable_fallback_on_guard_failure: true
 
-# Default feature template for every database without its own override.
-# New databases automatically inherit these settings.
 db_defaults:
   auto_scaffold: true
   auto_catalog: true
@@ -38,15 +37,10 @@ db_defaults:
   auto_prompt_inject: true
   auto_learning: true
   auto_sync_orchestration: true
-  # "Apply" switches start OFF: until one is turned on for a database its feature only reports what it would do (shadow mode).
   auto_prompt_hints_apply: false
   auto_resync_apply: false
   auto_stale_chunk_cleanup: false
 
-# Per-database overrides. Each database you connect gets its own block here automatically, in your local
-# (git-ignored) config/feature_flags.yaml, with every flag true except the "apply" switches, which start false. Edit that file to turn a flag off for one database;
-# values you set are never changed. A flag added in a later version is added to each block as true (an "apply" switch as false).
-# The _example_db block below is only a template and is never used.
 db_features:
   _example_db:
     auto_scaffold: false
@@ -66,3 +60,85 @@ db_features:
     auto_prompt_hints_apply: false
     auto_resync_apply: false
     auto_stale_chunk_cleanup: false
+
+# =============================================================================
+# FEATURE DESCRIPTIONS & USAGE GUIDE
+# =============================================================================
+#
+# --- GLOBAL FEATURES (features:) ---
+#
+# delta_repair_enabled:
+#   On SQL error, generates an incremental repair diff instead of regenerating the entire query.
+# token_budget_enabled:
+#   Enforces prompt token limits, pruning lower-priority tables/columns when budget is exceeded.
+# schema_compaction_enabled:
+#   Strips noisy attributes and flattens column comments to minimize prompt token footprint.
+# sql_safety_enabled:
+#   Enforces AST checks to block destructive queries (DROP, DELETE, UPDATE, TRUNCATE) in read pipelines.
+# zero_row_handling_enabled:
+#   Diagnoses queries returning 0 rows and attempts filter relaxation or date range adjustments.
+# fast_path_enabled:
+#   Bypasses heavy multi-hop relationship resolution for simple single-table queries.
+# sql_micro_synthesis_enabled:
+#   Experimental fast micro-synthesis for trivial queries.
+# provider_routing_v2_enabled:
+#   Multi-provider routing with API key rotation, fallback models, and rate-limit mitigation.
+# enable_branching_traces:
+#   Emits detailed telemetry spans and execution traces for decision branching.
+# guard_sql_safety_enforce:
+#   Strictly blocks queries that fail AST safety verification.
+# guard_sql_soft_delete_enforce:
+#   Automatically injects filters to exclude soft-deleted records (e.g. is_deleted = 0).
+# guard_sql_temporal_shadow:
+#   Evaluates point-in-time vs current state queries in shadow mode (log only).
+# guard_sql_temporal_enforce:
+#   Strictly enforces temporal constraints and timestamps on queries.
+# guard_schema_sufficiency_shadow:
+#   Evaluates whether retrieved schema covers all needed tables/columns in shadow mode (log only).
+# guard_schema_sufficiency_enforce:
+#   Aborts/repairs query before execution if retrieved schema is insufficient.
+# guard_rag_citation_shadow:
+#   Evaluates RAG citation grounding in shadow mode (log only).
+# guard_rag_citation_enforce:
+#   Strictly enforces citation grounding before returning response.
+# guard_decomposition_shadow:
+#   Evaluates multi-part query splitting in shadow mode (log only).
+# enable_fallback_on_guard_failure:
+#   Falls back to standard execution if a guard encounters an unexpected exception.
+#
+# --- PER-DATABASE FEATURES (db_defaults: and db_features:) ---
+#
+# auto_scaffold:
+#   Phase 1: Bootstraps folder structure and initial connection configuration in databases/<db_id>/.
+# auto_catalog:
+#   Phase 2: Introspects live tables, columns, primary/foreign keys, types, and row counts.
+# auto_sqlalchemy:
+#   Phase 3: Generates SQLAlchemy declarative models and reflection code.
+# auto_procedures:
+#   Phase 4: Introspects stored procedures, functions, parameters, and return signatures.
+# auto_sp_mining:
+#   Phase 5: Mines stored procedure code to discover hidden table relationships.
+# auto_relationships:
+#   Phase 6: Infers cross-table relationships and foreign key links using column heuristics.
+# auto_relationships_apply:
+#   Phase 6: Applies inferred relationships directly into schema context for query generation.
+# auto_table_profiles:
+#   Phase 7: Profiles table distributions and identifies canonical master vs backup/copy tables.
+# auto_join_paths:
+#   Phase 8: Pre-computes graph join paths between related tables into join_paths.json.
+# auto_column_meaning:
+#   Phase 9: AI enrichment of business column descriptions and domain meanings.
+# auto_prompt_shadow:
+#   Phase 10: Logs relationship bridge injection decisions in telemetry (shadow mode).
+# auto_prompt_inject:
+#   Phase 10: Injects route bridges and join paths from join_paths.json into the query prompt.
+# auto_learning:
+#   Phase 10: Learns verified query patterns and stores golden few-shot examples.
+# auto_sync_orchestration:
+#   Phase 11: End-to-end sync orchestration with pre/post validation, drift check, and rollback.
+# auto_prompt_hints_apply:
+#   Phase 12: Injects canonical real table for copies and adds "Table notes" into prompt (starts false).
+# auto_resync_apply:
+#   Phase 13: Skips phases whose input tables/schema have not changed since last sync (starts false).
+# auto_stale_chunk_cleanup:
+#   Phase 13: Automatically deletes vector chunks for dropped/renamed tables (starts false).
