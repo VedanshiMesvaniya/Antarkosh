@@ -25,14 +25,16 @@ logger = logging.getLogger(__name__)
 MAX_UNKNOWNS = 20
 ROUTE_FLOOR = 0.45  # the bridge planner's floor (route_index.MIN_ROUTE_SCORE); informational here
 
+# (phase name in the report, key under which the sync body stores that phase's result). The keys are the ones
+# ``_sync_live_schema_body`` sets on its result; a key that matches nothing would show the phase as "off" whatever it did.
 PHASES: tuple[tuple[str, str], ...] = (
     ("catalog", "catalog"),
     ("procedures", "procedures"),
-    ("sp_evidence", "mining"),
+    ("sp_evidence", "sp_evidence"),
     ("relationships", "relationships"),
-    ("table_profiles", "profiles"),
+    ("table_profiles", "table_profiles"),
     ("join_paths", "join_paths"),
-    ("column_meaning", "meaning"),
+    ("column_meaning", "column_meaning"),
 )
 
 

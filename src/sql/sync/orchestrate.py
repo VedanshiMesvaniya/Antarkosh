@@ -100,7 +100,10 @@ def persist_generation(
         statuses = {name: phase_status(result.get(key))[0] for name, key in PHASES}
         statuses.update((sync_info.get("resync") or {}).get("carried") or {})  # a phase skipped as unchanged keeps its last result
         errors = bool(getattr(validation, "errors", None))
-        clean = bool(sync_info.get("schema_complete", True)) and not errors and "failed" not in statuses.values()
+        # Column meaning is never skipped and nothing a skippable phase reads comes from it (it may fail whenever the model
+        # is unreachable), so its failure alone must not make every later sync run everything.
+        failed = any(status == "failed" for name, status in statuses.items() if name != "column_meaning")
+        clean = bool(sync_info.get("schema_complete", True)) and not errors and not failed
         saved = save_state(
             db_id,
             {
