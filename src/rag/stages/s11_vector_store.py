@@ -433,6 +433,24 @@ class QdrantStore:
         )
         logger.info("Deleted document %s from Qdrant", document_id)
 
+    async def delete_chunks(self, document_id: str, chunk_ids: list[str]) -> None:
+        """Delete only the named chunks of one document (used to drop the chunks of tables that no longer exist)."""
+        if not document_id or not chunk_ids:
+            return
+        from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
+
+        client = await self._get_client()
+        await client.delete(
+            collection_name=self._collection_name,
+            points_selector=Filter(
+                must=[
+                    FieldCondition(key="document_id", match=MatchValue(value=document_id)),
+                    FieldCondition(key="chunk_id", match=MatchAny(any=list(chunk_ids))),
+                ]
+            ),
+        )
+        logger.info("Deleted %d chunk(s) of %s from Qdrant", len(chunk_ids), document_id)
+
     async def set_document_active(self, document_id: str, active: bool) -> None:
         """Flip the ``active`` flag on every chunk of a document.
 

@@ -16,7 +16,10 @@ from tests.sql.test_auto_procedures import _sync_args, sqlite_db  # noqa: F401  
 from tests.sql.test_catalog_extraction import ROOT, dbs  # noqa: F401  (shared fixture)
 
 ALL = ff.DB_FEATURE_FLAGS
-OLD_FLAGS = tuple(f for f in ALL if f != "auto_join_paths")  # a database registered before auto_join_paths existed
+OFF = ff.OFF_BY_DEFAULT_FLAGS  # the "apply" switches: they start off, so a new flag never changes what a database does by itself
+ON_FLAGS = tuple(f for f in ALL if f not in OFF)
+OLD_FLAGS = tuple(f for f in ON_FLAGS if f != "auto_join_paths")  # a database registered before auto_join_paths and the apply switches existed
+TEMPLATE = {f: f not in OFF for f in ALL}  # what a new database gets
 
 
 def local() -> Path:
@@ -36,7 +39,22 @@ def write_entry(db_id: str, flags: dict[str, bool], extra: str = "") -> None:
 
 
 def test_the_new_database_template_is_derived_from_the_flag_list_so_a_new_flag_is_never_forgotten():
-    assert tuple(ff.DEFAULT_NEW_DB_FLAGS) == ALL and all(ff.DEFAULT_NEW_DB_FLAGS.values()) and len(ALL) == 14
+    assert tuple(ff.DEFAULT_NEW_DB_FLAGS) == ALL and ff.DEFAULT_NEW_DB_FLAGS == TEMPLATE and len(ALL) == 14 + len(OFF)
+    assert "auto_prompt_hints_apply" in OFF and OFF <= set(ALL) and all(f.endswith(("_apply", "_cleanup")) for f in OFF)
+
+
+def test_the_apply_switches_start_off_for_a_new_database_and_when_added_to_an_old_one():
+    assert ff.register_db_feature_flags("brand_new_db") is True
+    assert all(entries()["brand_new_db"][f] is False for f in OFF) and all(entries()["brand_new_db"][f] is True for f in ON_FLAGS)
+    assert not any(ff.is_db_feature_enabled(f, "brand_new_db") for f in OFF)
+    write_entry("old_db", dict.fromkeys(OLD_FLAGS, True))  # registered before the apply switches existed
+    assert ff.register_db_feature_flags("old_db") is True
+    assert all(entries()["old_db"][f] is False for f in OFF) and entries()["old_db"]["auto_catalog"] is True
+    assert not any(ff.is_db_feature_enabled(f, "old_db") for f in OFF)
+    owned = "auto_prompt_hints_apply"
+    write_entry("owner_db", {**dict.fromkeys(ON_FLAGS, True), owned: True})  # what the owner turned on stays on
+    ff.register_db_feature_flags("owner_db")
+    assert entries()["owner_db"][owned] is True and all(entries()["owner_db"][f] is False for f in OFF - {owned})
 
 
 def test_a_new_database_gets_every_flag_on_and_nothing_else_in_the_file_changes():
@@ -44,8 +62,8 @@ def test_a_new_database_gets_every_flag_on_and_nothing_else_in_the_file_changes(
     assert ff.register_db_feature_flags("brand_new_db") is True
     text = local().read_text(encoding="utf-8")
     assert "# mine" in text and "# on purpose" in text and entries()["other_db"] == {"auto_catalog": False}
-    assert entries()["brand_new_db"] == dict.fromkeys(ALL, True)
-    assert all(ff.is_db_feature_enabled(f, "brand_new_db") for f in ALL)
+    assert entries()["brand_new_db"] == dict(TEMPLATE)
+    assert all(ff.is_db_feature_enabled(f, "brand_new_db") for f in ON_FLAGS)
 
 
 def test_pinned_blank_and_template_ids_are_never_registered():
@@ -74,7 +92,8 @@ def test_a_flag_added_later_is_backfilled_as_true_and_the_owners_values_are_kept
     assert ff.register_db_feature_flags("qts_ais") is True
     after = entries()["qts_ais"]
     assert after["auto_join_paths"] is True and after["auto_column_meaning"] is False  # added true; the owner's false stays false
-    assert {k: v for k, v in after.items() if k != "auto_join_paths"} == before
+    assert {k: v for k, v in after.items() if k != "auto_join_paths" and k not in OFF} == before
+    assert all(after[f] is False for f in OFF)  # the apply switches were added too, but as false
     assert ff.register_db_feature_flags("qts_ais") is False  # nothing left to add; no second write
 
 
@@ -133,9 +152,9 @@ def test_registering_works_for_every_layout_and_changes_nothing_else(label):
     old = yaml.safe_load(LAYOUTS[label]) or {}
     assert ff.register_db_feature_flags("new_one") is True, label
     new = yaml.safe_load(local().read_text(encoding="utf-8"))
-    assert new["db_features"]["new_one"] == dict.fromkeys(ALL, True), label
+    assert new["db_features"]["new_one"] == TEMPLATE, label
     expected = dict(old)
-    expected["db_features"] = {**(old.get("db_features") or {}), "new_one": dict.fromkeys(ALL, True)}
+    expected["db_features"] = {**(old.get("db_features") or {}), "new_one": dict(TEMPLATE)}
     if "x" in expected["db_features"]:  # an existing sibling entry is kept exactly (registering another id does not complete it)
         assert new["db_features"]["x"] == old["db_features"]["x"], label
     assert {k: v for k, v in new.items() if k != "db_features"} == {k: v for k, v in old.items() if k != "db_features"}, label
@@ -182,7 +201,7 @@ def test_concurrent_registrations_all_land_and_the_file_stays_valid():
     for t in threads:
         t.join()
     got = entries()
-    assert set(ids) <= set(got) and got["keep_me"] == {"auto_catalog": False} and all(got[i] == dict.fromkeys(ALL, True) for i in ids)
+    assert set(ids) <= set(got) and got["keep_me"] == {"auto_catalog": False} and all(got[i] == TEMPLATE for i in ids)
 
 
 # ================================================================= the connection flow
@@ -207,7 +226,7 @@ def test_saving_a_connection_registers_its_flags_and_loading_connections_complet
 
     conn = tmp_path / "connections.json"
     registry.save_connection("fresh_db", {"engine": "sqlite", "database": "x.db"}, conn_path=conn)
-    assert entries()["fresh_db"] == dict.fromkeys(ALL, True)
+    assert entries()["fresh_db"] == TEMPLATE
     write_entry("old_db", dict.fromkeys(OLD_FLAGS, True))
     conn.write_text(json.dumps({"old_db": {"engine": "sqlite", "database": "o.db"}}), encoding="utf-8")
     registry.get_connection("old_db", conn_path=conn)
@@ -252,7 +271,9 @@ def test_the_diagnostic_command_reports_every_flag_for_the_database_after_comple
     write_entry("qts_ais", dict.fromkeys(OLD_FLAGS, True))
     assert mod.main(["--db", "qts_ais"]) == 0
     out = capsys.readouterr().out
-    assert entries()["qts_ais"]["auto_join_paths"] is True and "auto_join_paths" in out and "OFF" not in out
+    assert entries()["qts_ais"]["auto_join_paths"] is True and "auto_join_paths" in out
+    off_lines = [line for line in out.splitlines() if "OFF" in line]
+    assert off_lines and all(any(f in line for f in OFF) for line in off_lines)  # only the apply switches are reported OFF
 
 
 # ================================================================= through the real Connect Database endpoints
@@ -271,8 +292,8 @@ async def test_connecting_a_new_database_gives_it_every_flag_without_naming_an_i
     async with _client() as c:
         res = await c.post("/api/databases/connect", json={**BODY, "database": "QTS_AIS", "engine": "mssql"}, headers=ADMIN)
     assert res.status_code == 200 and res.json()["db_id"] == "qts_ais"
-    assert entries()["qts_ais"] == dict.fromkeys(ALL, True)
-    assert all(ff.is_db_feature_enabled(f, "qts_ais") for f in ALL)
+    assert entries()["qts_ais"] == TEMPLATE
+    assert all(ff.is_db_feature_enabled(f, "qts_ais") for f in ON_FLAGS)
 
 
 @pytest.mark.asyncio
@@ -282,7 +303,7 @@ async def test_connecting_a_second_database_with_the_same_name_gets_its_own_id_a
         second = await c.post("/api/databases/connect", json={**BODY, "database": "QTS_AIS", "host": "another-server"}, headers=ADMIN)
     assert (first.status_code, second.status_code) == (200, 200)
     assert (first.json()["db_id"], second.json()["db_id"]) == ("qts_ais", "qts_ais_2")
-    assert {"qts_ais", "qts_ais_2"} <= set(entries()) and entries()["qts_ais_2"] == dict.fromkeys(ALL, True)
+    assert {"qts_ais", "qts_ais_2"} <= set(entries()) and entries()["qts_ais_2"] == TEMPLATE
 
 
 @pytest.mark.asyncio

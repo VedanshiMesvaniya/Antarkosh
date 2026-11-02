@@ -110,7 +110,15 @@ DB_FEATURE_FLAGS: tuple[str, ...] = (
     "auto_prompt_inject",
     "auto_learning",
     "auto_sync_orchestration",
+    # "Apply" switches: each changes what the system does (not just what it builds or logs), and each runs in shadow mode
+    # (reports only) until it is turned on for a database. See OFF_BY_DEFAULT_FLAGS.
+    "auto_prompt_hints_apply",  # Phase 12 part 2: add the real table for a chosen copy, plus a short "Table notes" block
+    "auto_resync_apply",  # Phase 13: skip the phases whose inputs did not change since the last good sync
+    "auto_stale_chunk_cleanup",  # Phase 13: remove the vector chunks of tables that no longer exist
 )
+
+# Flags that start OFF, for a new database and when added to an existing one. Everything else in DB_FEATURE_FLAGS starts on.
+OFF_BY_DEFAULT_FLAGS: frozenset[str] = frozenset({"auto_prompt_hints_apply", "auto_resync_apply", "auto_stale_chunk_cleanup"})
 
 # Databases pinned to their curated files: these flags are always False here,
 # whatever the YAML says. Kept local (no import) so this module stays light.
@@ -231,9 +239,9 @@ def is_db_feature_enabled(flag_name: str, db_id: str | None) -> bool:
     return all_flags.get("*", {}).get(flag_name, False)  # db_defaults, else off
 
 
-# Every flag in DB_FEATURE_FLAGS is on for a newly connected database. Derived from DB_FEATURE_FLAGS, so a flag added there
-# is automatically part of the new-database template and of the backfill below: no second list to forget to update.
-DEFAULT_NEW_DB_FLAGS: dict[str, bool] = dict.fromkeys(DB_FEATURE_FLAGS, True)
+# Every flag in DB_FEATURE_FLAGS except OFF_BY_DEFAULT_FLAGS is on for a newly connected database. Derived from DB_FEATURE_FLAGS, so
+# a flag added there is automatically part of the new-database template and of the backfill below: no second list to forget.
+DEFAULT_NEW_DB_FLAGS: dict[str, bool] = {flag: flag not in OFF_BY_DEFAULT_FLAGS for flag in DB_FEATURE_FLAGS}
 
 _REGISTER_LOCK = threading.Lock()
 _DB_FEATURES_HEADER = re.compile(r"^db_features[ \t]*:[ \t]*(?:#.*)?$")
@@ -316,9 +324,11 @@ def register_db_feature_flags(
 ) -> bool:
     """Make sure ``db_id`` has every per-database flag in ``feature_flags.yaml`` (the local, git-ignored file).
 
-    * A database with no entry gets a new one with every flag ``true`` (or the values in ``flags``).
+    * A database with no entry gets a new one with every flag ``true`` except ``OFF_BY_DEFAULT_FLAGS`` (the "apply" switches), which
+      start ``false`` (or the values in ``flags``).
     * A database that already has an entry keeps every value it has, however it is set; only flags it does not have yet
-      (for example one added to the code later) are added, as ``true``. Nothing the owner set is ever changed.
+      (for example one added to the code later) are added with their default: ``true``, or ``false`` for ``OFF_BY_DEFAULT_FLAGS``.
+      Nothing the owner set is ever changed.
     * Comments and layout are kept. The edit is checked before it is written: the file must parse to exactly what it
       parsed to before, plus the additions, otherwise nothing is written (a structured rewrite with a ``.bak`` copy is used
       only for layouts a text edit cannot handle, such as ``db_features: {}``).

@@ -170,18 +170,17 @@ def hints_mode(db_id: str) -> str:
     """``"apply"``, ``"shadow"`` or ``""`` (off) for this database.
 
     Needs the Phase 12 prompt flags (``auto_prompt_shadow`` or ``auto_prompt_inject``). Even with ``auto_prompt_inject`` on,
-    the hints only *apply* for databases listed in ``PROMPT_HINTS_APPLY_DBS`` (or ``*``); every other flagged database
-    runs them in shadow mode, so turning on route bridges never switches these on by itself.
+    the hints only *apply* where ``auto_prompt_hints_apply`` is also on for the database (it starts off); every other flagged
+    database runs them in shadow mode, so turning on route bridges never switches these on by itself.
     """
     try:
-        from src.core.config import settings
         from src.sql.schema_retrieval import _route_bridge_mode
+        from src.utils.feature_flags import is_db_feature_enabled
 
         base = _route_bridge_mode(db_id)
         if not base:
             return ""
-        listed = {x.strip().lower() for x in str(settings.prompt_hints_apply_dbs or "").split(",") if x.strip()}
-        if base == "apply" and ("*" in listed or db_id.lower() in listed):
+        if base == "apply" and is_db_feature_enabled("auto_prompt_hints_apply", db_id):
             return "apply"
         return "shadow"
     except Exception as exc:  # noqa: BLE001 - on any doubt the hints stay off

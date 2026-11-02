@@ -136,7 +136,7 @@ def build_run(db_id: str, label: str, results: list[dict[str, Any]], telemetry_f
             "label": label,
             "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "git_commit": _git_commit(),
-            "flags": {f: is_db_feature_enabled(f, db_id) for f in ("auto_prompt_inject", "auto_prompt_shadow", "auto_join_paths")},
+            "flags": {f: is_db_feature_enabled(f, db_id) for f in ("auto_prompt_inject", "auto_prompt_shadow", "auto_join_paths", "auto_prompt_hints_apply")},
             "questions": len(results),
             "ok": ok,
         },

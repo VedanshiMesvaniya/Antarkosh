@@ -206,6 +206,10 @@ def test_register_db_feature_flags_creates_all_13_flags_true(cfg: Path, tmp_path
     assert len(expected_flags) == 14
     for flag in expected_flags:
         assert ff.is_db_feature_enabled(flag, "fresh_tenant_db") is True, f"Flag {flag} should be True"
+    # the "apply" switches start off: they only change what the system does once an owner turns them on
+    assert set(ff.DB_FEATURE_FLAGS) == {*expected_flags, *ff.OFF_BY_DEFAULT_FLAGS}
+    for flag in ff.OFF_BY_DEFAULT_FLAGS:
+        assert ff.is_db_feature_enabled(flag, "fresh_tenant_db") is False, f"Flag {flag} should start False"
 
 
 def test_register_db_feature_flags_does_not_overwrite_existing(cfg: Path, tmp_path: Path):

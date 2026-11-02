@@ -16,7 +16,6 @@ import pytest
 
 import src.sql.prompt_builder as pb
 import src.sql.schema_retrieval as sr
-from src.core.config import settings
 from src.sql import registry
 from src.sql.profiles import hints as h
 
@@ -63,9 +62,9 @@ def dbs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     h.clear_authority_cache()
 
 
-def _flags(monkeypatch: pytest.MonkeyPatch, flags: dict[str, bool], apply_dbs: str = "") -> None:
-    monkeypatch.setattr("src.utils.feature_flags.is_db_feature_enabled", lambda f, db: flags.get(f, False))
-    monkeypatch.setattr(settings, "prompt_hints_apply_dbs", apply_dbs)
+def _flags(monkeypatch: pytest.MonkeyPatch, flags: dict[str, bool], apply: bool = False) -> None:
+    on = {**flags, **({"auto_prompt_hints_apply": True} if apply else {})}
+    monkeypatch.setattr("src.utils.feature_flags.is_db_feature_enabled", lambda f, db: on.get(f, False))
 
 
 # ----------------------------------------------------------------------------------------------- the index
@@ -173,26 +172,29 @@ def test_no_profile_file_means_no_plan(dbs: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("flags", "apply_dbs", "expected"),
+    ("flags", "expected"),
     [
-        ({}, "", ""),
-        ({}, DB, ""),  # being listed does nothing without the Phase 12 flags
-        ({"auto_prompt_shadow": True}, "", "shadow"),
-        ({"auto_prompt_shadow": True}, DB, "shadow"),  # apply needs auto_prompt_inject too
-        ({"auto_prompt_inject": True}, "", "shadow"),  # route bridges on does NOT switch these on
-        ({"auto_prompt_inject": True}, "other_db", "shadow"),
-        ({"auto_prompt_inject": True}, DB, "apply"),
-        ({"auto_prompt_inject": True}, f" {DB.upper()} , x", "apply"),
-        ({"auto_prompt_inject": True}, "*", "apply"),
+        ({}, ""),
+        ({"auto_prompt_hints_apply": True}, ""),  # the apply flag does nothing without the Phase 12 flags
+        ({"auto_prompt_shadow": True}, "shadow"),
+        ({"auto_prompt_shadow": True, "auto_prompt_hints_apply": True}, "shadow"),  # apply needs auto_prompt_inject too
+        ({"auto_prompt_inject": True}, "shadow"),  # route bridges on does NOT switch these on
+        ({"auto_prompt_inject": True, "auto_prompt_hints_apply": True}, "apply"),
+        ({"auto_prompt_inject": True, "auto_prompt_shadow": True, "auto_prompt_hints_apply": True}, "apply"),
     ],
 )
-def test_mode_switch(monkeypatch: pytest.MonkeyPatch, flags: dict[str, bool], apply_dbs: str, expected: str) -> None:
-    _flags(monkeypatch, flags, apply_dbs)
+def test_mode_switch(monkeypatch: pytest.MonkeyPatch, flags: dict[str, bool], expected: str) -> None:
+    _flags(monkeypatch, flags)
     assert h.hints_mode(DB) == expected
 
 
-def test_the_pinned_database_never_applies(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "prompt_hints_apply_dbs", "*")
+def test_the_apply_flag_is_off_by_default_so_route_bridges_never_switch_the_hints_on() -> None:
+    from src.utils.feature_flags import DEFAULT_NEW_DB_FLAGS, OFF_BY_DEFAULT_FLAGS
+
+    assert "auto_prompt_hints_apply" in OFF_BY_DEFAULT_FLAGS and DEFAULT_NEW_DB_FLAGS["auto_prompt_hints_apply"] is False
+
+
+def test_the_pinned_database_never_applies() -> None:
     assert h.hints_mode("erp_main") == ""  # real flag lookup: erp_main is pinned off
 
 
@@ -225,7 +227,7 @@ def test_prompt_is_unchanged_in_shadow_mode_and_gets_a_note_in_apply_mode(dbs: P
     shadow_only = _prompt(schema)
     assert "Table notes" not in shadow_only
 
-    _flags(monkeypatch, {"auto_prompt_inject": True}, apply_dbs=DB)
+    _flags(monkeypatch, {"auto_prompt_inject": True}, apply=True)
     on = _prompt(schema)
     block = re.search(r"\n\nTable notes \(similar tables\):\n- `item_bak` looks like a copy of `item`\.[^\n]*", on)
     assert block is not None
@@ -234,13 +236,13 @@ def test_prompt_is_unchanged_in_shadow_mode_and_gets_a_note_in_apply_mode(dbs: P
 
 def test_flags_off_gives_the_same_prompt_as_before_this_part(dbs: Path, monkeypatch: pytest.MonkeyPatch, quiet_prompt: None) -> None:
     _write(dbs, _pair_doc())
-    _flags(monkeypatch, {}, apply_dbs=DB)  # listed, but the Phase 12 flags are off
+    _flags(monkeypatch, {}, apply=True)  # the apply flag alone, with the Phase 12 flags off
     assert "Table notes" not in _prompt(_compact("item_bak", "item"))
 
 
 def test_no_note_when_the_pair_is_not_both_in_the_prompt(dbs: Path, monkeypatch: pytest.MonkeyPatch, quiet_prompt: None) -> None:
     _write(dbs, _pair_doc())
-    _flags(monkeypatch, {"auto_prompt_inject": True}, apply_dbs=DB)
+    _flags(monkeypatch, {"auto_prompt_inject": True}, apply=True)
     assert "Table notes" not in _prompt(_compact("item_bak", "other"))
 
 
@@ -259,7 +261,7 @@ def test_a_hints_crash_never_breaks_the_prompt(dbs: Path, monkeypatch: pytest.Mo
     schema = _compact("item_bak", "item")
     _flags(monkeypatch, {"auto_prompt_inject": True})
     off = _prompt(schema)
-    _flags(monkeypatch, {"auto_prompt_inject": True}, apply_dbs=DB)
+    _flags(monkeypatch, {"auto_prompt_inject": True}, apply=True)
 
     def boom(*_a: Any, **_k: Any) -> None:
         raise RuntimeError("boom")
@@ -296,13 +298,13 @@ def _store(tables: dict[str, str], hits: list[str]) -> Any:
     return _Store()
 
 
-def _world(monkeypatch: pytest.MonkeyPatch, flags: dict[str, bool], apply_dbs: str = "") -> tuple[dict[str, str], str]:
+def _world(monkeypatch: pytest.MonkeyPatch, flags: dict[str, bool], apply: bool = False) -> tuple[dict[str, str], str]:
     tables = {t: _ddl(t) for t in ("item", "item_bak", "other", "more")}
     monkeypatch.setattr(pb, "get_raw_relationships", lambda db_id=DB: [])
     monkeypatch.setattr(pb, "build_column_glossary_for_query", lambda q, db_id=DB: "")
     monkeypatch.setattr(sr, "route_anchor_tables", lambda q, db_id=DB: set())
     monkeypatch.setattr(sr, "is_feature_enabled", lambda f: True)
-    _flags(monkeypatch, flags, apply_dbs)
+    _flags(monkeypatch, flags, apply)
     return tables, "\n\n".join(tables.values())
 
 
@@ -323,7 +325,7 @@ def test_retrieval_offers_the_real_table_only_in_apply_mode(dbs: Path, monkeypat
     tables, full = _world(monkeypatch, {"auto_prompt_shadow": True, "auto_prompt_inject": True})
     assert _retrieve(tables, full) == off  # flags on, hints not listed: shadow, identical
 
-    tables, full = _world(monkeypatch, {"auto_prompt_inject": True}, apply_dbs=DB)
+    tables, full = _world(monkeypatch, {"auto_prompt_inject": True}, apply=True)
     on = _retrieve(tables, full)
     assert {"item_bak", "item", "other"} <= _present(on)  # the copy stays, the real table is added
 
@@ -331,7 +333,7 @@ def test_retrieval_offers_the_real_table_only_in_apply_mode(dbs: Path, monkeypat
 def test_retrieval_is_identical_without_a_profile_file_and_when_the_planner_crashes(dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     tables, full = _world(monkeypatch, {})
     off = _retrieve(tables, full)
-    tables, full = _world(monkeypatch, {"auto_prompt_inject": True}, apply_dbs=DB)
+    tables, full = _world(monkeypatch, {"auto_prompt_inject": True}, apply=True)
     assert _retrieve(tables, full) == off  # no table_profiles.json
 
     _write(dbs, _pair_doc())
