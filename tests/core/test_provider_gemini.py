@@ -72,7 +72,7 @@ async def test_chat_disables_thinking():
 
     text = await provider.chat(
         [{"role": "user", "content": "hi"}],
-        model="gemini-2.5-flash",
+        model="gemini-3.1-flash-lite",
         max_tokens=64,
     )
 
@@ -91,7 +91,7 @@ async def test_chat_stream_disables_thinking():
     parts = []
     async for chunk in provider.chat_stream(
         [{"role": "user", "content": "hi"}],
-        model="gemini-2.5-flash",
+        model="gemini-3.1-flash-lite",
         max_tokens=64,
     ):
         parts.append(chunk)

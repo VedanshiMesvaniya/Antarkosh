@@ -707,33 +707,33 @@ _VISION_TASKS = frozenset({
 # Default routing — the "Frankenstein pipeline" from Section 7 of the arch doc.
 DEFAULT_ROUTES: dict[str, TaskRoute] = {
     "semantic_classification": TaskRoute([
-        ProviderOption("gemini", "gemini-2.5-flash-lite", 1),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("groq", "openai/gpt-oss-20b", 2),
         ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 3),
     ]),
     "ocr_vision": TaskRoute([
-        ProviderOption("gemini", "gemini-2.5-flash", 1),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("nvidia_nim", "meta/llama-3.2-90b-vision-instruct", 2),
     ]),
     "layout_analysis": TaskRoute([
-        ProviderOption("gemini", "gemini-2.5-flash", 1),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("nvidia_nim", "meta/llama-3.2-90b-vision-instruct", 2),
     ]),
     "table_extraction": TaskRoute([
-        ProviderOption("gemini", "gemini-2.5-flash", 1),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("nvidia_nim", "meta/llama-3.2-90b-vision-instruct", 2),
     ]),
     "chart_analysis": TaskRoute([
-        ProviderOption("gemini", "gemini-2.5-flash", 1),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("nvidia_nim", "meta/llama-3.2-90b-vision-instruct", 2),
         ProviderOption("nvidia_nim", "nvidia/nemotron-nano-12b-v2-vl", 3),
     ]),
     "image_understanding": TaskRoute([
-        ProviderOption("gemini", "gemini-2.5-flash", 1),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("nvidia_nim", "nvidia/nemotron-nano-12b-v2-vl", 2),
     ]),
     "general_qa": TaskRoute([
-        ProviderOption("gemini", "gemini-2.5-flash", 1),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("groq", "qwen/qwen3.6-27b", 2),
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 3),
         ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 4),
@@ -744,17 +744,17 @@ DEFAULT_ROUTES: dict[str, TaskRoute] = {
         # gemini. Replaces the dead `meta/llama3-70b-instruct` (NVIDIA 404) that
         # left reasoning with no working fallback once groq hit its daily cap.
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 2),
-        ProviderOption("gemini", "gemini-2.5-flash", 3),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 3),
         ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 4),
     ]),
     "repair": TaskRoute([
         ProviderOption("groq", "qwen/qwen3.6-27b", 1),
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 2),
-        ProviderOption("gemini", "gemini-2.5-flash", 3),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 3),
         ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 4),
     ]),
     "synthesis": TaskRoute([
-        ProviderOption("gemini", "gemini-2.5-flash", 1),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("groq", "qwen/qwen3.6-27b", 2),
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 3),
         ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 4),
@@ -762,24 +762,24 @@ DEFAULT_ROUTES: dict[str, TaskRoute] = {
     "micro_synthesis": TaskRoute([
         ProviderOption("groq", "openai/gpt-oss-20b", 1),
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 2),
-        ProviderOption("gemini", "gemini-2.5-flash-lite", 3),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 3),
     ]),
     "extraction": TaskRoute([
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 1),
-        ProviderOption("gemini", "gemini-2.5-flash", 2),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 2),
         ProviderOption("groq", "openai/gpt-oss-20b", 3),
     ]),
     "summarization": TaskRoute([
         ProviderOption("nvidia_nim", "moonshotai/kimi-k2.6", 1),
-        ProviderOption("gemini", "gemini-2.5-flash", 2),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 2),
     ]),
     "fast_support": TaskRoute([
         ProviderOption("groq", "openai/gpt-oss-20b", 1),
-        ProviderOption("gemini", "gemini-2.5-flash-lite", 2),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 2),
     ]),
     "chat_title": TaskRoute([
         ProviderOption("groq", "openai/gpt-oss-20b", 1),
-        ProviderOption("gemini", "gemini-2.5-flash", 2),
+        ProviderOption("gemini", "gemini-3.1-flash-lite", 2),
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 3),
     ]),
 }
@@ -985,7 +985,7 @@ class ProviderRouter:
         pref = (preferred_provider or "").strip().lower()
         self._preferred_provider: str | None = pref if pref and pref != "auto" else None
         # The provider/model that served the most recent successful call, e.g.
-        # "gemini/gemini-2.5-flash". Per-request state — callers read this to
+        # "gemini/gemini-3.1-flash-lite". Per-request state — callers read this to
         # report which model actually answered (after fallback).
         self.last_used: str = ""
         # Running token total for every LLM call made through this router. Held
