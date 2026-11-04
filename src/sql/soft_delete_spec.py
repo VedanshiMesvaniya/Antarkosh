@@ -22,8 +22,7 @@ Kinds (what "deleted" looks like) and the "not deleted" condition:
 * ``int_flag``   - bit / tinyint / smallint / int / NUMBER, 0 = live:   ``col = 0 OR col IS NULL``
 * ``char_flag``  - a one-letter flag, 'N' = live (also NULL):           ``col IN ('N', 'n') OR col IS NULL``
 
-Nothing here reads data rows, and nothing here changes a database that has not been switched on: ``soft_delete.py`` uses this only
-when ``soft_delete_mode`` is ``apply`` (the per-database ``auto_soft_delete_apply`` flag) and merely logs in ``shadow`` mode.
+Nothing here reads data rows: soft-delete filtering is mandatory and always active across all databases.
 
 Origin: new (no previous file)
 """
@@ -273,18 +272,9 @@ def _build(db_id: str, root: Path, paths: list[Path]) -> dict[str, SoftDeleteSpe
 # --------------------------------------------------------------------------- the switch
 
 
-def soft_delete_mode(db_id: str) -> str:
-    """``"apply"`` (``auto_soft_delete_apply`` on), ``"shadow"`` (a Phase 12 prompt flag on: only logs) or ``""`` (off)."""
-    try:
-        from src.utils.feature_flags import is_db_feature_enabled
-
-        if is_db_feature_enabled("auto_soft_delete_apply", db_id):
-            return "apply"
-        if is_db_feature_enabled("auto_prompt_shadow", db_id) or is_db_feature_enabled("auto_prompt_inject", db_id):
-            return "shadow"
-        return ""
-    except Exception:  # noqa: BLE001 - on any doubt: off
-        return ""
+def soft_delete_mode(db_id: str = "") -> str:
+    """Soft-delete filtering is mandatory across all databases; always returns 'apply'."""
+    return "apply"
 
 
 # --------------------------------------------------------------------------- conditions

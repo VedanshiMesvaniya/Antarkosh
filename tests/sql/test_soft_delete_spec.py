@@ -329,30 +329,20 @@ def test_subqueries_and_unions_are_filtered_too(lite: sqlite3.Connection) -> Non
     assert _run(lite, "SELECT id FROM cust UNION ALL SELECT id FROM prods") == [(1,), (1,), (3,), (3,), (4,)]
 
 
-# ----------------------------------------------------------------------------------------------- the switch and the public function
+# ----------------------------------------------------------------------------------------------- mandatory mode and the public function
 
 
-def _flags(monkeypatch: pytest.MonkeyPatch, *on: str) -> None:
-    monkeypatch.setattr("src.utils.feature_flags.is_db_feature_enabled", lambda flag, db: flag in on)
+def test_soft_delete_mode_is_always_apply() -> None:
+    assert ss.soft_delete_mode(DB) == "apply"
+    assert ss.soft_delete_mode("erp_main") == "apply"
+    assert ss.soft_delete_mode("any_db") == "apply"
 
 
-@pytest.mark.parametrize(
-    ("flags", "expected"),
-    [((), ""), (("auto_prompt_shadow",), "shadow"), (("auto_prompt_inject",), "shadow"), (("auto_soft_delete_apply",), "apply"), (("auto_soft_delete_apply", "auto_prompt_shadow"), "apply")],
-)
-def test_the_mode_switch(monkeypatch: pytest.MonkeyPatch, flags: tuple[str, ...], expected: str) -> None:
-    _flags(monkeypatch, *flags)
-    assert ss.soft_delete_mode(DB) == expected
+def test_soft_delete_is_mandatory_not_a_toggleable_feature_flag() -> None:
+    from src.utils.feature_flags import DB_FEATURE_FLAGS, OFF_BY_DEFAULT_FLAGS
 
-
-def test_the_pinned_database_is_never_on() -> None:
-    assert ss.soft_delete_mode("erp_main") == ""  # the real flag lookup
-
-
-def test_the_new_flag_is_a_real_flag_that_starts_off() -> None:
-    from src.utils.feature_flags import DB_FEATURE_FLAGS, DEFAULT_NEW_DB_FLAGS, OFF_BY_DEFAULT_FLAGS
-
-    assert "auto_soft_delete_apply" in DB_FEATURE_FLAGS and "auto_soft_delete_apply" in OFF_BY_DEFAULT_FLAGS and DEFAULT_NEW_DB_FLAGS["auto_soft_delete_apply"] is False
+    assert "auto_soft_delete_apply" not in DB_FEATURE_FLAGS
+    assert "auto_soft_delete_apply" not in OFF_BY_DEFAULT_FLAGS
 
 
 @pytest.fixture()
@@ -367,37 +357,17 @@ LEGACY_SQL = [
 ]
 
 
-@pytest.mark.parametrize("sql", LEGACY_SQL)
-def test_with_the_flags_off_the_public_function_is_exactly_the_old_one(known: Path, monkeypatch: pytest.MonkeyPatch, sql: str) -> None:
-    _flags(monkeypatch)
-    for intent in ("ACTIVE_ONLY", "DELETED_ONLY", "INCLUDE_ARCHIVED"):
-        assert sd.enforce_soft_delete_filter(sql, intent, "mysql", DB) == sd._enforce_legacy(sql, intent, "mysql", DB) if intent != "INCLUDE_ARCHIVED" else sql
-
-
-def test_in_shadow_mode_the_old_result_is_returned_and_the_difference_is_logged(known: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _flags(monkeypatch, "auto_prompt_shadow")
-    events: list[dict[str, Any]] = []
-    monkeypatch.setattr("src.utils.telemetry.log_telemetry", lambda **kw: events.append(kw))
-    out = sd.enforce_soft_delete_filter("SELECT id FROM orders", "ACTIVE_ONLY", "tsql", DB)
-    assert out == sd._enforce_legacy("SELECT id FROM orders", "ACTIVE_ONLY", "tsql", DB)  # unchanged
-    (event,) = [e for e in events if e["stage"] == "soft_delete_shadow"]
-    assert event["extra"]["differs_from_current"] is True and event["extra"]["would_add"] == ["orders: (is_deleted = 0 OR is_deleted IS NULL)"]
-
-
-def test_in_apply_mode_the_real_marker_columns_are_enforced(known: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _flags(monkeypatch, "auto_soft_delete_apply")
+def test_mandatory_enforcement_applies_real_marker_columns(known: Path) -> None:
     out = sd.enforce_soft_delete_filter("SELECT o.id FROM orders o JOIN cust c ON c.id = o.cid", "ACTIVE_ONLY", "tsql", DB)
     assert out == _norm("SELECT o.id FROM orders o JOIN cust c ON c.id = o.cid WHERE (o.is_deleted = 0 OR o.is_deleted IS NULL) AND c.deleted_at IS NULL", "tsql")
 
 
-def test_in_apply_mode_a_database_without_knowledge_keeps_the_old_behaviour(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _flags(monkeypatch, "auto_soft_delete_apply")
+def test_database_without_knowledge_keeps_legacy_behaviour(root: Path) -> None:
     sql = "SELECT id FROM orders"
     assert sd.enforce_soft_delete_filter(sql, "ACTIVE_ONLY", "mysql", DB) == sd._enforce_legacy(sql, "ACTIVE_ONLY", "mysql", DB)
 
 
-def test_a_crash_in_the_new_path_falls_back_to_the_old_one(known: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _flags(monkeypatch, "auto_soft_delete_apply")
+def test_crash_in_the_new_path_falls_back_to_legacy(known: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ss, "enforce", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
     sql = "SELECT id FROM party"
     assert sd.enforce_soft_delete_filter(sql, "ACTIVE_ONLY", "mysql", DB) == sd._enforce_legacy(sql, "ACTIVE_ONLY", "mysql", DB)
@@ -425,21 +395,19 @@ def _prompt(query: str = "list orders") -> str:
     return pb.build_sql_prompt(query, "orders: id(int, PK), is_deleted(bit)\n\ncust: id(int, PK), deleted_at(datetime)\n\nother: id(int, PK)", _DIALECT, db_id=DB)
 
 
-def test_apply_mode_tells_the_model_the_real_columns_and_off_or_shadow_leave_the_prompt_as_it_was(known: Path, monkeypatch: pytest.MonkeyPatch, quiet: None) -> None:
-    _flags(monkeypatch, "auto_prompt_shadow")
-    shadow = _prompt()
-    assert "Soft-delete conditions" not in shadow
-    _flags(monkeypatch, "auto_soft_delete_apply", "auto_prompt_shadow")
+def test_mandatory_prompt_tells_model_the_real_columns(known: Path, quiet: None) -> None:
     on = _prompt()
+    assert "Soft-delete conditions" in on
     block = on[on.index("\n\nSoft-delete conditions"):]
-    assert "- orders: (alias.is_deleted = 0 OR alias.is_deleted IS NULL)" in block and "- cust: alias.deleted_at IS NULL" in block and "other" not in block
-    assert on.replace(block, "", 1) == shadow  # the block is the ONLY difference
+    assert "- orders: (alias.is_deleted = 0 OR alias.is_deleted IS NULL)" in block
+    assert "- cust: alias.deleted_at IS NULL" in block
+    assert "other" not in block
 
 
-def test_the_prompt_block_follows_the_intent_of_the_question(known: Path, monkeypatch: pytest.MonkeyPatch, quiet: None) -> None:
-    _flags(monkeypatch, "auto_soft_delete_apply")
+def test_the_prompt_block_follows_the_intent_of_the_question(known: Path, quiet: None) -> None:
     assert "alias.is_deleted <> 0" in _prompt("show the deleted orders")
-    assert "AUDIT / HISTORY" in _prompt("order history and audit trail") and "- orders:" not in _prompt("order history and audit trail").split("AUDIT / HISTORY")[1]
+    assert "AUDIT / HISTORY" in _prompt("order history and audit trail")
+    assert "- orders:" not in _prompt("order history and audit trail").split("AUDIT / HISTORY")[1]
 
 
 def test_only_the_tables_in_the_prompt_are_named_and_the_list_is_capped(root: Path) -> None:
@@ -451,8 +419,8 @@ def test_only_the_tables_in_the_prompt_are_named_and_the_list_is_capped(root: Pa
 
 
 def test_a_prompt_problem_never_breaks_the_prompt(known: Path, monkeypatch: pytest.MonkeyPatch, quiet: None) -> None:
-    _flags(monkeypatch, "auto_prompt_shadow")
-    off = _prompt()
-    _flags(monkeypatch, "auto_soft_delete_apply", "auto_prompt_shadow")
+    prompt_before = _prompt()
+    assert "Soft-delete conditions" in prompt_before
     monkeypatch.setattr(ss, "prompt_block", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
-    assert _prompt() == off
+    prompt_after = _prompt()
+    assert "Soft-delete conditions" not in prompt_after

@@ -2,7 +2,7 @@
 
 Until now only a column literally named `deleted_at`, on the tables the behavioral atlas lists, was filtered out of generated SQL.
 A database that marks deleted rows another way (`IsDeleted bit`, `is_deleted char(1)` with Y/N, `DeletedOn`...) was never filtered, and
-a database with no atlas (every database but `erp_main`) was not filtered at all. `auto_soft_delete_apply` fixes that for any database.
+a database with no atlas (every database but `erp_main`) was not filtered at all. Soft-delete filtering is now mandatory and active for every database.
 
 ## How the marker column is found
 
@@ -36,16 +36,12 @@ on a plain integer, a varchar flag with no evidence. When a table has several ca
   questions are left alone.
 * **The prompt names the real columns** of the tables it shows, so the model stops guessing `deleted_at` where the column is `IsDeleted`.
 
-## Turning it on
+## Inspecting and Overriding
 
-1. `python scripts/db/show_soft_delete.py --db-id <id>` lists the tables and columns that would be filtered. Put any table that must
-   not be filtered under `ignore`. Add `--sql "SELECT ..."` to preview the rewrite.
-2. Shadow first: with `auto_prompt_shadow` or `auto_prompt_inject` on, every query logs a `soft_delete_shadow` event (`would_add`)
-   and nothing changes.
-3. Set `auto_soft_delete_apply: true` for the database in `config/feature_flags.yaml`. Set it back to `false` to undo.
-
-`erp_main` is pinned and keeps its existing behaviour. With the flag off nothing changes for any database, except one fix that applies
-everywhere: the old `deleted_at` path no longer lets an OR in the model's WHERE swallow the condition.
+1. Soft-delete filtering is **mandatory and always enforced** across all databases (there is no toggle flag).
+2. `python scripts/db/show_soft_delete.py --db-id <id>` lists the tables and columns discovered for soft-delete filtering.
+   Add `--sql "SELECT ..."` to preview the rewrite.
+3. Put any table that must not be filtered under `ignore` in `semantics/soft_delete.json` (or override a column mapping there).
 
 ## Limits
 

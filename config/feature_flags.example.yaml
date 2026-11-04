@@ -40,7 +40,6 @@ db_defaults:
   auto_prompt_hints_apply: false
   auto_resync_apply: false
   auto_stale_chunk_cleanup: false
-  auto_soft_delete_apply: false
 
 db_features:
   _example_db:
@@ -61,7 +60,6 @@ db_features:
     auto_prompt_hints_apply: false
     auto_resync_apply: false
     auto_stale_chunk_cleanup: false
-    auto_soft_delete_apply: false
 
 # =============================================================================
 # FEATURE DESCRIPTIONS & USAGE GUIDE
@@ -144,7 +142,3 @@ db_features:
 #   Phase 13: Skips phases whose input tables/schema have not changed since last sync (starts false).
 # auto_stale_chunk_cleanup:
 #   Phase 13: Automatically deletes vector chunks for dropped/renamed tables (starts false).
-# auto_soft_delete_apply:
-#   Never returns rows a table marks as deleted, whatever its marker column is called (deleted_at, is_deleted, a Y/N flag...) and in every
-#   SQL dialect: adds the right condition to the generated SQL and tells the model which column to use. Without it (but with a Phase 12
-#   prompt flag on) it only logs what it would add. Starts false. Review `python scripts/db/show_soft_delete.py --db-id <id>` first.

@@ -336,20 +336,20 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
     soft_intent = detect_soft_delete_intent(query)
     if soft_intent == "DELETED_ONLY":
         soft_delete_rule = (
-            "- Dynamic Soft-Delete Rule (EXPLICIT DELETED QUERY): The user is explicitly requesting DELETED or REMOVED records! "
-            "DO NOT add `alias.deleted_at IS NULL`. Instead, add `WHERE alias.deleted_at IS NOT NULL` on the target table(s) with deleted_at. "
-            "This strictly overrides any default `deleted_at IS NULL` rules or example templates below."
+            "- Mandatory Soft-Delete Rule (EXPLICIT DELETED QUERY): The user explicitly requests DELETED/INACTIVE records. "
+            "Filter for deleted records following the exact table-specific conditions specified below. "
+            "This strictly overrides standard active-only filtering."
         )
     elif soft_intent == "INCLUDE_ARCHIVED":
         soft_delete_rule = (
-            "- Dynamic Soft-Delete Rule (AUDIT / HISTORY QUERY): The user is querying audit history, past records, or archived data! "
-            "DO NOT add `alias.deleted_at IS NULL`. Return ALL records (both active and deleted) without soft-delete restriction. "
-            "This strictly overrides any default `deleted_at IS NULL` rules or example templates below."
+            "- Mandatory Soft-Delete Rule (AUDIT / HISTORY QUERY): The user is querying audit history, past records, or archived data. "
+            "Return ALL records (both active and deleted) without soft-delete exclusion filters."
         )
     else:
         soft_delete_rule = (
-            "- Dynamic Soft-Delete Rule: For standard operational queries (active/current data), ALWAYS filter soft-deleted records: "
-            "WHERE alias.deleted_at IS NULL on all tables with deleted_at."
+            "- Mandatory Soft-Delete Rule: Excluding soft-deleted/inactive records is STRICTLY REQUIRED for all operational queries. "
+            "ALWAYS filter out soft-deleted records using each queried table's exact marker column and condition specified below "
+            "(e.g. `is_deleted = 0`, `deleted_at IS NULL`, or flag condition). Never omit soft-delete filters."
         )
 
     rules: list[str] = [
@@ -660,16 +660,14 @@ def _table_notes_block(db_id: str, shown_tables: set[str]) -> str:
 
 
 def _soft_delete_block(db_id: str, query: str, shown_tables: set[str], dialect: Any) -> str:
-    """The prompt text naming each shown table's real soft-delete column and condition, in apply mode only; "" otherwise.
+    """The prompt text naming each shown table's mandatory soft-delete column and condition; "" if none apply.
 
-    Never raises. Off, shadow, no knowledge for this database, or none of its tables shown: "" (the prompt is then unchanged).
+    Never raises. If no specs for this database or none of its tables shown, returns "".
     """
     try:
         from src.sql.soft_delete import detect_soft_delete_intent
-        from src.sql.soft_delete_spec import load_specs, prompt_block, soft_delete_mode
+        from src.sql.soft_delete_spec import load_specs, prompt_block
 
-        if soft_delete_mode(db_id) != "apply":
-            return ""
         specs = load_specs(db_id)
         if not specs:
             return ""

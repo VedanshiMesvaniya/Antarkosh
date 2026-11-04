@@ -51,7 +51,7 @@ async def test_the_columns_are_found_from_the_catalog_a_real_sync_wrote(marked: 
 
 
 @pytest.mark.asyncio
-async def test_with_the_flag_on_the_generated_sql_returns_only_live_rows_and_with_it_off_nothing_changes(marked: Path, dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_the_generated_sql_mandatorily_returns_only_live_rows(marked: Path, dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _flags(monkeypatch, "auto_scaffold", "auto_catalog")
     await _sync()
     ss.clear_spec_cache()
@@ -59,12 +59,8 @@ async def test_with_the_flag_on_the_generated_sql_returns_only_live_rows_and_wit
     sql = "SELECT o.id, c.id, i.sku FROM orders o JOIN customer c ON c.id = o.customer_id JOIN order_items i ON i.order_id = o.id"
     everything = con.execute(sql).fetchall()
 
-    off = sd.enforce_soft_delete_filter(sql, "ACTIVE_ONLY", "sqlite", DB)
-    assert con.execute(off).fetchall() == everything  # flag off: the old behaviour (no filtering for these markers)
-
-    _flags(monkeypatch, "auto_scaffold", "auto_catalog", "auto_soft_delete_apply")
-    on = sd.enforce_soft_delete_filter(sql, "ACTIVE_ONLY", "sqlite", DB)
-    live = sorted(con.execute(on).fetchall())
+    filtered = sd.enforce_soft_delete_filter(sql, "ACTIVE_ONLY", "sqlite", DB)
+    live = sorted(con.execute(filtered).fetchall())
     # worked out independently, with the plain conditions for each marker:
     expected = sorted(
         con.execute(
@@ -73,7 +69,7 @@ async def test_with_the_flag_on_the_generated_sql_returns_only_live_rows_and_wit
         ).fetchall()
     )
     assert live == expected == [(1, 1, "s1"), (3, 2, "s4")]
-    assert len(everything) == 5 and set(live) < set(everything)  # four rows were hidden (deleted order, deleted item, deleted customer's order...)
+    assert len(everything) == 5 and set(live) < set(everything)  # rows were hidden (deleted order, deleted item, deleted customer's order...)
 
     only_deleted = con.execute(sd.enforce_soft_delete_filter("SELECT id FROM orders", "DELETED_ONLY", "sqlite", DB)).fetchall()
     assert {r[0] for r in only_deleted} == {2}
