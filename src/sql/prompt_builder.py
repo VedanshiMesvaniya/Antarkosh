@@ -659,6 +659,26 @@ def _table_notes_block(db_id: str, shown_tables: set[str]) -> str:
         return ""
 
 
+def _soft_delete_block(db_id: str, query: str, shown_tables: set[str], dialect: Any) -> str:
+    """The prompt text naming each shown table's real soft-delete column and condition, in apply mode only; "" otherwise.
+
+    Never raises. Off, shadow, no knowledge for this database, or none of its tables shown: "" (the prompt is then unchanged).
+    """
+    try:
+        from src.sql.soft_delete import detect_soft_delete_intent
+        from src.sql.soft_delete_spec import load_specs, prompt_block, soft_delete_mode
+
+        if soft_delete_mode(db_id) != "apply":
+            return ""
+        specs = load_specs(db_id)
+        if not specs:
+            return ""
+        return prompt_block(specs, shown_tables, detect_soft_delete_intent(query), getattr(dialect, "sqlglot_dialect", None) or "mysql")
+    except Exception as exc:  # noqa: BLE001 - a hint problem must never break a prompt
+        logger.debug("Soft-delete prompt block skipped: %s", exc)
+        return ""
+
+
 def build_sql_prompt(
     query: str,
     schema: str,
@@ -760,6 +780,7 @@ Schema:
 
     table_notes_text = _table_notes_block(db_id, shown_tables)
     system_prompt += table_notes_text
+    system_prompt += _soft_delete_block(db_id, query, shown_tables, dialect)
 
     if column_glossary:
         system_prompt += (

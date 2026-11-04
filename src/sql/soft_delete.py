@@ -12,6 +12,7 @@ import sqlglot
 import sqlglot.expressions as exp
 
 from src.sql.knowledge.loaders import DEFAULT_DB_ID
+from src.sql.soft_delete_spec import and_condition
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,61 @@ def enforce_soft_delete_filter(
     dialect: str = "mysql",
     db_id: str = DEFAULT_DB_ID,
 ) -> str:
-    """Post-generation SQL sanitizer enforcing deterministic soft-delete compliance.
+    """Post-generation SQL sanitizer enforcing deterministic soft-delete compliance, for every SQL dialect.
+
+    With the per-database ``auto_soft_delete_apply`` flag on, the tables' real soft-delete columns are enforced (see
+    ``soft_delete_spec``: ``is_deleted`` flags, ``deleted_on`` stamps... not only ``deleted_at``). In shadow mode this only logs what
+    that would add. With the flag off (and for the pinned ``erp_main``) the behaviour below is the one this function always had.
+    """
+    if not sql or not sql.strip() or intent == "INCLUDE_ARCHIVED":
+        return sql
+    mode = ""
+    try:
+        from src.sql.soft_delete_spec import load_specs, soft_delete_mode
+
+        mode = soft_delete_mode(db_id)
+        specs = load_specs(db_id) if mode else {}
+    except Exception as exc:  # noqa: BLE001 - the extra knowledge must never break the legacy path
+        logger.debug("Soft-delete specs unavailable for %s: %s", db_id, exc)
+        specs = {}
+
+    if mode == "apply" and specs:
+        try:
+            from src.sql.soft_delete_spec import enforce
+
+            return enforce(sql, intent, dialect, specs)[0]
+        except Exception as exc:  # noqa: BLE001 - an unparseable statement is left to the legacy path, which keeps it as it is
+            logger.debug("Spec-based soft-delete enforcement skipped (%s): %s", type(exc).__name__, exc)
+
+    legacy = _enforce_legacy(sql, intent, dialect, db_id)
+    if mode == "shadow" and specs:
+        _log_shadow(sql, intent, dialect, db_id, specs, legacy)
+    return legacy
+
+
+def _log_shadow(sql: str, intent: str, dialect: str, db_id: str, specs: dict, legacy: str) -> None:
+    """Record what the spec-based enforcement would have changed. Logging only; never raises."""
+    try:
+        from src.sql.soft_delete_spec import enforce
+        from src.utils.telemetry import log_telemetry
+
+        proposed, added = enforce(sql, intent, dialect, specs)
+        log_telemetry(
+            query_id="",
+            stage="soft_delete_shadow",
+            extra={"db_id": db_id, "intent": intent, "differs_from_current": proposed != legacy, "would_add": added[:10]},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Soft-delete shadow log skipped: %s", exc)
+
+
+def _enforce_legacy(
+    sql: str,
+    intent: str,
+    dialect: str = "mysql",
+    db_id: str = DEFAULT_DB_ID,
+) -> str:
+    """Post-generation SQL sanitizer enforcing deterministic soft-delete compliance (``deleted_at`` on the atlas's tables).
 
     Defense-in-depth:
     - 'DELETED_ONLY': Guarantees `deleted_at IS NOT NULL` is present on target tables.
@@ -178,7 +233,7 @@ def enforce_soft_delete_filter(
                     cond = sqlglot.parse_one(cond_str, read=dialect)
                     existing_where = sel.args.get("where")
                     if existing_where:
-                        new_where = exp.Where(this=exp.And(this=existing_where.this, expression=cond))
+                        new_where = exp.Where(this=and_condition(existing_where.this, cond))  # parenthesises an OR only
                     else:
                         new_where = exp.Where(this=cond)
                     sel.set("where", new_where)
@@ -196,7 +251,7 @@ def enforce_soft_delete_filter(
                     cond = sqlglot.parse_one(cond_str, read=dialect)
                     existing_where = sel.args.get("where")
                     if existing_where:
-                        new_where = exp.Where(this=exp.And(this=existing_where.this, expression=cond))
+                        new_where = exp.Where(this=and_condition(existing_where.this, cond))  # parenthesises an OR only
                     else:
                         new_where = exp.Where(this=cond)
                     sel.set("where", new_where)

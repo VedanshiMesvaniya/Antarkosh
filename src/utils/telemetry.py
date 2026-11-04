@@ -45,6 +45,7 @@ ALLOWED_STAGES = frozenset({
     "route_bridge_applied",
     "table_authority_shadow",
     "table_authority_applied",
+    "soft_delete_shadow",
     "schema_late_expansion",
     "prompt_sections",
     "sql_generation",

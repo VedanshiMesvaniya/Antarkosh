@@ -115,10 +115,13 @@ DB_FEATURE_FLAGS: tuple[str, ...] = (
     "auto_prompt_hints_apply",  # Phase 12 part 2: add the real table for a chosen copy, plus a short "Table notes" block
     "auto_resync_apply",  # Phase 13: skip the phases whose inputs did not change since the last good sync
     "auto_stale_chunk_cleanup",  # Phase 13: remove the vector chunks of tables that no longer exist
+    "auto_soft_delete_apply",  # Phase 12 follow-up: never return rows a table marks as deleted, whatever the marker column is called
 )
 
 # Flags that start OFF, for a new database and when added to an existing one. Everything else in DB_FEATURE_FLAGS starts on.
-OFF_BY_DEFAULT_FLAGS: frozenset[str] = frozenset({"auto_prompt_hints_apply", "auto_resync_apply", "auto_stale_chunk_cleanup"})
+OFF_BY_DEFAULT_FLAGS: frozenset[str] = frozenset(
+    {"auto_prompt_hints_apply", "auto_resync_apply", "auto_stale_chunk_cleanup", "auto_soft_delete_apply"}
+)
 
 # Databases pinned to their curated files: these flags are always False here,
 # whatever the YAML says. Kept local (no import) so this module stays light.
