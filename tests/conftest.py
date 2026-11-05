@@ -56,3 +56,18 @@ def _no_real_language_model_in_tests(monkeypatch: pytest.MonkeyPatch) -> None:
         raise RuntimeError("tests must not call a real language model")
 
     monkeypatch.setattr(meaning_phase, "_default_llm", refuse)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_telemetry_context() -> Generator[None, None, None]:
+    """Ensure contextvars (e.g. telemetry query_id and budget controller) do not leak between tests."""
+    from src.utils import query_budget, telemetry
+
+    telemetry.set_current_query_id(None)
+    query_budget.set_current_budget_controller(None)
+    try:
+        yield
+    finally:
+        telemetry.set_current_query_id(None)
+        query_budget.set_current_budget_controller(None)
+

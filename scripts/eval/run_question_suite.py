@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextvars
 import json
 import subprocess
 import sys
@@ -107,7 +108,7 @@ def make_ask(retriever: Any) -> Ask:
 async def run_suite(questions: list[SuiteQuestion], ask: Ask, *, progress: Callable[[str], None] | None = None) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for i, q in enumerate(questions, 1):
-        record = await asyncio.create_task(ask(q))  # own task = own context
+        record = await asyncio.create_task(ask(q), context=contextvars.Context())  # own task = own context
         record.update({"id": q.id, "question": q.question, "tags": list(q.tags)})
         results.append(record)
         if progress:
