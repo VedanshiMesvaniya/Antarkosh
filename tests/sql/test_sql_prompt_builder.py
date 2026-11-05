@@ -45,7 +45,8 @@ def test_get_scoped_readability_rules_scopes():
         "What is the due date for delivery challan DC 527?",
         ["delivery_challan", "sales_order", "party"],
     )
-    assert "WHERE alias.deleted_at IS NULL" in active_rules
+    assert "Mandatory Soft-Delete Rule: Excluding soft-deleted/inactive records is STRICTLY REQUIRED" in active_rules
+    assert "EXPLICIT DELETED QUERY" not in active_rules and "AUDIT / HISTORY QUERY" not in active_rules
     assert "Delivery Challan (DC) vs Invoice & Due Date" in active_rules
     assert "Customer PO vs Supplier PO" in active_rules
 
@@ -54,7 +55,8 @@ def test_get_scoped_readability_rules_scopes():
         "Show me deleted invoices for party X.",
         ["stock", "purchase", "party"],
     )
-    assert "WHERE alias.deleted_at IS NOT NULL" in deleted_rules
+    assert "Mandatory Soft-Delete Rule (EXPLICIT DELETED QUERY)" in deleted_rules
+    assert "WHERE <alias>.deleted_at IS NOT NULL" in deleted_rules
     assert "CRITICAL INTENT OVERRIDE: The user explicitly requested DELETED records" in deleted_rules
 
     # Audit / History query
@@ -62,7 +64,8 @@ def test_get_scoped_readability_rules_scopes():
         "Give me the audit history of product Y.",
         ["product"],
     )
-    assert "DO NOT add `alias.deleted_at IS NULL`" in history_rules
+    assert "Mandatory Soft-Delete Rule (AUDIT / HISTORY QUERY)" in history_rules
+    assert "DO NOT use `deleted_at IS NULL`" in history_rules
     assert "CRITICAL INTENT OVERRIDE: The user explicitly requested AUDIT / HISTORY" in history_rules
 
 

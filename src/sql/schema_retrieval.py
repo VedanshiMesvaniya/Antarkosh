@@ -1094,6 +1094,19 @@ async def _sync_live_schema_body(
             logger.warning("Column meaning failed for %s: %s", db_id, exc)
             column_meaning_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
+    # Auto-schema Phase 9d: fill the synonym glossary and the routing hints from the catalog files (before this, a sync left
+    # glossary.json and routing_hints.json as the empty template seeds). Reads files only: no database, no model. Needs the
+    # catalog; with auto_prompt_inject off it takes its generated part back out. Never fails the sync.
+    routing_hints_report: dict[str, Any] | None = None
+    if is_db_feature_enabled("auto_catalog", db_id):
+        try:
+            from src.sql.sa.hints_phase import run_hints_phase
+
+            routing_hints_report = await run_hints_phase(db_id=db_id, inject=is_db_feature_enabled("auto_prompt_inject", db_id))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Routing hints failed for %s: %s", db_id, exc)
+            routing_hints_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.sql.pipeline import SQLRetriever
@@ -1134,6 +1147,8 @@ async def _sync_live_schema_body(
         result["join_paths"] = join_paths_report
     if column_meaning_report is not None:
         result["column_meaning"] = column_meaning_report
+    if routing_hints_report is not None:
+        result["routing_hints"] = routing_hints_report
     if orchestration_on:
         from src.sql.sync.report import schema_fingerprint
 

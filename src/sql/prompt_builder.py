@@ -347,12 +347,18 @@ def build_behavioral_atlas_for_query(schema_tables: set[str], query: str, db_id:
     return "\n".join(lines)
 
 
-def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
+def get_scoped_readability_rules(query: str, schema_tables: list[str], db_id: str = DEFAULT_DB_ID) -> str:
     """Dynamically scope readability rules to only those relevant to the query & schema tables,
     reducing SQL prompt tokens by 60% while preserving all critical schema nuances.
     """
     q = query.lower()
     tables = {t.lower() for t in schema_tables}
+    # A non-ERP database in apply mode must not be steered by the ERP rulebook below through everyday words ("order",
+    # "number", "latest", "report"): there its rules need their tables, not just a keyword. Everyone else: unchanged.
+    trim = _trim_erp_rules(db_id)
+
+    def has_kw(words: list[str]) -> bool:
+        return not trim and any(k in q for k in words)
 
     soft_intent = detect_soft_delete_intent(query)
     if soft_intent == "DELETED_ONLY":
@@ -384,12 +390,15 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
         "- Temporal Scope & Financial Year Filtering: ONLY add `financial_year.current_year = 'Y'` if the user query contains explicit temporal markers such as 'current', 'this year', 'latest', 'active', or 'ongoing'. If the query asks for 'total', 'all', 'history', or implies a cumulative sum without a time qualifier (e.g. 'quantity adjusted', 'total sales', 'overall quantity'), DO NOT filter by current_year. Sum across all available years. When the user DOES explicitly request the current financial year, NEVER filter using `YEAR(date) = YEAR(CURDATE())`; ALWAYS join `financial_year fy ON t.financial_id = fy.id` (or `WHERE t.financial_id = (SELECT id FROM financial_year WHERE current_year = 'Y')`) with `fy.current_year = 'Y'`.",
     ]
 
+    if trim:
+        rules = _trim_unconditional_erp_rules(rules, tables)
+
     # Machine & Product Production
     if (
         "machine" in tables
         or "production" in tables
         or "actual_production" in tables
-        or any(k in q for k in ["machine", "produce", "production", "batch", "apq", "ppq"])
+        or has_kw(["machine", "produce", "production", "batch", "apq", "ppq"])
     ):
         rules.append(
             "- Production Quantity & Batches: In the `production` table, the primary production/batch quantity is stored in `production.qty`. "
@@ -401,7 +410,7 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
             "- Machine & Product Production: Product names/codes (e.g. 'CAP03', 'CHP06070110-INNER') are stored in `product.product_name` (NEVER in `production.batch_no` or `stock.batch_no`). "
             "To find which machine was used to create or produce a product, ALWAYS join: `production prd JOIN product p ON prd.product_id = p.id JOIN machine m ON prd.machine_id = m.id WHERE p.product_name LIKE '%<product_name>%' AND prd.deleted_at IS NULL AND m.deleted_at IS NULL`. Return `SELECT DISTINCT m.machine_name`."
         )
-    if any(k in q for k in ["invoice", "gt/", "pi_no", "pi number", "purchase invoice"]):
+    if has_kw(["invoice", "gt/", "pi_no", "pi number", "purchase invoice"]):
         if soft_intent == "DELETED_ONLY":
             rules.append(
                 "- Invoices & Purchase Invoices (PI) [DELETED RECORDS]: Purchase invoice numbers are stored in `purchase.pi_no` (and invoices in `stock` where `stock_type = 'PI'`). "
@@ -419,7 +428,7 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
             )
 
     # Product Units of Measure
-    if "unit" in tables or any(k in q for k in ["unit", "uom", "measurement"]):
+    if "unit" in tables or has_kw(["unit", "uom", "measurement"]):
         rules.append(
             "- Product Units of Measure: The unit table contains unit definitions ('Pcs', 'Kg', 'Nos', etc.) and NEVER contains product names. "
             "To find the unit for a product (e.g. 'CAP03'), ALWAYS query: `product p JOIN unit u ON p.unit_id = u.id WHERE p.product_name LIKE '%<product>%' AND p.deleted_at IS NULL AND u.deleted_at IS NULL`. "
@@ -427,21 +436,21 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
         )
 
     # Product Color Linkage
-    if "product_color" in tables or any(k in q for k in ["color", "colour"]):
+    if "product_color" in tables or has_kw(["color", "colour"]):
         rules.append(
             "- Product Color Linkage: In `production`, `actual_production`, `stock`, and `sales_order_products`, the `product_color_id` column links directly to `product_color.id` (table `product_color`, column `product_color.color`) — NOT to the `color` table! "
             "ALWAYS join `product_color pc ON prd.product_color_id = pc.id` and select `pc.color AS color`. NEVER join with the `color` table; `color` is a separate master list whose IDs do not match `product_color_id`, which causes completely wrong colors to be returned."
         )
 
     # Product Type vs Category
-    if ("product_type" in tables or "category" in tables) and any(k in q for k in ["type", "category", "raw material", "finished good", "carton"]):
+    if ("product_type" in tables or "category" in tables) and has_kw(["type", "category", "raw material", "finished good", "carton"]):
         rules.append(
             "- Product Type vs Category: There are two places with product type: (1) `category.product_type` stores enum `'RM'` (Raw Material). "
             "(2) `product_type.product_type` stores text `'Raw Material'` (id=1) and `'Finished Goods'` (id=2). When querying products by category (e.g. 'Carton') and product type ('Raw Material'), ALWAYS include BOTH filters: `product p JOIN category c ON p.category_id = c.id WHERE c.category_name LIKE '%Carton%' AND (c.product_type = 'RM' OR p.product_type_id = 1)`. Never omit the category filter, and never compare `category.product_type = 'Raw Material'` directly (use `'RM'`)."
         )
 
     # Warehouse & Packaging
-    if "packagings" in tables or "warehouse" in tables or any(k in q for k in ["warehouse", "carton", "bin", "rack", "stored", "storage", "location"]):
+    if "packagings" in tables or "warehouse" in tables or has_kw(["warehouse", "carton", "bin", "rack", "stored", "storage", "location"]):
         rules.append(
             "- Warehouse & Packaging: Warehouse Identification, Carton Count vs Carton Quantity:\n"
             "  (1) Warehouse Identification: Warehouse codes (e.g. 'pm2bzd19') and warehouse names/numbers (e.g. '110') are stored in the `warehouse` table: `warehouse.warehouse_code` and `warehouse.location_name`. When matching a warehouse, ALWAYS join `warehouse w ON pk.warehouse_id = w.id` and filter `(w.warehouse_code = '<code_or_name>' OR w.location_name = '<code_or_name>')`. NEVER search `packagings.location_code` for warehouse codes (`packagings.location_code` only stores internal bin/rack shelf codes).\n"
@@ -450,7 +459,7 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
         )
 
     # Stock Adjustments
-    if "stock_adjustment" in tables or any(k in q for k in ["adjustment", "adjust", "stock-out", "stock out", "stockout", "stock-in", "stock in", "stockin"]):
+    if "stock_adjustment" in tables or has_kw(["adjustment", "adjust", "stock-out", "stock out", "stockout", "stock-in", "stock in", "stockin"]):
         rules.append(
             "- Stock Adjustments (StockOut vs StockIn): All inventory stock adjustments (stock-in additions, stock-out write-offs, physical count adjustments) are stored in the dedicated `stock_adjustment` table:\n"
             "  (1) Table Selection: ALWAYS use `stock_adjustment` when asked about stock adjustments, stock-out, stock-in, or adjusted quantity. NEVER use `stock` (which is for purchase inward and sales dispatches) and NEVER use `product_packaging_detail` (which is a packaging BOM master table).\n"
@@ -460,7 +469,7 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
         )
 
     # Delivery Challan & Pending Sales Orders
-    if "delivery_challan" in tables or "delivery_challan_products" in tables or any(k in q for k in ["challan", "delivery", "dc", "dc_no", "shipment", "transporter", "lr"]):
+    if "delivery_challan" in tables or "delivery_challan_products" in tables or has_kw(["challan", "delivery", "dc", "dc_no", "shipment", "transporter", "lr"]):
         rules.append(
             "- Delivery Challan (DC) vs Invoice & Due Date: A Delivery Challan (DC) and an Invoice are completely separate documents! Actual DC numbers and dates are stored in the `delivery_challan` table: `dc.dc_no` (DC number) and `dc.dc_date` (DC date). Logistics columns: `dc.transport_name` (carrier name) and `dc.lr_number` (Lorry Receipt / LR number — NOT `lr_no`). The customer/party is linked directly via `delivery_challan.party_id = party.id`. NEVER search for DC numbers in `stock.invoice_no` or `stock`! IMPORTANT: `delivery_challan` has NO due date column; the order due date is stored in `sales_order.so_due_date`. When a query asks for the due date of a DC, you MUST join `sales_order`: `LEFT JOIN sales_order so ON dc.sales_order_id = so.id` and select `so.so_due_date AS due_date`."
         )
@@ -470,7 +479,7 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
         )
 
     # Sales Order & PO
-    if "sales_order" in tables or "purchase" in tables or any(k in q for k in ["sales_order", "order", "party_po_no", "po", "due date"]):
+    if "sales_order" in tables or "purchase" in tables or has_kw(["sales_order", "order", "party_po_no", "po", "due date"]):
         rules.append(
             "- Customer PO vs Supplier PO vs Proforma PO: PO numbers exist in 3 distinct places: (1) Customer/Party PO: `sales_order.party_po_no` (and `sales_order.party_po_date`). For questions asking for 'party's PO number', 'customer PO', or 'PO number for sales order/party', ALWAYS query `sales_order so JOIN party p ON so.party_id = p.id`. (2) Proforma PO: `proforma.po_no` (only for proforma invoice questions). (3) Supplier/Vendor PO: `purchase.ref_po_no` (only for supplier inward purchase orders). NEVER use `purchase.ref_po_no` for customer/party PO requests."
         )
@@ -479,7 +488,7 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
         )
 
     # Invoices vs Proforma
-    if "stock" in tables or "proforma" in tables or any(k in q for k in ["invoice", "invoices", "invoice_no", "proforma", "pi"]):
+    if "stock" in tables or "proforma" in tables or has_kw(["invoice", "invoices", "invoice_no", "proforma", "pi"]):
         if soft_intent == "DELETED_ONLY":
             rules.append(
                 "- Invoices vs Proforma [DELETED RECORDS]: Actual invoice details are stored in the `stock` table where `stock.stock_type = 'PI'`, or in `purchase` for purchase invoices. "
@@ -497,7 +506,7 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
             )
 
     # Party & Leads
-    if "party" in tables or "lead" in tables or any(k in q for k in ["party", "customer", "supplier", "vendor", "contact", "lead", "inquiry"]):
+    if "party" in tables or "lead" in tables or has_kw(["party", "customer", "supplier", "vendor", "contact", "lead", "inquiry"]):
         rules.append(
             "- In party table, customer/supplier name is `party.party_name` (NEVER party.name). Contact persons are `party.contact_person1`.\n"
             "- In lead table, search `(lead.contact_name LIKE '%<name>%' OR lead.company_name LIKE '%<name>%')`.\n"
@@ -505,14 +514,14 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str]) -> str:
         )
 
     # Document Number Uniqueness Across Financial Years
-    if any(t in tables for t in ["delivery_challan", "sales_order", "purchase", "proforma", "production"]) or any(k in q for k in ["dc_no", "so_no", "order_no", "number", "latest"]):
+    if any(t in tables for t in ["delivery_challan", "sales_order", "purchase", "proforma", "production"]) or has_kw(["dc_no", "so_no", "order_no", "number", "latest"]):
         rules.append(
             "- Document Number Uniqueness Across Financial Years (DC, Sales Order, PO, etc.): Document numbers (`dc_no`, `sales_order_no`, `purchase_no`, `proforma_no`, `production_no`) are NOT globally unique; they repeat across different financial years! "
             "If a financial year is specified, join `financial_year fy ON t.financial_id = fy.id`. If NO financial year is specified for a SINGLE DOCUMENT LOOKUP: the user intends the LATEST record! Sort by date DESC with `LIMIT 1` and include `fy.fyear AS financial_year` in SELECT. Do NOT apply LIMIT 1 or current_year filtering to cumulative/aggregate queries."
         )
 
     # Multi-domain Report
-    if any(k in q for k in ["report", "summary", "combined", "ppq", "apq"]):
+    if has_kw(["report", "summary", "combined", "ppq", "apq"]):
         rules.append(
             "- Combined Production, Stock & Sales Order Report: When queried for a multi-domain report (PPQ, APQ, Stock, Pending SOs) grouped by Category, Product, Color, use CTE subqueries aggregated per `(product_id, product_color_id)` before joining to `product p`."
         )
@@ -635,6 +644,50 @@ def _erp_rule(db_id: str, shown_tables: set[str], anchors: frozenset[str], text:
         return text
 
 
+def _trim_erp_rules(db_id: str) -> bool:
+    """True for a non-ERP database in Phase 12 apply mode: rule text written for the ERP database is then left out.
+
+    The same gate as ``_erp_rule`` (``erp_main`` and every database without the apply flag keep the text exactly as it always
+    was; on any doubt the text stays). Used by ``get_scoped_readability_rules`` and the business-intent lines.
+    """
+    if db_id == DEFAULT_DB_ID:
+        return False
+    try:
+        from src.sql.schema_retrieval import _route_bridge_mode
+
+        return _route_bridge_mode(db_id) == "apply"
+    except Exception:  # noqa: BLE001 - on any doubt keep the rule text exactly as it always was
+        return False
+
+
+_NEUTRAL_DEDUP_RULE = (
+    "- Deduplication (DISTINCT): When looking up entity names (for example customer, vendor or product names) from transactional "
+    "tables, ALWAYS use SELECT DISTINCT or GROUP BY so that all unique entities appear within the row limit instead of repeating "
+    "the same entity multiple times."
+)
+_NEUTRAL_FUZZY_RULE = (
+    "- Fuzzy LIKE Filtering: Always filter descriptive text columns (categories, products, names) using `LIKE '%<term>%'` rather "
+    "than strict `=`, so spelling variations and partial names still match."
+)
+
+
+def _trim_unconditional_erp_rules(rules: list[str], tables: set[str]) -> list[str]:
+    """Drop or neutralise the always-on rules that only make sense for the ERP database (only called when trimming)."""
+    out: list[str] = []
+    for r in rules:
+        if r.startswith("- Deduplication (DISTINCT):"):
+            out.append(_NEUTRAL_DEDUP_RULE)
+        elif r.startswith("- Fuzzy LIKE Filtering:"):
+            out.append(_NEUTRAL_FUZZY_RULE)
+        elif r.startswith("- Status flags:") and not (tables & _ERP_STATUS_ANCHORS):
+            continue
+        elif r.startswith("- Temporal Scope & Financial Year Filtering:") and not (tables & _ERP_TEMPORAL_ANCHORS):
+            continue
+        else:
+            out.append(r)
+    return out
+
+
 def _log_prompt_sections(db_id: str, parts: dict[str, str]) -> None:
     """Record how many tokens each part of the SQL prompt adds, so a large prompt can be traced to its source.
 
@@ -722,13 +775,20 @@ def build_sql_prompt(
         intent_summary_lines.append(f"- Aggregation: {intent['aggregation']}")
     if intent.get("limit"):
         intent_summary_lines.append(f"- Limit: {intent['limit']} (Sorting: {intent['sorting'] or 'DESC'})")
+    # `financial_year` is a table of the ERP database: a non-ERP database in apply mode whose schema has no such table is told
+    # about the date columns it does have instead (everyone else: the original text).
+    no_financial_year = _trim_erp_rules(db_id) and "financial_year" not in _prompt_table_names(schema)
     if intent.get("temporal_scope") == "CURRENT_YEAR":
         intent_summary_lines.append(
-            "- Temporal Scope: CURRENT FINANCIAL YEAR (Join financial_year and filter `financial_year.current_year = 'Y'`)"
+            "- Temporal Scope: CURRENT PERIOD (restrict to the current date range using the date columns of the queried tables)"
+            if no_financial_year
+            else "- Temporal Scope: CURRENT FINANCIAL YEAR (Join financial_year and filter `financial_year.current_year = 'Y'`)"
         )
     elif intent.get("temporal_scope") == "ALL_TIME":
         intent_summary_lines.append(
-            "- Temporal Scope: ALL-TIME / CUMULATIVE (DO NOT filter by `financial_year.current_year = 'Y'`. Sum/aggregate across ALL available years!)"
+            "- Temporal Scope: ALL-TIME / CUMULATIVE (DO NOT restrict by date. Sum/aggregate across ALL available records!)"
+            if no_financial_year
+            else "- Temporal Scope: ALL-TIME / CUMULATIVE (DO NOT filter by `financial_year.current_year = 'Y'`. Sum/aggregate across ALL available years!)"
         )
 
     soft_intent = intent.get("soft_delete_intent", "ACTIVE_ONLY")
@@ -782,7 +842,7 @@ Rules:
 Schema:
 {schema}
 """
-    readability_text = get_scoped_readability_rules(query, sorted(schema_tables))
+    readability_text = get_scoped_readability_rules(query, sorted(schema_tables), db_id=db_id)
     system_prompt += "\n\n" + readability_text
 
     if behavioral_atlas_text:

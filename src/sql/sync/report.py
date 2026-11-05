@@ -35,6 +35,7 @@ PHASES: tuple[tuple[str, str], ...] = (
     ("table_profiles", "table_profiles"),
     ("join_paths", "join_paths"),
     ("column_meaning", "column_meaning"),
+    ("routing_hints", "routing_hints"),
 )
 
 

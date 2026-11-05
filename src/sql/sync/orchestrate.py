@@ -101,8 +101,9 @@ def persist_generation(
         statuses.update((sync_info.get("resync") or {}).get("carried") or {})  # a phase skipped as unchanged keeps its last result
         errors = bool(getattr(validation, "errors", None))
         # Column meaning is never skipped and nothing a skippable phase reads comes from it (it may fail whenever the model
-        # is unreachable), so its failure alone must not make every later sync run everything.
-        failed = any(status == "failed" for name, status in statuses.items() if name != "column_meaning")
+        # is unreachable), so its failure alone must not make every later sync run everything. The same holds for the routing
+        # hints, which are rebuilt on every sync from the files the other phases wrote.
+        failed = any(status == "failed" for name, status in statuses.items() if name not in ("column_meaning", "routing_hints"))
         clean = bool(sync_info.get("schema_complete", True)) and not errors and not failed
         saved = save_state(
             db_id,

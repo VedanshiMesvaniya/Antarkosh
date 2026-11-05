@@ -232,19 +232,19 @@ def test_soft_delete_prompt_scoping():
     
     # Active query prompt rules
     active_rules = SQLRetriever._get_scoped_readability_rules("What is the sales order due date for HM TOOLS?", ["sales_order", "party"])
-    assert "WHERE alias.deleted_at IS NULL" in active_rules
+    assert "Excluding soft-deleted/inactive records is STRICTLY REQUIRED" in active_rules
     assert "EXPLICIT DELETED QUERY" not in active_rules
     
     # Deleted query prompt rules
     deleted_rules = SQLRetriever._get_scoped_readability_rules("Show me deleted invoices for party X.", ["stock", "purchase", "party"])
     assert "EXPLICIT DELETED QUERY" in deleted_rules
-    assert "WHERE alias.deleted_at IS NOT NULL" in deleted_rules
+    assert "WHERE <alias>.deleted_at IS NOT NULL" in deleted_rules
     assert "DELETED RECORDS" in deleted_rules
     
     # History query prompt rules
     history_rules = SQLRetriever._get_scoped_readability_rules("Give me the audit history of product Y.", ["product"])
     assert "AUDIT / HISTORY QUERY" in history_rules
-    assert "Return ALL records (both active and deleted) without soft-delete restriction" in history_rules
+    assert "Return ALL records (both active and deleted) without soft-delete exclusion filters" in history_rules
     
     # Atlas rule adaptation
     atlas_deleted = _build_behavioral_atlas_for_query({"product"}, "Show me deleted products")
