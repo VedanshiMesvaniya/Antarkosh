@@ -13,11 +13,11 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from src.api.auth import get_current_user
+from src.api.auth import get_current_user, get_current_user_optional
 from src.core.config import settings
 from src.core.provider_client import ProviderRouter
 from src.core.state import state_manager
@@ -345,6 +345,7 @@ async def send_message(
             "modelUsed": result.model_used,
             "usage": result.usage.model_dump(),
             "sqlPayload": result.sql_payload,
+            "dbId": target_db_id,
         }
         assistant_message = sanitize_message_for_json(assistant_message)
         state_manager.add_message(chat_id, assistant_message)
@@ -412,6 +413,7 @@ async def send_message_stream(
                         "thinking": [t.model_dump() for t in chunk.thinking],
                         "usage": chunk.usage.model_dump(),
                         "sqlPayload": chunk.sql_payload,
+                        "dbId": target_db_id,
                     }
                     assistant_message = sanitize_message_for_json(assistant_message)
                     state_manager.add_message(chat_id, assistant_message)
@@ -453,9 +455,62 @@ async def persist_ingestion_card(chat_id: str, card: IngestionCard) -> dict[str,
     return {"status": "ok"}
 
 
+def _learn_from_feedback(chat_id: str, message_id: str, signal: str | None, user_id: str | None) -> None:
+    """Phase 14: record a rating of a SQL answer as evidence for learning user phrasing. Never raises, never changes the response.
+
+    Only a logged-in user who may open the chat is counted (the feedback route itself stays open as before), only for an
+    answer that carries its database id and SQL, and only when the database has ``auto_learning`` on. Recording writes to
+    ``databases/<db_id>/learned/`` and nothing else; the prompt only uses it when ``auto_learning_apply`` is on.
+    """
+    try:
+        if not user_id or user_id == "anonymous":
+            return
+        _check_chat_access(chat_id, user_id)
+        messages = state_manager.get_messages(chat_id)
+        idx = next((i for i, m in enumerate(messages) if m.get("id") == message_id), None)
+        if idx is None:
+            return
+        msg = messages[idx]
+        db_id = msg.get("dbId")
+        if msg.get("role") != "assistant" or not db_id:
+            return
+        from src.utils.feature_flags import is_db_feature_enabled
+
+        if not is_db_feature_enabled("auto_learning", db_id):
+            return
+        payload = msg.get("sqlPayload") or {}
+        question = next((m.get("content") or "" for m in reversed(messages[:idx]) if m.get("role") == "user"), "")
+        dialect = None
+        try:
+            from src.sql.dialects import get_dialect_profile
+            from src.sql.registry import resolve_db_engine
+
+            dialect = get_dialect_profile(resolve_db_engine(db_id)).sqlglot_dialect
+        except Exception:  # noqa: BLE001 - parse with sqlglot's default dialect instead
+            dialect = None
+        from src.sql.learning.term_pairs import record_feedback
+
+        record_feedback(
+            db_id,
+            message_id=message_id,
+            user_id=user_id,
+            question=question,
+            sql=str(payload.get("query") or ""),
+            row_count=payload.get("row_count"),
+            signal=signal,
+            dialect=dialect,
+        )
+    except Exception as exc:  # noqa: BLE001 - learning is best effort
+        logger.debug("Learning from feedback skipped: %s", exc)
+
+
 @router.post("/chats/{chat_id}/messages/{message_id}/feedback")
 async def set_message_feedback(
-    chat_id: str, message_id: str, body: MessageFeedback
+    chat_id: str,
+    message_id: str,
+    body: MessageFeedback,
+    background_tasks: BackgroundTasks,
+    current_user: str = Depends(get_current_user_optional),
 ) -> dict[str, Any]:
     """Persist a thumbs up/down rating and/or comment on an assistant message."""
     if body.feedback not in (None, "up", "down"):
@@ -487,6 +542,9 @@ async def set_message_feedback(
             },
             score_delta=score_delta,
         )
+
+    # Phase 14 evidence (runs after the response is sent; the rating above is already saved)
+    background_tasks.add_task(_learn_from_feedback, chat_id, message_id, body.feedback, current_user)
 
     return {"status": "ok", "feedback": body.feedback}
 

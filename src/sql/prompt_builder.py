@@ -266,6 +266,27 @@ def build_column_glossary_for_query(query: str, db_id: str = DEFAULT_DB_ID) -> s
     return "\n".join(lines)
 
 
+def _with_learned_terms(column_glossary: str, query: str, db_id: str) -> str:
+    """Append phrases users confirmed repeatedly (Phase 14) AFTER the curated/generated entries. Off unless ``auto_learning_apply``.
+
+    Only the prompt text changes: table retrieval still uses ``build_column_glossary_for_query`` alone. Any problem returns the
+    glossary exactly as it was.
+    """
+    try:
+        from src.utils.feature_flags import is_db_feature_enabled
+
+        if not is_db_feature_enabled("auto_learning_apply", db_id):
+            return column_glossary
+        from src.sql.learning.term_pairs import learned_glossary_lines
+
+        extra = learned_glossary_lines(query, column_glossary, db_id)
+    except Exception:  # noqa: BLE001 - an optional hint must never break prompt building
+        return column_glossary
+    if not extra:
+        return column_glossary
+    return "\n".join([column_glossary, *extra]) if column_glossary else "\n".join(extra)
+
+
 def build_behavioral_atlas_for_query(schema_tables: set[str], query: str, db_id: str = DEFAULT_DB_ID) -> str:
     """Extract dynamically filtered behavioral rules and formulas for active tables."""
     atlas_data = get_raw_behavioral_atlas(db_id)
@@ -733,6 +754,7 @@ def build_sql_prompt(
     schema_tables = _prompt_table_names(schema)  # raw `TABLE x (...)` and compacted `x: col(type)` forms
     behavioral_atlas_text = build_behavioral_atlas_for_query(schema_tables, query, db_id=db_id)
     column_glossary = build_column_glossary_for_query(query, db_id=db_id)
+    column_glossary = _with_learned_terms(column_glossary, query, db_id)
 
     dialect_name = getattr(dialect, "name", "SQL")
     shown_tables = _prompt_table_names(schema)

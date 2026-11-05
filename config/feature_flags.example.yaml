@@ -40,6 +40,7 @@ db_defaults:
   auto_prompt_hints_apply: false
   auto_resync_apply: false
   auto_stale_chunk_cleanup: false
+  auto_learning_apply: false
 
 db_features:
   _example_db:
@@ -60,6 +61,7 @@ db_features:
     auto_prompt_hints_apply: false
     auto_resync_apply: false
     auto_stale_chunk_cleanup: false
+    auto_learning_apply: false
 
 # =============================================================================
 # FEATURE DESCRIPTIONS & USAGE GUIDE
@@ -134,6 +136,8 @@ db_features:
 #   Phase 10: Injects route bridges and join paths from join_paths.json into the query prompt.
 # auto_learning:
 #   Phase 10: Learns verified query patterns and stores golden few-shot examples.
+#   Phase 14: also records the evidence for learning real user phrasing (thumbs up/down on SQL answers) into
+#   databases/<db_id>/learned/. Recording alone never changes an answer.
 # auto_sync_orchestration:
 #   Phase 11: End-to-end sync orchestration with pre/post validation, drift check, and rollback.
 # auto_prompt_hints_apply:
@@ -142,3 +146,7 @@ db_features:
 #   Phase 13: Skips phases whose input tables/schema have not changed since last sync (starts false).
 # auto_stale_chunk_cleanup:
 #   Phase 13: Automatically deletes vector chunks for dropped/renamed tables (starts false).
+# auto_learning_apply:
+#   Phase 14: lets phrases that users confirmed repeatedly (e.g. "QN" -> quality_notification) appear as hints under "Column mapping" in
+#   the prompt. Curated and generated glossary entries always win; a learned phrase needs several distinct confirmed questions on more
+#   than one day and no real thumbs-down. Undo: set false, or `python scripts/ops/term_pairs.py revoke --db-id <id> "<phrase>"`. Starts false.
