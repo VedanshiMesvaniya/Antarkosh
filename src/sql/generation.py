@@ -37,11 +37,13 @@ from src.sql.learning.pattern_learner import PatternLearner
 from src.sql.safety.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
 from src.sql.late_schema import expand_schema_with_live_tables
+from src.sql.repair.advisory_links import build_advisory_links
 from src.sql.repair.column_owners import column_owner_context
 from src.sql.repair.join_context import build_repair_join_context
 from src.sql.schema_compactor import flatten_comment
 from src.sql.prompt_builder import build_sql_prompt
 from src.sql.soft_delete import detect_soft_delete_intent, enforce_soft_delete_filter
+from src.sql.safety.data_recency import data_recency_note
 from src.sql.safety.empty_result_classifier import classify_empty_result
 from src.utils.error_classification import classify_error
 from src.sql.learning.failure_capture import capture_sql_failure
@@ -892,6 +894,35 @@ def _repair_join_context(retriever: Any, tables: Any, shown: Any) -> str:
         return ""
 
 
+def _disconnected_tables(validation_results: Any) -> list[str]:
+    """Tables the join validator found no defined relationship for (never raises; ``[]`` when everything is connected)."""
+    found: list[str] = []
+    try:
+        for r in validation_results or ():
+            if getattr(r, "passed", True):
+                continue
+            ctx = getattr(r, "context", None) or {}
+            for key in ("isolated_tables", "unreachable"):
+                for t in ctx.get(key) or ():
+                    if t and t not in found:
+                        found.append(str(t))
+    except Exception:  # noqa: BLE001 - extra context only
+        return []
+    return found
+
+
+def _advisory_join_context(retriever: Any, tables: Any, shown: Any, disconnected: list[str]) -> str:
+    """Known joins (Phase 12) plus unverified inferred links between the disconnected tables, for the repair prompt."""
+    base = _repair_join_context(retriever, tables, shown)
+    if not disconnected:
+        return base
+    try:
+        extra = build_advisory_links(getattr(retriever, "db_id", ""), disconnected, tables or ())
+    except Exception:  # noqa: BLE001 - extra context only
+        extra = ""
+    return (base + "\n\n" + extra).strip() if extra else base
+
+
 async def execute_with_delta_repair(
     retriever: Any,
     query: str,
@@ -1147,7 +1178,10 @@ async def execute_with_delta_repair(
 
             # Intelligent 0-row handling
             if is_empty_result and _check_feature_enabled("zero_row_handling_enabled"):
-                classification = classify_empty_result(current_sql, dialect=retriever._dialect.sqlglot_dialect)
+                disconnected = _disconnected_tables(val_results)
+                classification = classify_empty_result(
+                    current_sql, dialect=retriever._dialect.sqlglot_dialect, disconnected_tables=disconnected or None
+                )
                 with timed_stage("empty_result_handling") as erh_stage:
                     erh_stage["extra"] = {
                         "classification": classification,
@@ -1180,12 +1214,20 @@ async def execute_with_delta_repair(
                             repaired_sql = await attempt_delta_repair(
                                 router=retriever._router,
                                 failed_sql=current_sql,
-                                error_message="Query executed successfully but returned 0 rows. Classification: suspicious_empty. Check JOIN conditions and filter logic.",
+                                error_message=(
+                                    "Query executed successfully but returned 0 rows. Classification: suspicious_empty. Check JOIN conditions and filter logic."
+                                    + (
+                                        f" The query joins tables with no defined relationship ({', '.join(disconnected)}): "
+                                        "do not join keys of different meaning (an id against a code); find the table that links them."
+                                        if disconnected
+                                        else ""
+                                    )
+                                ),
                                 error_type="suspicious_zero_rows",
                                 schema_context=schema_context,
                                 user_intent=query,
                                 attempt_number=next_attempt,
-                                join_context=_repair_join_context(retriever, tables, schema_context),
+                                join_context=_advisory_join_context(retriever, tables, schema_context, disconnected),
                             )
                             if repaired_sql and repaired_sql != current_sql:
                                 current_sql = repaired_sql
@@ -1220,6 +1262,11 @@ async def execute_with_delta_repair(
             label = f"live_database ({', '.join(tables)})" if tables else "live_database"
             display_rows = _filter_display_rows(rows)
             formatted_table = _format_rows_as_markdown(display_rows, current_sql, is_agg_zero=is_agg_zero)
+            if is_empty_result and _check_feature_enabled("zero_row_handling_enabled"):
+                # An empty window may only mean the data ends earlier: say where (one cheap MAX query; never fails the query).
+                recency_note = await data_recency_note(current_sql, retriever._dialect.sqlglot_dialect, retriever.db_id)
+                if recency_note:
+                    formatted_table = f"{formatted_table}\n\n{recency_note}"
             display_headers = list(display_rows[0].keys()) if display_rows else []
             sql_payload = {
                 "query": current_sql,

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Sequence
 from typing import Any
 
 import sqlglot
@@ -22,12 +23,15 @@ VALID_EMPTY = "valid_empty"
 SUSPICIOUS_EMPTY = "suspicious_empty"
 
 
-def classify_empty_result(sql: str, dialect: str | None = None) -> str:
+def classify_empty_result(sql: str, dialect: str | None = None, disconnected_tables: Sequence[str] | None = None) -> str:
     """Classify an empty (0-row) database execution result.
 
     Args:
         sql: The executed SQL query string.
         dialect: Optional SQL dialect name (e.g. "sqlite", "mysql", "postgres").
+        disconnected_tables: Tables the join validator found no defined relationship for (see ``result_validator``). A query
+            that joins them and found nothing most likely joined unrelated keys, so it is worth one repair even with a
+            filter. Default ``None``: classification exactly as before.
 
     Returns:
         "valid_empty": Legitimate business emptiness (e.g. no records matching
@@ -53,6 +57,11 @@ def classify_empty_result(sql: str, dialect: str | None = None) -> str:
     # If a query joins 2+ tables without any filter and yields 0 rows, the join key
     # is almost certainly wrong/mismatched (e.g. ON orders.id = customers.id instead of customer_id).
     if joins and not where_clause:
+        return SUSPICIOUS_EMPTY
+
+    # Heuristic 1b: the validator found tables with no defined relationship and the query still joins them. Filters do not make
+    # this valid emptiness: keys of different meaning (a ticket number against a plant code) never match, with or without a WHERE.
+    if joins and disconnected_tables:
         return SUSPICIOUS_EMPTY
 
     # Heuristic 2: Impossible / Far Future Dates in filters (e.g., year > 2090 or > '2099-01-01')

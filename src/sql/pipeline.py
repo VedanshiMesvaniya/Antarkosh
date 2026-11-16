@@ -178,8 +178,10 @@ class SQLRetriever:
                 SQLRetriever._result_cache.pop(cache_key, None)
 
         result = await self._retrieve_uncached(query)
-        # Only cache valid results when query executed successfully and no infra outage occurred.
-        if self.last_infra_error is None and self.last_query_status in ("success", "empty_result") and result:
+        # Only cache a query that executed successfully, returned rows and met no infra outage. An empty answer is NOT cached:
+        # it may come from a join that was wrong, and caching it made the same question return "no data" instantly for the whole
+        # TTL, so asking again could never recover.
+        if self.last_infra_error is None and self.last_query_status == "success" and result:
             while len(SQLRetriever._result_cache) >= _MAX_RESULT_CACHE_ENTRIES:
                 SQLRetriever._result_cache.popitem(last=False)
             SQLRetriever._result_cache[cache_key] = (

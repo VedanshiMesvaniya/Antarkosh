@@ -175,6 +175,21 @@ def _apply_gemini_usage(sink: TokenUsage, meta: dict[str, Any] | None, *, provid
     sink.model = model
 
 
+# Models that think before they answer spend part of ``max_tokens`` on reasoning. A caller that asks for a short answer (a chat title
+# with max_tokens=120) can then get an EMPTY completion: the budget ran out inside the reasoning. A small budget is raised to this floor
+# for those models only (the Gemini path already floors every call the same way); the model still stops when it is done.
+_THINKING_MODEL_MARKERS = ("gpt-oss", "qwen3", "qwq", "deepseek-r1", "nemotron-3", "nemotron-nano", "magistral")
+MIN_THINKING_MAX_TOKENS = 1024
+
+
+def effective_max_tokens(model: str, max_tokens: int) -> int:
+    """``max_tokens``, raised to ``MIN_THINKING_MAX_TOKENS`` for a reasoning model asked for fewer; unchanged for every other model."""
+    name = (model or "").lower()
+    if max_tokens < MIN_THINKING_MAX_TOKENS and any(marker in name for marker in _THINKING_MODEL_MARKERS):
+        return MIN_THINKING_MAX_TOKENS
+    return max_tokens
+
+
 def _log_empty_completion(provider: str, model: str, response: Any, max_tokens: int) -> None:
     """Warn when a model returns no text, saying why (output cut off by max_tokens vs. nothing generated).
 
@@ -307,6 +322,7 @@ class OpenAICompatibleProvider:
         usage: TokenUsage | None = None,
     ) -> str:
         await self._rate_limiter.acquire(self._name)
+        max_tokens = effective_max_tokens(model, max_tokens)
         kwargs: dict[str, Any] = {
             "model": model,
             "messages": messages,
@@ -365,7 +381,7 @@ class OpenAICompatibleProvider:
             "model": model,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_tokens": effective_max_tokens(model, max_tokens),
             "stream": True,
         }
         # Usage is not sent during a stream unless explicitly requested; it then
@@ -421,7 +437,7 @@ class OpenAICompatibleProvider:
             model=model,
             messages=messages,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_tokens=effective_max_tokens(model, max_tokens),
         )
         return response.choices[0].message.content or ""
 
@@ -709,7 +725,7 @@ DEFAULT_ROUTES: dict[str, TaskRoute] = {
     "semantic_classification": TaskRoute([
         ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
         ProviderOption("groq", "openai/gpt-oss-20b", 2),
-        ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 3),
+        ProviderOption("openrouter", "google/gemma-4-31b-it:free", 3),
     ]),
     "ocr_vision": TaskRoute([
         ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
@@ -734,30 +750,30 @@ DEFAULT_ROUTES: dict[str, TaskRoute] = {
     ]),
     "general_qa": TaskRoute([
         ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
-        ProviderOption("groq", "qwen/qwen3.6-27b", 2),
+        ProviderOption("groq", "qwen/qwen3.8-27b", 2),
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 3),
-        ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 4),
+        ProviderOption("openrouter", "google/gemma-4-31b-it:free", 4),
     ]),
     "reasoning": TaskRoute([
-        ProviderOption("groq", "qwen/qwen3.6-27b", 1),
+        ProviderOption("groq", "qwen/qwen3.8-27b", 1),
         # qwen3.5 on NVIDIA NIM: a known-good slug on this key, promoted ahead of
         # gemini. Replaces the dead `meta/llama3-70b-instruct` (NVIDIA 404) that
         # left reasoning with no working fallback once groq hit its daily cap.
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 2),
         ProviderOption("gemini", "gemini-3.1-flash-lite", 3),
-        ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 4),
+        ProviderOption("openrouter", "google/gemma-4-31b-it:free", 4),
     ]),
     "repair": TaskRoute([
-        ProviderOption("groq", "qwen/qwen3.6-27b", 1),
+        ProviderOption("groq", "qwen/qwen3.8-27b", 1),
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 2),
         ProviderOption("gemini", "gemini-3.1-flash-lite", 3),
-        ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 4),
+        ProviderOption("openrouter", "google/gemma-4-31b-it:free", 4),
     ]),
     "synthesis": TaskRoute([
         ProviderOption("gemini", "gemini-3.1-flash-lite", 1),
-        ProviderOption("groq", "qwen/qwen3.6-27b", 2),
+        ProviderOption("groq", "qwen/qwen3.8-27b", 2),
         ProviderOption("nvidia_nim", "meta/llama-3.1-70b-instruct", 3),
-        ProviderOption("openrouter", "meta-llama/llama-3.3-70b-instruct:free", 4),
+        ProviderOption("openrouter", "google/gemma-4-31b-it:free", 4),
     ]),
     "micro_synthesis": TaskRoute([
         ProviderOption("groq", "openai/gpt-oss-20b", 1),

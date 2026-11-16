@@ -52,10 +52,11 @@ def test_task_routing_configuration_parsed():
     assert "synthesis" in rules
     assert "micro_synthesis" in rules
 
-    # Mirrors provider_routing in config/providers.yaml: Gemini first for the heavy tasks,
-    # Groq first for the tiny micro-synthesis task.
-    assert rules["reasoning"]["preferred"] == ["gemini", "groq"]
-    assert rules["repair"]["preferred"] == ["gemini", "groq"]
+    # Mirrors provider_routing in config/providers.yaml: Gemini first for the heavy tasks, then NVIDIA NIM (40 requests/min,
+    # 1M context) ahead of Groq, whose free 8,000 tokens/min is smaller than a typical SQL prompt. Groq stays first for the tiny
+    # micro-synthesis task.
+    assert rules["reasoning"]["preferred"] == ["gemini", "nvidia_nim"]
+    assert rules["repair"]["preferred"] == ["gemini", "nvidia_nim"]
     assert rules["micro_synthesis"]["preferred"] == ["groq", "gemini"]
 
 

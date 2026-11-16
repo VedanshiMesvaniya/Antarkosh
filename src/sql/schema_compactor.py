@@ -79,6 +79,70 @@ def _simplify_data_type(type_str: str) -> str:
     return t.split("(")[0]
 
 
+_FK_TAIL_LINE = re.compile(r"^\s*(?:CONSTRAINT\s+\S+\s+)?FOREIGN\s+KEY\b.*$", re.IGNORECASE)
+
+
+def _matching_paren(text: str, open_idx: int) -> int:
+    """Index of the ``)`` that closes the ``(`` at ``open_idx`` (quotes and brackets respected), or -1."""
+    depth, quote = 0, ""
+    closers = {"'": "'", '"': '"', "`": "`", "[": "]"}
+    for i in range(open_idx, len(text)):
+        ch = text[i]
+        if quote:
+            if ch == quote:
+                quote = ""
+            continue
+        if ch in closers:
+            quote = closers[ch]
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _fold_trailing_foreign_keys(ddl: str) -> str:
+    """Move ``FOREIGN KEY (...) REFERENCES ...`` lines that follow the table's closing ``)`` inside it.
+
+    The schema chunks are built as ``TABLE t (...)`` followed by the relationship lines (``  FOREIGN KEY (a) REFERENCES b(c)``).
+    SQL parsers reject text after the closing parenthesis, so such a chunk never parsed. Anything that is not exactly a run of
+    foreign-key lines after the table is left exactly as it was.
+    """
+    open_idx = ddl.find("(")
+    if open_idx < 0:
+        return ddl
+    close_idx = _matching_paren(ddl, open_idx)
+    if close_idx < 0:
+        return ddl
+    tail = [ln for ln in ddl[close_idx + 1 :].replace(";", "\n").splitlines() if ln.strip()]
+    if not tail or not all(_FK_TAIL_LINE.match(ln) for ln in tail):
+        return ddl
+    folded = ",\n".join("  " + ln.strip().rstrip(",") for ln in tail)
+    inner = ddl[open_idx + 1 : close_idx].rstrip().rstrip(",")
+    return f"{ddl[: open_idx + 1]}{inner},\n{folded}\n)"
+
+
+def _prepare_ddl_for_parse(raw_ddl: str) -> str:
+    """Pre-clean a schema chunk so ``sqlglot`` can parse it.
+
+    1. Whole-line comments are metadata, not DDL: the ``-- Table: x | Domain: y`` header of an enriched chunk and the
+       ``-- Relationships / Foreign Keys:`` marker. (Before, a header in front of ``TABLE x (...)`` hid the ``TABLE`` keyword
+       from the rewrite below, so every enriched chunk failed to parse and fell back to raw DDL.)
+    2. ``TABLE <n>`` becomes ``CREATE TABLE <n>``.
+    3. Foreign-key lines after the closing parenthesis are folded inside it.
+    4. Trailing and inline ``--`` comments are removed; a bare ``enum`` gets a value list.
+    """
+    out = re.sub(r"^\s*--.*$", "", raw_ddl, flags=re.MULTILINE).strip()
+    if re.match(r"^TABLE\s+", out, re.IGNORECASE):
+        out = re.sub(r"^TABLE\s+", "CREATE TABLE ", out, count=1, flags=re.IGNORECASE)
+    out = _fold_trailing_foreign_keys(out)
+    out = re.sub(r"--\s*(.*?)(,\s*)$", r",", out, flags=re.MULTILINE)
+    out = re.sub(r"--.*?$", "", out, flags=re.MULTILINE)
+    return re.sub(r"\benum\b(?!\s*\()", "enum('val')", out, flags=re.IGNORECASE)
+
+
 def compact_ddl(ddl: str, dialect: str | None = None) -> str:
     """Parse DDL, strip audit columns and constraints, and return a dense format.
 
@@ -92,17 +156,8 @@ def compact_ddl(ddl: str, dialect: str | None = None) -> str:
 
     raw_ddl = ddl.strip()
 
-    # Pre-clean DDL for sqlglot parsing:
-    # 1. Normalize 'TABLE <name>' into standard 'CREATE TABLE <name>'
-    # 2. Preserve any trailing comma before comments, e.g. 'col type -- comment,' -> 'col type,'
-    # 3. Strip line comments (-- ...)
-    # 4. Normalize bare 'enum' without values (e.g. 'col enum,') into 'enum('val')' for standard SQL grammar
-    ddl_to_parse = raw_ddl
-    if re.match(r"^\s*TABLE\s+", ddl_to_parse, re.IGNORECASE):
-        ddl_to_parse = re.sub(r"^\s*TABLE\s+", "CREATE TABLE ", ddl_to_parse, count=1, flags=re.IGNORECASE)
-    ddl_to_parse = re.sub(r"--\s*(.*?)(,\s*)$", r",", ddl_to_parse, flags=re.MULTILINE)
-    ddl_to_parse = re.sub(r"--.*?$", "", ddl_to_parse, flags=re.MULTILINE)
-    ddl_to_parse = re.sub(r"\benum\b(?!\s*\()", "enum('val')", ddl_to_parse, flags=re.IGNORECASE)
+    # Pre-clean the chunk so sqlglot can parse it (header comments, bare TABLE, trailing FOREIGN KEY lines, comments, enum).
+    ddl_to_parse = _prepare_ddl_for_parse(raw_ddl)
 
     try:
         parsed_expressions = sqlglot.parse(ddl_to_parse, read=dialect)
@@ -242,11 +297,12 @@ def extract_join_hints(ddls: list[str], dialect: str | None = None) -> str:
     for ddl in ddls:
         if not ddl or not ddl.strip():
             continue
+        prepared = _prepare_ddl_for_parse(ddl)
         try:
-            parsed = sqlglot.parse(ddl, read=dialect)
+            parsed = sqlglot.parse(prepared, read=dialect)
         except Exception:
             try:
-                parsed = sqlglot.parse(ddl)
+                parsed = sqlglot.parse(prepared)
             except Exception:
                 continue
 

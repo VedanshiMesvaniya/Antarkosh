@@ -474,7 +474,14 @@ class QueryPipeline:
                 status_str,
             )
             # Non-blocking background cache update after pipeline completes (strictly requires scope_key)
-            if scope_key and query_emb is not None and result is not None and not getattr(result, "error", None):
+            # An empty SQL answer is not stored either (see SQLRetriever.retrieve): a wrong join would otherwise be repeated.
+            if (
+                scope_key
+                and query_emb is not None
+                and result is not None
+                and not getattr(result, "error", None)
+                and getattr(sql_retriever, "last_query_status", None) != "empty_result"
+            ):
                 ast_passed = getattr(sql_retriever, "last_query_status", "success") != "failed"
                 asyncio.create_task(
                     asyncio.to_thread(

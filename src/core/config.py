@@ -78,8 +78,10 @@ class Settings(BaseSettings):
     # OpenRouter is an aggregator with no fixed per-task model, so a pin needs an
     # explicit model. Free-tier IDs are fine for the MVP/demo; swap for paid
     # production models via env without touching code.
-    openrouter_text_model: str = "meta-llama/llama-3.3-70b-instruct:free"
-    openrouter_vision_model: str = "meta-llama/llama-3.2-11b-vision-instruct:free"
+    # Free IDs rotate (the llama-3.3-70b and llama-3.2-11b-vision free variants were removed from OpenRouter and answer 404). Gemma 4
+    # 31B is free, multimodal (text + image) and served by Google; verified against OpenRouter's live list on 2026-11-05.
+    openrouter_text_model: str = "google/gemma-4-31b-it:free"
+    openrouter_vision_model: str = "google/gemma-4-31b-it:free"
 
     # "sqlite" (default, uses the local live_data.db file), "mysql", "postgresql",
     # "mssql" or "oracle". A connection saved from the admin UI is stored in

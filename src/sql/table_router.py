@@ -6,6 +6,7 @@ Origin: extracted from src/stages/s12b_sql_retrieval.py (load_routing_hints, rou
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, load_knowledge_json
@@ -40,6 +41,14 @@ def _clear_routing_hints_cache(db_id: str | None = None) -> None:
 load_routing_hints.cache_clear = _clear_routing_hints_cache  # type: ignore[attr-defined]
 
 
+def _keyword_hit(keywords: list[str], query_lower: str, whole_word: bool) -> bool:
+    """Plain rules match a keyword anywhere in the question (as always). A rule marked ``"whole_word": true`` (the generated
+    rules for short abbreviations such as "qn") matches only a separate word, so "po" never fires inside "report"."""
+    if not whole_word:
+        return any(k in query_lower for k in keywords)
+    return any(re.search(rf"(?<![a-z0-9]){re.escape(k)}(?![a-z0-9])", query_lower) for k in keywords if k)
+
+
 def route_tables_for_query(
     query: str,
     db_id: str = DEFAULT_DB_ID,
@@ -61,7 +70,7 @@ def route_tables_for_query(
         tables: list[str] = rule.get("tables", [])
         conditional: dict[str, Any] | None = rule.get("conditional")
 
-        if any(k in query_lower for k in keywords):
+        if _keyword_hit(keywords, query_lower, rule.get("whole_word") is True):
             for table in tables:
                 if table not in matched_tables:
                     matched_tables.append(table)

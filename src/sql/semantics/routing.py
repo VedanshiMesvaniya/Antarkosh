@@ -10,6 +10,10 @@ What is generated, and why it is safe to generate for any database:
   ("supplier" for a ``vendors`` table). The keywords of a rule never include a word that already appears in the schema's
   names, because retrieval finds those by name anyway. If two words of a group both appear in the names (``customers`` and
   ``clients``) the schema distinguishes them and the group is skipped.
+* **Abbreviations people really say.** A short word that is not in any table name but starts the key column of exactly one
+  table and is carried by other tables as a reference (``qn_number`` is the key of ``sqts_main_lear`` and appears in the
+  history and cost tables) gets an anchor rule to that table. Such rules match a separate word only (``"whole_word": true``), so
+  "qn" never fires inside another word.
 * **Narrow, never broad.** A rule routes to at most four tables (anchors) or eight (fallback); a concept that matches more tables
   is too broad to route on and gets no rule. Test, backup and temp tables and tables outside the answering schema never appear.
   Table names are written the way the retrieval code looks them up (bare, lower case) and only when they can be found that way.
@@ -36,7 +40,7 @@ from typing import Any
 from src.sql import registry
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
 from src.sql.relationships.model import CatalogGraph
-from src.sql.relationships.names import singular, split_identifier
+from src.sql.relationships.names import parse_id_column, singular, split_identifier
 from src.sql.semantics.lexicon import SYNONYM_GROUPS
 
 GENERATED_BY = "auto_routing_hints"
@@ -49,6 +53,13 @@ MIN_KEYWORD_CHARS = 4  # the router matches a keyword anywhere inside the questi
 MAX_ANCHOR_TABLES = 4  # anchors are added to every matching question's schema; keep them few
 MAX_FALLBACK_TABLES = 8  # more matching tables than this: the concept is too broad to route on
 MAX_RULES = 60
+MAX_KEY_RULES = 20  # abbreviation rules (below) on top of the synonym rules
+MAX_KEY_TOKEN_CHARS = 8
+# stems that say nothing about an entity, even as the start of a key column name
+_NOT_ENTITY = frozenset({
+    "id", "no", "num", "number", "code", "key", "ref", "fk", "row", "rec", "record", "line", "seq", "sr", "sl", "sno", "serial",
+    "parent", "child", "user", "created", "updated", "modified", "deleted", "old", "new", "temp", "tmp", "main", "type", "status",
+})
 
 _BARE_NAME = re.compile(r"^[a-z0-9_]+$")  # the only table names the retrieval code can look up
 _WORD = re.compile(r"^[a-z]+$")
@@ -117,10 +128,52 @@ def build_hints(graph: CatalogGraph, eligible: set[str]) -> Hints:
         hints.fallback_rules.append({"keywords": list(keywords), "tables": matched[:MAX_FALLBACK_TABLES], "auto": GENERATED_BY})
         if len(matched) <= MAX_ANCHOR_TABLES:
             hints.anchor_rules.append({"keywords": list(keywords), "tables": list(matched), "auto": GENERATED_BY})
+    _add_key_token_rules(hints, tables, by_name, stems_of, stats)
     stats["groups_written"] = len(hints.glossary)
     stats["fallback_rules"] = len(hints.fallback_rules)
     stats["anchor_rules"] = len(hints.anchor_rules)
     return hints
+
+
+def _add_key_token_rules(
+    hints: Hints, tables: list[Any], by_name: dict[str, list[str]], stems_of: dict[str, set[str]], stats: dict[str, int]
+) -> None:
+    """Anchor rules for abbreviations that only live in key columns (see the module docstring)."""
+    name_words: set[str] = set()
+    for stems in stems_of.values():
+        name_words |= stems
+    lexicon_words = {singular(w) for g in SYNONYM_GROUPS for w in g}
+
+    owners: dict[str, set[str]] = {}  # entity token -> routable tables whose single-column key starts with it
+    carriers: dict[str, set[str]] = {}  # entity token -> tables with ANY column that starts with it as an id
+    for t in tables:
+        bare = t.name.lower()
+        for c in t.columns:
+            parsed = parse_id_column(c.name)
+            if parsed is None or len(parsed.stem) != 1:
+                continue
+            token = parsed.stem[0]
+            if not (2 <= len(token) <= MAX_KEY_TOKEN_CHARS and _WORD.match(token)) or token in _NOT_ENTITY:
+                continue
+            carriers.setdefault(token, set()).add(bare)
+            if bare in by_name and t.key_strength(c.name) in ("primary", "unique", "unique_index"):
+                owners.setdefault(token, set()).add(bare)
+
+    added = 0
+    for token in sorted(owners):
+        if added >= MAX_KEY_RULES:
+            break
+        masters = owners[token]
+        if len(masters) != 1 or singular(token) in name_words or singular(token) in lexicon_words:
+            continue  # ambiguous owner, or a word retrieval already finds by table name / the synonym rules already cover
+        master = next(iter(masters))
+        if len(carriers.get(token, set()) - {master}) < 1:
+            continue  # nothing else references it: not a shared entity key
+        keywords = [token, token + "s"] if len(token) >= 2 else [token]
+        for section in (hints.fallback_rules, hints.anchor_rules):
+            section.append({"keywords": keywords, "tables": [master], "whole_word": True, "auto": GENERATED_BY})
+        added += 1
+    stats["key_token_rules"] = added
 
 
 # ============================================================================================ files
