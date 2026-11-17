@@ -255,11 +255,11 @@ def test_openrouter_is_injected_for_sql_generation_when_pinned(monkeypatch):
         assert len(options) > 1, f"{task}: the normal chain must remain as fallback"
 
 
-def test_default_chains_are_gemini_first_for_reasoning_and_classification():
+def test_default_chains_are_gemini_first_for_large_thinking_and_openrouter_first_for_everyday_tasks():
     router = ProviderRouter(preferred_provider="auto")
-    for task in ("reasoning", "semantic_classification"):
+    for task, first in (("reasoning", "gemini"), ("repair", "gemini"), ("synthesis", "gemini"), ("semantic_classification", "openrouter"), ("general_qa", "openrouter")):
         options = sorted(router._get_route(task).options, key=lambda o: o.priority)
-        assert options and options[0].provider_name == "gemini", task
+        assert options and options[0].provider_name == first, task
 
 
 # ---------------------------------------------------------------------------

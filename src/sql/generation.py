@@ -45,6 +45,7 @@ from src.sql.prompt_builder import build_sql_prompt
 from src.sql.soft_delete import detect_soft_delete_intent, enforce_soft_delete_filter
 from src.sql.safety.data_recency import data_recency_note
 from src.sql.safety.empty_result_classifier import classify_empty_result
+from src.sql.safety.value_check import value_mismatch_note
 from src.utils.error_classification import classify_error
 from src.sql.learning.failure_capture import capture_sql_failure
 from src.utils.feature_flags import is_feature_enabled
@@ -1179,9 +1180,13 @@ async def execute_with_delta_repair(
             # Intelligent 0-row handling
             if is_empty_result and _check_feature_enabled("zero_row_handling_enabled"):
                 disconnected = _disconnected_tables(val_results)
+                # A filter value that provably does not exist (active = '1' where the column holds 'Y'/'N') is not valid emptiness.
+                value_note, value_guess = await value_mismatch_note(current_sql, retriever._dialect.sqlglot_dialect, retriever.db_id)
                 classification = classify_empty_result(
                     current_sql, dialect=retriever._dialect.sqlglot_dialect, disconnected_tables=disconnected or None
                 )
+                if value_guess and classification == "valid_empty":
+                    classification = "suspicious_empty"
                 with timed_stage("empty_result_handling") as erh_stage:
                     erh_stage["extra"] = {
                         "classification": classification,
@@ -1222,6 +1227,7 @@ async def execute_with_delta_repair(
                                         if disconnected
                                         else ""
                                     )
+                                    + (f" {value_note}" if value_note else "")
                                 ),
                                 error_type="suspicious_zero_rows",
                                 schema_context=schema_context,
@@ -1265,8 +1271,9 @@ async def execute_with_delta_repair(
             if is_empty_result and _check_feature_enabled("zero_row_handling_enabled"):
                 # An empty window may only mean the data ends earlier: say where (one cheap MAX query; never fails the query).
                 recency_note = await data_recency_note(current_sql, retriever._dialect.sqlglot_dialect, retriever.db_id)
-                if recency_note:
-                    formatted_table = f"{formatted_table}\n\n{recency_note}"
+                notes = "\n\n".join(n for n in (value_note, recency_note) if n)
+                if notes:
+                    formatted_table = f"{formatted_table}\n\n{notes}"
             display_headers = list(display_rows[0].keys()) if display_rows else []
             sql_payload = {
                 "query": current_sql,

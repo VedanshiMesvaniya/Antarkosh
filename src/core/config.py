@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     # provider is preferred for every task, but the pipeline still falls back to
     # the rest of each task's chain when it's rate-limited or down. "auto"
     # disables the pin and uses the task-optimized routes as authored.
-    default_provider: str = "openrouter"
+    default_provider: str = "auto"  # "auto" = no pin: the order in config/providers.yaml decides (a concrete provider is pinned to the front of every task)
     # OpenRouter is an aggregator with no fixed per-task model, so a pin needs an
     # explicit model. Free-tier IDs are fine for the MVP/demo; swap for paid
     # production models via env without touching code.

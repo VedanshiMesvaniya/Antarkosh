@@ -68,7 +68,7 @@ MAX_TABLES_PER_RUN = _env_number("COLUMN_MEANING_MAX_TABLES", 40, int)
 CONCURRENCY = _env_number("COLUMN_MEANING_CONCURRENCY", 4, int)
 CALL_TIMEOUT_SECONDS = 60.0
 MAX_CONSECUTIVE_FAILURES = 3
-LLM_TASK = "extraction"
+LLM_TASK = "schema_sync"  # its own chain: a sync makes hundreds of calls and must not drain the free quota interactive questions use
 
 
 def _read_json(path: Path) -> dict[str, Any] | None:

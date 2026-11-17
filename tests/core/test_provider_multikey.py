@@ -116,9 +116,10 @@ def test_reasoning_route_has_the_free_openrouter_models_last():
     route = ProviderRouter()._get_route("reasoning")
     models = [(o.provider_name, o.model) for o in sorted(route.options, key=lambda o: o.priority)]
     assert models[0][0] == "gemini"
-    tail = models[-2:]
-    # Free OpenRouter models rotate; these two were verified free on 2026-11-05 (the earlier qwen3.6-plus-preview and qwq-32b
-    # free variants answer 404 now).
-    assert tail == [("openrouter", "nvidia/nemotron-3-ultra-550b-a55b:free"), ("openrouter", "google/gemma-4-31b-it:free")]
+    # Backups for large thinking come from OTHER providers' reasoning models: NVIDIA's Nemotron Ultra, the same model on
+    # OpenRouter, then Groq. Free OpenRouter models rotate; these were verified free on 2026-11-16.
+    providers = [p for p, _ in models]
+    assert providers.index("nvidia_nim") < providers.index("openrouter") < providers.index("groq")
+    assert ("openrouter", "nvidia/nemotron-3-ultra-550b-a55b:free") in models and ("groq", "openai/gpt-oss-120b") in models
     assert all(m.endswith(":free") for p, m in models if p == "openrouter")
     assert "openrouter" in get_task_routing_rules()["reasoning"]["fallback"]

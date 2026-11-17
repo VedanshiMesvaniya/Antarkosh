@@ -137,9 +137,36 @@ def diff_tables(old: dict[str, str] | None, new: dict[str, str]) -> Drift:
 # --------------------------------------------------------------------------- rule versions
 
 
+# The sources the skippable phases are derived by. Their hand-kept RULESET_VERSION numbers below are easy to forget to bump, and a
+# forgotten bump silently keeps files built by the old code until the database itself changes: so a fingerprint of the code
+# itself is recorded too, and any change to it re-runs those phases once.
+_CODE_DIRS = ("introspection", "relationships", "profiles", "paths")
+_CODE_FILES = ("sa/catalog_phase.py", "sa/reflection.py", "sa/relationships_phase.py", "sa/profiles_phase.py", "sa/paths_phase.py")
+
+
+def source_fingerprint(root: Path | None = None) -> str | None:
+    """Short hash of the phase sources (line endings ignored, so Windows and Linux checkouts agree). None if unreadable."""
+    base = root or Path(__file__).resolve().parents[1]
+    files = [f for d in _CODE_DIRS for f in sorted((base / d).glob("*.py"))] + [base / f for f in _CODE_FILES]
+    h = hashlib.sha256()
+    try:
+        for f in files:
+            h.update(f.relative_to(base).as_posix().encode() + b"\0" + f.read_bytes().replace(b"\r\n", b"\n"))
+    except OSError:
+        return None
+    return h.hexdigest()[:12]
+
+
+_FINGERPRINT: str | None = None
+
+
 def phase_versions() -> dict[str, Any]:
-    """The version of each derived phase's rules. A change means the old files were built by different rules."""
-    out: dict[str, Any] = {}
+    """The version of each derived phase's rules, plus the fingerprint of their code. A change means the old files were built
+    by different rules or different code."""
+    global _FINGERPRINT
+    if _FINGERPRINT is None:
+        _FINGERPRINT = source_fingerprint()
+    out: dict[str, Any] = {"code": _FINGERPRINT}
     try:
         from src.sql.relationships.writer import RULESET_VERSION as rel
 

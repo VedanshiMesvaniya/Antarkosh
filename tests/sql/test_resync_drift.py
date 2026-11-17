@@ -341,7 +341,37 @@ def test_start_resync_is_none_when_off_and_distrusts_a_cut_short_schema(root: Pa
 
 
 def test_the_phase_versions_are_the_rule_versions_of_the_derived_phases() -> None:
-    assert set(drift.phase_versions()) == {"relationships", "table_profiles", "join_paths"} and all(isinstance(v, int) for v in drift.phase_versions().values())
+    versions = drift.phase_versions()
+    assert set(versions) == {"relationships", "table_profiles", "join_paths", "code"}
+    assert all(isinstance(v, int) for k, v in versions.items() if k != "code")
+    assert isinstance(versions["code"], str) and len(versions["code"]) == 12  # fingerprint of the phase sources
+
+
+def test_the_source_fingerprint_changes_with_the_code_ignores_line_endings_and_other_files(tmp_path) -> None:
+    for d in ("introspection", "relationships", "profiles", "paths", "sa"):
+        (tmp_path / d).mkdir()
+        (tmp_path / d / "a.py").write_text("x = 1\n")
+    for f in ("catalog_phase", "reflection", "relationships_phase", "profiles_phase", "paths_phase"):
+        (tmp_path / "sa" / f"{f}.py").write_text("y = 2\n")
+    base = drift.source_fingerprint(tmp_path)
+    assert base and base == drift.source_fingerprint(tmp_path)
+    (tmp_path / "relationships" / "a.py").write_bytes(b"x = 1\r\n")  # Windows checkout of the same file
+    assert drift.source_fingerprint(tmp_path) == base
+    (tmp_path / "sa" / "hints_phase.py").write_text("never = skipped\n")  # a phase that always runs is not part of it
+    assert drift.source_fingerprint(tmp_path) == base
+    (tmp_path / "paths" / "a.py").write_text("x = 3\n")
+    assert drift.source_fingerprint(tmp_path) != base
+    assert drift.source_fingerprint(tmp_path / "missing") is None
+
+
+def test_changed_code_reruns_the_skippable_phases_once_and_unchanged_code_still_skips(root: Path) -> None:
+    _write_generation(root)
+    same = {"relationships": 2, "code": "abc123abc123"}
+    assert [_planner(root, versions=same, state_patch={"phase_versions": dict(same)}).should_run(ph) for ph in resync.SKIPPABLE] == [False] * 4
+    p = _planner(root, versions=same, state_patch={"phase_versions": {**same, "code": "oldoldoldold"}})
+    assert [p.should_run(ph) for ph in resync.SKIPPABLE] == [True] * 4
+    assert set(p.summary()["ran"].values()) == {"a phase's rules changed"}
+    assert _planner(root, versions=same, state_patch={"phase_versions": {"relationships": 2}}).should_run("catalog") is True  # an older record has no fingerprint: one rerun
 
 
 # ----------------------------------------------------------------------------------------------- versions

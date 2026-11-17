@@ -1,32 +1,33 @@
 # Provider routing configuration
-# Each task maps to an ordered fallback chain of provider+model pairs.
-# The router tries them in priority order, falling back on rate-limit or error.
+# Each task maps to an ordered fallback chain of provider+model pairs. The router tries them in priority order and falls back on a
+# rate limit or error. Order of preference:
+#   everyday tasks ........ openrouter (Google Gemma 4) -> groq -> nvidia_nim -> gemini (last resort)
+#   large thinking ........ gemini first (reasoning, repair, synthesis), then ANOTHER provider's reasoning model as backup:
+#                           nvidia_nim (Nemotron 3 Ultra) -> openrouter (same model) -> groq (gpt-oss-120b)
+# NOTE: set DEFAULT_PROVIDER=auto (env / render.yaml). A concrete default provider is "pinned" to the front of EVERY task and
+# would put openrouter ahead of gemini for the large-thinking tasks, undoing the order above.
 #
-# Every model below is a FREE tier model. IDs and limits were checked against the providers' own docs and live catalogs on
-# 2026-11-05. Free listings rotate (a model free in July can be paid or gone by October), so re-check before relying on one.
-#
-#   gemini      free: gemini-3.1-flash-lite and gemini-3.5-flash-lite, about 500 requests/day EACH (the counters are per model, so
-#               listing both doubles the daily room). gemini-3.8-flash / 3.6-flash are free but only 20 requests/day: not used here.
-#               Google may use free-tier content to improve its products.
-#   groq        free: openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.8-27b: each 30 requests/min, 1,000/day, 8,000 tokens/MIN,
-#               200,000 tokens/day. The 8,000 tokens/min cap is smaller than a typical SQL prompt (schema + rules), so Groq is
-#               placed after nvidia_nim for the large-prompt tasks and kept first only for short ones (titles, classification).
-#   nvidia_nim  free trial API (build.nvidia.com): 40 requests/min, 1M context on the long models.
-#   openrouter  free ":free" models: 20 requests/min and only 50 requests/day (1,000/day after $10 of lifetime credit purchases),
-#               so it is a last resort. Dead and removed: meta-llama/llama-3.3-70b-instruct:free, qwen/qwq-32b:free,
-#               qwen/qwen3.6-plus-preview:free, openai/gpt-oss-120b:free.
-#
+# Every model is a FREE model; IDs and limits were checked on 2026-11-16 against the providers' docs and live catalogs.
+# Free listings rotate (what was free in July was gone by October), so re-check before relying on one.
+#   openrouter  free ":free" models, 20 requests/min and 50-200 requests/day PER MODEL (50 without credits, more after buying
+#               credits; check yours at https://openrouter.ai/api/v1/key). There is NO free Gemini there: the Google models are
+#               Gemma 4 (26B-A4B is the best-scoring free model, 31B second; both take images). Dead and removed:
+#               meta-llama/llama-3.3-70b-instruct:free, qwen/qwq-32b:free, qwen/qwen3.6-plus-preview:free, openai/gpt-oss-120b:free.
+#   groq        free: openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.8-27b: 30 requests/min, 1,000/day, 8,000 tokens/MIN each.
+#               8,000 tokens/min is smaller than a typical SQL prompt, so Groq only gets the short tasks first.
+#   nvidia_nim  free trial API (build.nvidia.com), 40 requests/min, long context.
+#   gemini      gemini-3.1-flash-lite (about 500 requests/day, 15/min). Do NOT add gemini-3.5-flash-lite / 3.6 / newer here yet:
+#               Google changed their API (thinking_level instead of the thinkingBudget:0 this client sends) and they answer 400.
 # Data note: free endpoints (NVIDIA, Google free tier, OpenRouter free) may log prompts or use them to improve models.
 
 tasks:
-  # Stage 2b — Semantic document classification
   semantic_classification:
     providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-31b-it:free
         priority: 2
       - provider: groq
         model: openai/gpt-oss-20b
@@ -34,284 +35,292 @@ tasks:
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
         priority: 4
-
-  # Stages 4/5 — Vision-LLM OCR and layout analysis
-  ocr_vision:
-    providers:
       - provider: gemini
         model: gemini-3.1-flash-lite
+        priority: 5
+
+  ocr_vision:
+    providers:
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: nvidia/nemotron-3.5-super-vl:free
         priority: 2
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
         priority: 3
-      - provider: openrouter
-        model: nvidia/nemotron-3.5-super-vl:free
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 4
 
   layout_analysis:
     providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: nvidia/nemotron-3.5-super-vl:free
         priority: 2
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
         priority: 3
-      - provider: openrouter
-        model: nvidia/nemotron-3.5-super-vl:free
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 4
 
-  # Stage 6 — Table extraction (vision fallback)
   table_extraction:
     providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: nvidia/nemotron-3.5-super-vl:free
         priority: 2
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
         priority: 3
-      - provider: openrouter
-        model: nvidia/nemotron-3.5-super-vl:free
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 4
 
-  # Stage 7 — Charts and graphs
   chart_analysis:
     providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: nvidia/nemotron-3.5-super-vl:free
         priority: 2
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
         priority: 3
-      - provider: openrouter
-        model: nvidia/nemotron-3.5-super-vl:free
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 4
 
-  # Stage 8 — General image understanding
   image_understanding:
     providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: nvidia/nemotron-3.5-super-vl:free
         priority: 2
       - provider: nvidia_nim
         model: meta/llama-3.2-11b-vision-instruct
         priority: 3
-      - provider: openrouter
-        model: nvidia/nemotron-3.5-super-vl:free
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 4
 
-  # Stage 14 — Generation tasks
   general_qa:
     providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-31b-it:free
         priority: 2
-      - provider: nvidia_nim
-        model: nvidia/nemotron-3.5-lightning-30b-a3b
-        priority: 3
       - provider: groq
         model: qwen/qwen3.8-27b
-        priority: 4
+        priority: 3
       - provider: groq
         model: openai/gpt-oss-20b
-        priority: 5
-      - provider: openrouter
-        model: google/gemma-4-31b-it:free
-        priority: 6
-
-  reasoning:
-    providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
-        priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
-        priority: 2
-      - provider: nvidia_nim
-        model: nvidia/nemotron-3-ultra-550b-a55b
-        priority: 3
+        priority: 4
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
-        priority: 4
-      - provider: groq
-        model: openai/gpt-oss-120b
         priority: 5
-      - provider: groq
-        model: qwen/qwen3.8-27b
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 6
-      - provider: openrouter
-        model: nvidia/nemotron-3-ultra-550b-a55b:free
-        priority: 7
-      - provider: openrouter
-        model: google/gemma-4-31b-it:free
-        priority: 8
 
   extraction:
     providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-31b-it:free
         priority: 2
-      - provider: nvidia_nim
-        model: nvidia/nemotron-3.5-lightning-30b-a3b
-        priority: 3
       - provider: groq
         model: qwen/qwen3.8-27b
-        priority: 4
+        priority: 3
       - provider: groq
         model: openai/gpt-oss-20b
+        priority: 4
+      - provider: nvidia_nim
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
         priority: 5
+      - provider: gemini
+        model: gemini-3.1-flash-lite
+        priority: 6
 
   summarization:
     providers:
-      - provider: gemini
-        model: gemini-3.1-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
+      - provider: openrouter
+        model: google/gemma-4-31b-it:free
         priority: 2
-      - provider: nvidia_nim
-        model: nvidia/nemotron-3.5-lightning-30b-a3b
-        priority: 3
       - provider: groq
         model: openai/gpt-oss-20b
+        priority: 3
+      - provider: nvidia_nim
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
         priority: 4
+      - provider: gemini
+        model: gemini-3.1-flash-lite
+        priority: 5
 
   fast_support:
     providers:
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
+        priority: 1
       - provider: groq
         model: openai/gpt-oss-20b
-        priority: 1
-      - provider: gemini
-        model: gemini-3.1-flash-lite
         priority: 2
-      - provider: gemini
-        model: gemini-3.5-flash-lite
-        priority: 3
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
+        priority: 3
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 4
 
-  # Chat title generation — isolated from other short LLM tasks.
   chat_title:
     providers:
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
+        priority: 1
       - provider: groq
         model: openai/gpt-oss-20b
-        priority: 1
-      - provider: gemini
-        model: gemini-3.1-flash-lite
         priority: 2
-      - provider: gemini
-        model: gemini-3.5-flash-lite
-        priority: 3
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
+        priority: 3
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 4
 
   classification:
     providers:
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
+        priority: 1
       - provider: groq
         model: openai/gpt-oss-20b
-        priority: 1
-      - provider: gemini
-        model: gemini-3.1-flash-lite
         priority: 2
-      - provider: gemini
-        model: gemini-3.5-flash-lite
-        priority: 3
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
+        priority: 3
+      - provider: gemini
+        model: gemini-3.1-flash-lite
         priority: 4
+
+  micro_synthesis:
+    providers:
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
+        priority: 1
+      - provider: groq
+        model: openai/gpt-oss-20b
+        priority: 2
+      - provider: nvidia_nim
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
+        priority: 3
+      - provider: gemini
+        model: gemini-3.1-flash-lite
+        priority: 4
+
+  # Schema sync (column meaning): hundreds of batch calls, so it uses NVIDIA / Groq first and keeps the small free quotas of
+  # openrouter and gemini for interactive questions.
+  schema_sync:
+    providers:
+      - provider: nvidia_nim
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
+        priority: 1
+      - provider: groq
+        model: qwen/qwen3.8-27b
+        priority: 2
+      - provider: groq
+        model: openai/gpt-oss-20b
+        priority: 3
+      - provider: openrouter
+        model: google/gemma-4-26b-a4b-it:free
+        priority: 4
+      - provider: gemini
+        model: gemini-3.1-flash-lite
+        priority: 5
+
+  reasoning:
+    providers:
+      - provider: gemini
+        model: gemini-3.1-flash-lite
+        priority: 1
+      - provider: nvidia_nim
+        model: nvidia/nemotron-3-ultra-550b-a55b
+        priority: 2
+      - provider: openrouter
+        model: nvidia/nemotron-3-ultra-550b-a55b:free
+        priority: 3
+      - provider: groq
+        model: openai/gpt-oss-120b
+        priority: 4
+      - provider: groq
+        model: qwen/qwen3.8-27b
+        priority: 5
+      - provider: openrouter
+        model: google/gemma-4-31b-it:free
+        priority: 6
 
   repair:
     providers:
       - provider: gemini
         model: gemini-3.1-flash-lite
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
-        priority: 2
-      - provider: nvidia_nim
-        model: nvidia/nemotron-3.5-lightning-30b-a3b
-        priority: 3
       - provider: nvidia_nim
         model: nvidia/nemotron-3-ultra-550b-a55b
-        priority: 4
-      - provider: groq
-        model: qwen/qwen3.8-27b
-        priority: 5
-      - provider: groq
-        model: openai/gpt-oss-20b
-        priority: 6
+        priority: 2
       - provider: openrouter
-        model: google/gemma-4-31b-it:free
-        priority: 7
+        model: nvidia/nemotron-3-ultra-550b-a55b:free
+        priority: 3
+      - provider: groq
+        model: openai/gpt-oss-120b
+        priority: 4
+      - provider: nvidia_nim
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
+        priority: 5
 
   synthesis:
     providers:
       - provider: gemini
         model: gemini-3.1-flash-lite
         priority: 1
-      - provider: gemini
-        model: gemini-3.5-flash-lite
-        priority: 2
       - provider: nvidia_nim
         model: nvidia/nemotron-3.5-lightning-30b-a3b
+        priority: 2
+      - provider: nvidia_nim
+        model: nvidia/nemotron-3-ultra-550b-a55b
         priority: 3
-      - provider: groq
-        model: qwen/qwen3.8-27b
-        priority: 4
-      - provider: groq
-        model: openai/gpt-oss-20b
-        priority: 5
       - provider: openrouter
         model: google/gemma-4-31b-it:free
-        priority: 6
-
-  micro_synthesis:
-    providers:
-      - provider: groq
-        model: openai/gpt-oss-20b
-        priority: 1
-      - provider: gemini
-        model: gemini-3.1-flash-lite
-        priority: 2
-      - provider: gemini
-        model: gemini-3.5-flash-lite
-        priority: 3
-      - provider: nvidia_nim
-        model: nvidia/nemotron-3.5-lightning-30b-a3b
         priority: 4
+      - provider: groq
+        model: qwen/qwen3.8-27b
+        priority: 5
 
 provider_routing:
   reasoning:
-    preferred: [gemini, nvidia_nim]
-    fallback: [groq, openrouter]
+    preferred: ["gemini", "nvidia_nim"]
+    fallback: ["openrouter", "groq"]
   repair:
-    preferred: [gemini, nvidia_nim]
-    fallback: [groq, openrouter]
+    preferred: ["gemini", "nvidia_nim"]
+    fallback: ["openrouter", "groq"]
   synthesis:
-    preferred: [gemini, nvidia_nim]
-    fallback: [groq, openrouter]
+    preferred: ["gemini", "nvidia_nim"]
+    fallback: ["openrouter", "groq"]
   micro_synthesis:
-    preferred: [groq, gemini]
-    fallback: [nvidia_nim]
+    preferred: ["openrouter", "groq"]
+    fallback: ["nvidia_nim", "gemini"]

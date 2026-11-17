@@ -30,7 +30,7 @@ services:
         sync: false
       # Non-secret defaults — safe to keep in the blueprint.
       - key: DEFAULT_PROVIDER
-        value: openrouter
+        value: auto
       - key: DB_ENGINE
         value: sqlite
       # Optional persistence overrides (when attaching a persistent disk on paid tiers):
