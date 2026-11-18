@@ -40,6 +40,7 @@ from src.sql.prompt_builder import (
     OUTPUT_READABILITY_RULES,
     clear_prompt_caches,
     get_raw_behavioral_atlas,
+    get_raw_relationships,
     get_scoped_readability_rules,
     load_glossary,
     load_relationships,
@@ -119,7 +120,7 @@ class SQLRetriever:
         self._relationships = load_relationships(self.db_id)
         self._pattern_learner = PatternLearner(db_id=self.db_id)
         self._confidence_scorer = ConfidenceScorer()
-        self._result_validator = ResultValidator(get_raw_behavioral_atlas(self.db_id) or {})
+        self._result_validator = ResultValidator(get_raw_behavioral_atlas(self.db_id) or {}, relationships=get_raw_relationships(self.db_id))
         self.last_infra_error: str | None = None
         self.last_query_status: str | None = None
         self.last_cot_plan: str | None = None

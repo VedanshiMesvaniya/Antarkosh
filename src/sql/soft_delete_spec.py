@@ -93,7 +93,7 @@ def _strip_default(raw: Any) -> str:
 
 
 def _type_family(type_text: str) -> str:
-    t = str(type_text or "").strip().lower()
+    t = re.sub(r"\s+collate\s+[\w_]+", "", str(type_text or "").strip().lower())
     if not t:
         return "unknown"
     if "bool" in t:
@@ -111,6 +111,19 @@ def _type_family(type_text: str) -> str:
     return "other"
 
 
+def _noun_deleted_flag(name: str, type_text: str, fam: str) -> bool:
+    """``<noun>_deleted`` / ``<noun>_removed`` (record_deleted, RowRemoved) whose TYPE is a one-character, boolean or bit flag.
+
+    A count (``rows_deleted INT``), a person or a name column does not qualify, and neither does an inverted name (``undeleted``).
+    """
+    from src.sql.relationships.names import split_identifier
+
+    parts = split_identifier(name)
+    if len(parts) < 2 or parts[-1] not in {"deleted", "removed"} or parts[0] in {"un", "not", "non", "no"}:
+        return False
+    return fam in ("boolean", "char") or str(type_text).strip().lower().startswith("bit")
+
+
 def classify_column(name: str, type_text: str, *, nullable: bool | None, default: Any = None, enum_values: Any = None) -> str | None:
     """The soft-delete kind a column looks like, or None. Needs a recognised NAME and a type that fits that name."""
     n = _norm(name)
@@ -119,6 +132,8 @@ def classify_column(name: str, type_text: str, *, nullable: bool | None, default
         # NOT NULL cannot mean "NULL while live"; an integer or a string named deleted_at is something else
         return "timestamp" if fam == "timestamp" and nullable is not False else None
     strong, weak = n in _STRONG_FLAG_NAMES, n in _WEAK_FLAG_NAMES
+    if not (strong or weak) and _noun_deleted_flag(name, type_text, fam):
+        weak = True  # "record_deleted CHAR(1)": judged by its type like "deleted", never by the name alone
     if not (strong or weak):
         return None
     if fam == "boolean":
@@ -384,6 +399,43 @@ def classify_conjunct(node: exp.Expression, spec: SoftDeleteSpec, quals: set[str
     return None
 
 
+def _unparen(node: exp.Expression) -> exp.Expression:
+    while isinstance(node, exp.Paren):
+        node = node.this
+    return node
+
+
+def _fits_kind(node: exp.Expression, spec: SoftDeleteSpec, quals: set[str]) -> bool:
+    """Is a condition the model wrote on the marker in a form this column's TYPE can hold?
+
+    ``record_deleted IS NULL`` / ``= 0`` / ``= '0'`` on a CHAR(1) holding 'Y'/'N' never matches (and ``IS NULL`` alone also misses
+    the live rows of a nullable int or boolean flag): they are recognised as "active" by ``classify_conjunct`` but would never be
+    corrected. Only a timestamp is tested with IS [NOT] NULL; a char flag only with 'Y'/'N' strings; a boolean or int flag with
+    true/false/0/1 or the bare column. ``(<fitting condition> OR col IS NULL)`` is the canonical form and fits.
+    """
+    node = _unparen(node)
+    ts = spec.kind == "timestamp"
+    if isinstance(node, exp.Or):
+        parts = [_unparen(node.this), _unparen(node.expression)]
+        rest = [p for p in parts if not isinstance(p, exp.Is)]
+        return bool(rest) and all(_fits_kind(p, spec, quals) for p in rest)
+    if isinstance(node, exp.Not):
+        inner = _unparen(node.this)
+        return ts if isinstance(inner, exp.Is) else spec.kind in ("boolean", "int_flag")
+    if isinstance(node, exp.Is):
+        return ts
+    if _is_marker(node, spec, quals):  # the bare column: is_deleted / NOT is_deleted
+        return spec.kind in ("boolean", "int_flag")
+    if isinstance(node, (exp.EQ, exp.NEQ, exp.In)):
+        lits = list(node.expressions) if isinstance(node, exp.In) else [node.expression if _is_marker(node.this, spec, quals) else node.this]
+        if ts or not lits:
+            return False
+        if spec.kind == "char_flag":
+            return all(isinstance(x, exp.Literal) and x.is_string and str(x.this).lower() in {"y", "n"} for x in lits)
+        return all(isinstance(x, exp.Boolean) or (isinstance(x, exp.Literal) and not x.is_string and str(x.this) in {"0", "1"}) for x in lits)
+    return True
+
+
 def conjuncts(node: exp.Expression | None) -> list[exp.Expression]:
     """The AND-ed parts of a condition."""
     if node is None:
@@ -444,6 +496,14 @@ def enforce(sql: str, intent: str, dialect: str, specs: dict[str, SoftDeleteSpec
             where = sel.args.get("where")
             on = join.args.get("on") if join is not None else None
             existing = conjuncts(where.this if where is not None else None) + conjuncts(on)
+            for c in existing:  # the model guessed how the flag is stored (= 0, IS NULL on a 'Y'/'N' column): write the real condition
+                guess = classify_conjunct(c, spec, quals)
+                if guess and not _fits_kind(c, spec, quals):
+                    fixed = active_condition(spec, qualifier) if guess == "active" else deleted_condition(spec, qualifier)
+                    c.replace(fixed)
+                    added.append(f"{spec.table}: {render(fixed, dialect)} (corrected)")
+            where = sel.args.get("where")
+            existing = conjuncts(where.this if where is not None else None) + conjuncts(on if join is None else join.args.get("on"))
             states = [(classify_conjunct(c, spec, quals), c) for c in existing]
 
             if intent == "DELETED_ONLY":

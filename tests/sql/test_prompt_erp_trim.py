@@ -87,3 +87,33 @@ def test_business_intent_does_not_send_a_non_erp_database_to_a_financial_year_ta
     assert "CURRENT FINANCIAL YEAR" in erp
     mode(monkeypatch, None)
     assert "CURRENT FINANCIAL YEAR" in pb.build_sql_prompt("total sales this year", schema, dialect(), db_id="shop")  # not in apply mode: as before
+
+
+# ---------------------------------------------------------------- soft-delete wording
+
+INTENTS = {"active": "list the open customers", "deleted": "show the deleted customers", "history": "audit history of customers"}
+SCHEMA = "CREATE TABLE customers (id INT, record_deleted CHAR(1));"
+
+
+def prompt_lines(monkeypatch: pytest.MonkeyPatch, db_id: str, value: str | None, question: str) -> str:
+    mode(monkeypatch, value)
+    return pb.build_sql_prompt(question, SCHEMA, dialect(), db_id=db_id).split("Schema:")[0]
+
+
+@pytest.mark.parametrize("intent", list(INTENTS))
+def test_a_non_erp_database_in_apply_mode_is_never_told_to_use_deleted_at(monkeypatch: pytest.MonkeyPatch, intent: str):
+    text = prompt_lines(monkeypatch, "shop", "apply", INTENTS[intent])
+    assert "deleted_at IS" not in text and "alias.deleted_at" not in text and "soft-delete section" in text  # only "never invent a deleted_at column" remains
+    assert "Dynamic Soft-Delete & Record Status" in text  # the section stays, with neutral wording
+
+
+@pytest.mark.parametrize("value", ["apply", "shadow", None])
+@pytest.mark.parametrize("intent", list(INTENTS))
+def test_the_erp_database_keeps_its_deleted_at_rules_exactly(monkeypatch: pytest.MonkeyPatch, intent: str, value: str | None):
+    text = prompt_lines(monkeypatch, "erp_main", value, INTENTS[intent])
+    assert "`alias.deleted_at IS NULL`" in text and "soft-delete section" not in text
+
+
+@pytest.mark.parametrize("value", ["shadow", None])
+def test_a_non_erp_database_outside_apply_mode_is_unchanged(monkeypatch: pytest.MonkeyPatch, value: str | None):
+    assert prompt_lines(monkeypatch, "shop", value, INTENTS["active"]) == prompt_lines(monkeypatch, "erp_main", value, INTENTS["active"])

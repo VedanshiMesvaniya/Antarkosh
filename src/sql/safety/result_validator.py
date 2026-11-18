@@ -289,13 +289,14 @@ class ResultSanityValidator:
 class ResultValidator:
     """Main validation engine orchestrating all validators."""
     
-    def __init__(self, schema_atlas: Dict[str, Any], config: Optional[Dict[str, Any]] = None):
+    def __init__(self, schema_atlas: Dict[str, Any], config: Optional[Dict[str, Any]] = None, relationships: Optional[List[Dict[str, Any]]] = None):
         self.schema_atlas = schema_atlas or {}
         self.config = config or {}
         self.cardinality_validator = CardinalityValidator(
             max_rows=self.config.get("max_rows", 10000)
         )
-        self.join_path_validator = JoinPathValidator(self.schema_atlas)
+        # relationships of THIS database; None (callers that pass nothing) keeps the old fallback to the default database's
+        self.join_path_validator = JoinPathValidator(self.schema_atlas, relationships)
         self.temporal_validator = TemporalValidator()
         self.aggregation_validator = AggregationValidator()
         self.data_type_validator = DataTypeValidator()

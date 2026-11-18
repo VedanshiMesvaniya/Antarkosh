@@ -660,6 +660,22 @@ def _trim_erp_rules(db_id: str) -> bool:
         return False
 
 
+# The ERP database stores soft deletes in `deleted_at`; other databases use record_deleted, is_deleted and so on. For them these
+# lines (by their opening words) say "use the table's own marker condition" instead, and the typed soft-delete section names it.
+_NEUTRAL_SOFT_DELETE = {
+    "  * Default Rule (Active Operational Data):": "  * Default Rule (Active Operational Data): For standard operational queries, filter out soft-deleted records using, for each table, the exact marker column and condition given in the soft-delete section below (a table with none there needs no filter). Never invent a `deleted_at` column.",
+    "  * Exception Rule (Explicit Deleted Records):": "  * Exception Rule (Explicit Deleted Records): If the user explicitly asks for 'deleted', 'removed', 'dropped' or 'gone' records, filter for each table's deleted condition from the soft-delete section instead.",
+    "  * Exception Rule (Audit / History / Archived Data):": "  * Exception Rule (Audit / History / Archived Data): For 'archived', 'history', 'audit' or 'past records', add no soft-delete filter and return both active and deleted rows.",
+    "- Record Status / Soft-Delete Scope: EXPLICIT DELETED": "- Record Status / Soft-Delete Scope: EXPLICIT DELETED RECORDS (The user asked for deleted/removed records: use each table's deleted condition from the soft-delete section.)",
+    "- Record Status / Soft-Delete Scope: AUDIT / HISTORY": "- Record Status / Soft-Delete Scope: AUDIT / HISTORY / ARCHIVED (The user asked for history or audit records: add no soft-delete filter; return both active and deleted rows.)",
+    "- Record Status / Soft-Delete Scope: ACTIVE OPERATIONAL": "- Record Status / Soft-Delete Scope: ACTIVE OPERATIONAL (Default: filter out soft-deleted records using each table's exact marker condition from the soft-delete section.)",
+}
+
+
+def _neutral_soft_delete(prompt: str) -> str:
+    return "\n".join(next((v for k, v in _NEUTRAL_SOFT_DELETE.items() if ln.startswith(k)), ln) for ln in prompt.split("\n"))
+
+
 _NEUTRAL_DEDUP_RULE = (
     "- Deduplication (DISTINCT): When looking up entity names (for example customer, vendor or product names) from transactional "
     "tables, ALWAYS use SELECT DISTINCT or GROUP BY so that all unique entities appear within the row limit instead of repeating "
@@ -842,6 +858,8 @@ Rules:
 Schema:
 {schema}
 """
+    if _trim_erp_rules(db_id):
+        system_prompt = _neutral_soft_delete(system_prompt)
     readability_text = get_scoped_readability_rules(query, sorted(schema_tables), db_id=db_id)
     system_prompt += "\n\n" + readability_text
 

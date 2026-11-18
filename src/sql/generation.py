@@ -887,12 +887,25 @@ async def execute_with_retry(
     return []
 
 
-def _repair_join_context(retriever: Any, tables: Any, shown: Any) -> str:
-    """Known join conditions for the repair prompt; empty unless the Phase 12 flags are on (never raises)."""
+def _dialect_contract(retriever: Any) -> str:
+    """One line telling the repair model the target database and how it writes a row limit (derived with sqlglot: no per-dialect
+    text to maintain). The repair prompt used to carry no dialect at all. Empty for erp_main (unchanged) and on any problem."""
     try:
-        return build_repair_join_context(getattr(retriever, "db_id", ""), tables or (), list((shown or {}).keys()))
+        if getattr(retriever, "db_id", "") == DEFAULT_DB_ID:
+            return ""
+        limit = sqlglot.transpile("SELECT x FROM t LIMIT 5", read="mysql", write=retriever._dialect.sqlglot_dialect)[0]
+        return f"Target database: {retriever._dialect.name}. A row limit is written as: {limit}."
     except Exception:  # noqa: BLE001 - extra context only
         return ""
+
+
+def _repair_join_context(retriever: Any, tables: Any, shown: Any) -> str:
+    """The target dialect plus the known join conditions for the repair prompt (the joins only while the Phase 12 flags are on)."""
+    try:
+        joins = build_repair_join_context(getattr(retriever, "db_id", ""), tables or (), list((shown or {}).keys()))
+    except Exception:  # noqa: BLE001 - extra context only
+        joins = ""
+    return "\n\n".join(p for p in (joins, _dialect_contract(retriever)) if p)  # the join header stays first
 
 
 def _disconnected_tables(validation_results: Any) -> list[str]:

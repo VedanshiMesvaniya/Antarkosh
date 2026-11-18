@@ -28,7 +28,7 @@ from src.core.rate_limiter import RateLimiter, get_shared_rate_limiter
 from src.models.schemas import TokenUsage
 from src.utils.circuit_breaker import CircuitBreakerOpenError, get_shared_circuit_breaker
 from src.utils.error_classification import classify_error
-from src.utils.query_budget import QueryBudgetExceededError, get_current_budget_controller
+from src.utils.query_budget import FINAL_ANSWER_TASKS, QueryBudgetExceededError, get_current_budget_controller
 from src.utils.stream_token_counter import StreamTokenCounter, TokenBudgetExceededError
 from src.utils.telemetry import log_telemetry
 
@@ -1164,7 +1164,7 @@ class ProviderRouter:
         # Check Query Budget Controller before making calls
         budget_ctrl = get_current_budget_controller()
         is_repair = (task == "repair")
-        if budget_ctrl is not None and not budget_ctrl.can_proceed(is_repair=is_repair):
+        if budget_ctrl is not None and not budget_ctrl.can_proceed(is_repair=is_repair, is_final=task in FINAL_ANSWER_TASKS):
             status = budget_ctrl.get_budget_status()
             logger.warning("Query budget exhausted before chat call for task '%s': %s", task, status)
             log_telemetry(
@@ -1335,7 +1335,7 @@ class ProviderRouter:
         # Check Query Budget Controller before making calls
         budget_ctrl = get_current_budget_controller()
         is_repair = (task == "repair")
-        if budget_ctrl is not None and not budget_ctrl.can_proceed(is_repair=is_repair):
+        if budget_ctrl is not None and not budget_ctrl.can_proceed(is_repair=is_repair, is_final=task in FINAL_ANSWER_TASKS):
             status = budget_ctrl.get_budget_status()
             logger.warning("Query budget exhausted before stream for task '%s': %s", task, status)
             log_telemetry(

@@ -16,6 +16,9 @@ from src.utils.stream_token_counter import (
 logger = logging.getLogger(__name__)
 
 
+FINAL_ANSWER_TASKS = frozenset({"synthesis", "micro_synthesis"})
+
+
 class QueryBudgetController:
     """Tracks and governs resource consumption for a single query in real-time.
 
@@ -114,9 +117,14 @@ class QueryBudgetController:
         """Return the current token count."""
         return self.total_tokens
 
-    def can_proceed(self, is_repair: bool = False) -> bool:
-        """Returns True if the query is within its budget, False if limits are reached/exceeded."""
-        if self.llm_calls >= self.max_llm_calls:
+    def can_proceed(self, is_repair: bool = False, is_final: bool = False) -> bool:
+        """Returns True if the query is within its budget, False if limits are reached/exceeded.
+
+        ``is_final`` marks the call that writes the answer to the user. It is not held back by the call count (generation plus
+        the allowed repairs used to take every call, so a query that repaired could never be answered); the token ceiling
+        still applies to it.
+        """
+        if not is_final and self.llm_calls >= self.max_llm_calls:
             return False
         if self.counter.check_limit() or self.total_tokens >= (self.max_tokens + self.safety_buffer):
             return False

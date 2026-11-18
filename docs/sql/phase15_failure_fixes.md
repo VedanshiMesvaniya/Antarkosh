@@ -29,3 +29,18 @@ Each item is a universal fix (no database, table or question is named in the cod
 | 12 | Sync batches drain the free quota | Column meaning shares the `extraction` task with interactive questions, so with OpenRouter first its few free requests a day would go to the sync. | Own task `schema_sync`: NVIDIA, Groq, OpenRouter, Gemini last. | `src/sql/sa/meaning_phase.py`, `config/providers.yaml` |
 
 Restart the server after applying: a running process keeps the old code and the old `providers.yaml`, which is why the earlier telemetry still showed dead OpenRouter slugs and the compactor warnings.
+
+## Round 3 (Terra's plan checked against the code)
+
+Terra's plan was verified claim by claim. Confirmed and fixed (smallest change each); a new `SQLRequestContext` object, a full type validator, SQLGlot pre-normalization and failure-type repair routing were NOT built: the bugs below are scoping slips, not a missing object, and the executor already normalizes.
+
+| # | Confirmed problem | Fix | Where |
+|---|---|---|---|
+| 13 | The result validator was built without the database's relationships and fell back to the DEFAULT (ERP) database's: every join of another database looked "disconnected" (this also fed the empty-result classifier of round 1). | `ResultValidator(..., relationships=)`; the pipeline passes `get_raw_relationships(self.db_id)`. Callers that pass nothing keep the old fallback. | `src/sql/safety/result_validator.py`, `src/sql/pipeline.py` |
+| 14 | `record_deleted CHAR(1)` was never detected as a soft-delete marker. | `<noun>_deleted` / `<noun>_removed` count as a flag when the TYPE is char(1), boolean or bit (not counts, not `undeleted`). | `src/sql/soft_delete_spec.py` |
+| 15 | The enforcement treated ANY predicate on the marker as "already written", so `record_deleted IS NULL`, `= 0`, `= '0'` on a 'Y'/'N' column passed through and returned nothing. | Typed check: a form the column's type cannot hold is replaced by the real condition (`IN ('N','n') OR IS NULL`); right forms are left byte-identical. | `src/sql/soft_delete_spec.py` |
+| 16 | The generic prompt told every database to use `alias.deleted_at`. | For a non-ERP database in apply mode the soft-delete lines point to the typed per-table condition instead. `erp_main` and non-apply modes are unchanged. | `src/sql/prompt_builder.py` |
+| 17 | The repair prompt carried no dialect. | One line: target database and how it writes a row limit (derived with sqlglot, about 25 tokens). Not added for `erp_main`. | `src/sql/generation.py` |
+| 18 | After generation plus three repairs every call was used, so the answer-writing call was refused. | The synthesis call is not held back by the call count (the token ceiling still applies). | `src/utils/query_budget.py`, `src/core/provider_client.py` |
+
+Immediate workaround without a resync (curated file, supported today): `databases/qts_ais/semantics/soft_delete.json` listing `sqts_main_lear` with `record_deleted`.
