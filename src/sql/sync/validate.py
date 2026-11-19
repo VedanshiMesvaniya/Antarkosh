@@ -62,6 +62,57 @@ def _unqualified(name: str) -> str:
     return str(name).rsplit(".", 1)[-1].lower()
 
 
+def _template_default() -> str | None:
+    """The soft-delete column the template gives every new database (lower case), or None."""
+    try:
+        import yaml
+
+        doc = yaml.safe_load((registry.DATABASES_DIR / "_template" / "db.yaml").read_text(encoding="utf-8")) or {}
+        col = (doc.get("soft_delete") or {}).get("column")
+        return str(col).strip().lower() if col else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _soft_delete_warnings(db_id: str, catalog: dict[str, Any], root: Path) -> list[str]:
+    """Soft-delete settings that name a column the catalog does not have. Warnings only: never an error, never a rollback.
+
+    A column that is declared (``db.yaml``) or curated (``semantics/soft_delete.json``) but absent either filters nothing (a typo, or
+    a stale declaration) or, for a curated entry, makes every query on that table fail with "Invalid column name". The warning also
+    lists the markers the catalog does contain, so the real ones are visible.
+
+    The template gives every database a default ``deleted_at``; a database that never chose it and has no soft-delete column at all
+    would then warn on every sync forever. So the template's own value is reported only when the catalog has OTHER markers (the
+    declaration is then plainly stale); any other declared value that is missing is always reported (a deliberate choice that is wrong).
+    """
+    from src.sql.soft_delete_spec import (
+        CURATED_REL,
+        _declared_column,
+        _read_json,
+        discover_from_schema,
+    )
+
+    columns: dict[str, set[str]] = {}
+    for table in catalog.get("tables") or []:
+        if isinstance(table, dict) and table.get("name"):
+            columns[str(table["name"]).lower()] = {str(c.get("name", "")).lower() for c in table.get("columns") or [] if isinstance(c, dict)}
+    detected = ", ".join(f"{s.table}.{s.column} ({s.kind})" for s in list(discover_from_schema(catalog)[0].values())[:5]) or "none"
+    found: list[str] = []
+    declared = _declared_column(db_id)
+    if declared and not any(declared.lower() in cols for cols in columns.values()) and (declared.lower() != _template_default() or detected != "none"):
+        found.append(f"db.yaml soft_delete.column {declared!r} is not a column of any table, so it filters nothing; markers detected in the catalog: {detected}")
+    curated = _read_json(root / CURATED_REL)
+    entries = curated.get("tables") if isinstance(curated, dict) else None
+    for t_name, entry in entries.items() if isinstance(entries, dict) else []:
+        cols = columns.get(str(t_name).lower())
+        if isinstance(entry, dict) and entry.get("column"):
+            if cols is None:
+                found.append(f"{CURATED_REL}: table {t_name!r} is not in the catalog")
+            elif str(entry["column"]).lower() not in cols:
+                found.append(f"{CURATED_REL}: {t_name}.{entry['column']} is not in the catalog; queries on this table would fail with an invalid column")
+    return found
+
+
 def validate_generation(db_id: str, *, changed: set[str] | None = None, databases_dir: Path | None = None) -> Validation:
     """Validate ``databases/<db_id>``. ``changed`` = files this sync wrote (None: treat every generated file as written now)."""
     validate_db_id(db_id)
@@ -125,6 +176,12 @@ def validate_generation(db_id: str, *, changed: set[str] | None = None, database
                 out.warnings.extend(_cap(validate_glossary_drift(tables, glossary), GLOSSARY_REL))
             except Exception as exc:  # noqa: BLE001
                 out.warnings.append(f"{GLOSSARY_REL}: could not be checked ({exc.__class__.__name__})")
+
+    if CATALOG_REL in docs:  # 2b. soft-delete settings must name real columns
+        try:
+            out.warnings.extend(_cap(_soft_delete_warnings(db_id, docs[CATALOG_REL], root), "soft-delete"))
+        except Exception as exc:  # noqa: BLE001 - a check that cannot run is not a finding
+            logger.debug("Soft-delete check skipped for %s: %s", db_id, exc)
 
     # 3. do the files come from the same catalog? (a stale file is a warning: the next sync rebuilds it)
     try:

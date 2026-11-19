@@ -46,6 +46,7 @@ from src.sql.prompt_builder import (
     load_relationships,
 )
 from src.sql.registry import get_connection, get_database
+from src.sql.request_context import build_request_context
 from src.sql.schema_retrieval import retrieve_schema_from_qdrant
 from src.sql.soft_delete import _get_tables_with_soft_delete
 from src.sql.table_router import load_routing_hints
@@ -229,7 +230,8 @@ class SQLRetriever:
 
     async def _retrieve_with_delta_repair(self, query: str, schema: str) -> list[RetrievedChunk]:
         """Execute text-to-sql retrieval with targeted Delta Repair on validation/execution failure."""
-        return await execute_with_delta_repair(self, query, schema)
+        # One context per request: dialect, this database's relationships, soft-delete specs and column types, resolved once.
+        return await execute_with_delta_repair(self, query, schema, build_request_context(self.db_id, self._dialect))
 
     @classmethod
     def clear_schema_cache(cls, db_id: str | None = None) -> None:

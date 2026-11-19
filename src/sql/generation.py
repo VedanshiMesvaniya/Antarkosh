@@ -32,7 +32,10 @@ from src.sql.learning.pipeline_metrics import log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
 from src.sql.safety.column_registry import ColumnRegistry
 from src.sql.dialects import SQLDialectProfile, get_dialect_profile
-from src.sql.safety.result_validator import ResultValidator, ValidationSeverity
+from src.sql.request_context import SQLRequestContext, build_request_context, is_strict
+from src.sql.safety.result_validator import ResultValidator, ValidationResult, ValidationSeverity
+from src.sql.safety.sql_normalize import dialect_syntax_fix, normalize_sql
+from src.sql.safety.type_check import check_types
 from src.sql.learning.pattern_learner import PatternLearner
 from src.sql.safety.confidence_scorer import ConfidenceScorer, ConfidenceBreakdown
 from src.models.schemas import Chunk, ChunkType, RetrievedChunk, DocumentType
@@ -538,10 +541,16 @@ async def generate_sql(
         # Safeguard 1: Syntactic AST Check
         try:
             ast_check = sqlglot.parse_one(sql, read=dialect.sqlglot_dialect)
-            if not isinstance(ast_check, (exp.Select, exp.Union)):
-                return "", cot_plan, None
         except Exception as ast_err:
-            logger.warning("Extracted SQL failed syntax parse: %s", ast_err)
+            # Syntax the model borrowed from another database (TOP on MySQL, backticks on SQL Server): re-spell it for this dialect
+            # without a model call (strict mode); otherwise the statement is dropped as before.
+            fixed = dialect_syntax_fix(sql, dialect.sqlglot_dialect) if is_strict(db_id) else None
+            if not fixed:
+                logger.warning("Extracted SQL failed syntax parse: %s", ast_err)
+                return "", cot_plan, None
+            logger.info("Re-spelled borrowed SQL syntax for %s without a model call", dialect.name)
+            sql, ast_check = fixed, sqlglot.parse_one(fixed, read=dialect.sqlglot_dialect)
+        if not isinstance(ast_check, (exp.Select, exp.Union)):
             return "", cot_plan, None
 
         # Safeguard 2: Join Complexity Heuristic Check
@@ -899,13 +908,30 @@ def _dialect_contract(retriever: Any) -> str:
         return ""
 
 
-def _repair_join_context(retriever: Any, tables: Any, shown: Any) -> str:
+def _shape(ctx: SQLRequestContext, sql: str) -> str:
+    """Strict mode: the statement as the target dialect spells it (``LIMIT n`` -> ``TOP n`` on SQL Server). Otherwise unchanged."""
+    return normalize_sql(sql, ctx.sqlglot_dialect) if ctx.strict else sql
+
+
+def _type_results(ctx: SQLRequestContext, sql: str) -> list[ValidationResult]:
+    """Type problems of ``sql`` as validation results (strict mode only). CRITICAL only for a certain error (see ``type_check``)."""
+    if not ctx.strict:
+        return []
+    out: list[ValidationResult] = []
+    for i in check_types(sql, ctx.column_types, ctx.sqlglot_dialect, ctx.column_enums):
+        severity = ValidationSeverity.CRITICAL if i.critical else ValidationSeverity.WARNING
+        out.append(ValidationResult(False, severity, i.message, {"type_issue": i.kind, "column": i.column}))
+    return out
+
+
+def _repair_join_context(retriever: Any, tables: Any, shown: Any, ctx: SQLRequestContext | None = None) -> str:
     """The target dialect plus the known join conditions for the repair prompt (the joins only while the Phase 12 flags are on)."""
     try:
         joins = build_repair_join_context(getattr(retriever, "db_id", ""), tables or (), list((shown or {}).keys()))
     except Exception:  # noqa: BLE001 - extra context only
         joins = ""
-    return "\n\n".join(p for p in (joins, _dialect_contract(retriever)) if p)  # the join header stays first
+    contract = ctx.dialect_contract() if ctx is not None else _dialect_contract(retriever)
+    return "\n\n".join(p for p in (joins, contract) if p)  # the join header stays first
 
 
 def _disconnected_tables(validation_results: Any) -> list[str]:
@@ -925,9 +951,9 @@ def _disconnected_tables(validation_results: Any) -> list[str]:
     return found
 
 
-def _advisory_join_context(retriever: Any, tables: Any, shown: Any, disconnected: list[str]) -> str:
+def _advisory_join_context(retriever: Any, tables: Any, shown: Any, disconnected: list[str], ctx: SQLRequestContext | None = None) -> str:
     """Known joins (Phase 12) plus unverified inferred links between the disconnected tables, for the repair prompt."""
-    base = _repair_join_context(retriever, tables, shown)
+    base = _repair_join_context(retriever, tables, shown, ctx)
     if not disconnected:
         return base
     try:
@@ -941,8 +967,14 @@ async def execute_with_delta_repair(
     retriever: Any,
     query: str,
     schema: str,
+    ctx: SQLRequestContext | None = None,
 ) -> list[RetrievedChunk]:
-    """Execute text-to-sql retrieval with targeted Delta Repair on validation/execution failure."""
+    """Execute text-to-sql retrieval with targeted Delta Repair on validation/execution failure.
+
+    ``ctx`` is the per-request database context (built by the retriever; built here for direct callers).
+    """
+    ctx = ctx or build_request_context(getattr(retriever, "db_id", ""), retriever._dialect)
+    _log_pipeline_event("sql_request_context", ctx.summary(), query=query)
     with timed_stage("sql_generation") as gen_stage:
         sql = await retriever._generate_sql(query, schema, None)
         gen_stage["extra"] = {"attempt": 0, "has_sql": bool(sql), "delta_repair_enabled": True}
@@ -956,7 +988,7 @@ async def execute_with_delta_repair(
         retriever.last_query_status = "not_applicable" if retriever.last_infra_error is None else "failed"
         return []
 
-    current_sql = sql
+    current_sql = _shape(ctx, sql)
     first_failed_sql: str | None = None
     first_error: str | None = None
 
@@ -1095,6 +1127,7 @@ async def execute_with_delta_repair(
                     has_date_filter=("WHERE" in current_sql.upper() and any(k in current_sql.upper() for k in ["DATE", "YEAR", "CREATED_AT", "UPDATED_AT", "MONTH"])),
                     has_aggregation=any(f in current_sql.upper() for f in ["SUM(", "AVG(", "COUNT(", "MAX(", "MIN("]),
                 )
+                val_results = [*val_results, *_type_results(ctx, current_sql)]  # strict mode: comparisons the database would reject
                 crit_errors = [r.message for r in val_results if r.severity == ValidationSeverity.CRITICAL and not r.passed]
                 if crit_errors:
                     logger.warning("Semantic validation critical errors (repair attempt %d): %s", repair_attempt, crit_errors)
@@ -1147,7 +1180,7 @@ async def execute_with_delta_repair(
                 break
 
             next_attempt = repair_attempt + 1
-            repair_join_context = _repair_join_context(retriever, tables, repair_schema_context or schema_context)
+            repair_join_context = _repair_join_context(retriever, tables, repair_schema_context or schema_context, ctx)
             if val_error_type in ("column_not_found", "column_hallucination"):
                 # A column used on the wrong table: show where it really lives (Phase 12 flags only; "" otherwise).
                 owner_block = await column_owner_context(retriever, val_error, tables)
@@ -1167,11 +1200,15 @@ async def execute_with_delta_repair(
                 logger.warning("Delta repair attempt %d returned no SQL. Halting.", next_attempt)
                 break
 
-            current_sql = enforce_soft_delete_filter(
-                repaired_sql,
-                detect_soft_delete_intent(query),
-                dialect=retriever._dialect.sqlglot_dialect,
-                db_id=retriever.db_id,
+            current_sql = _shape(
+                ctx,
+                enforce_soft_delete_filter(
+                    repaired_sql,
+                    detect_soft_delete_intent(query),
+                    dialect=retriever._dialect.sqlglot_dialect,
+                    db_id=retriever.db_id,
+                    specs=ctx.soft_delete_specs or None,
+                ),
             )
             continue
 
@@ -1198,7 +1235,8 @@ async def execute_with_delta_repair(
                 classification = classify_empty_result(
                     current_sql, dialect=retriever._dialect.sqlglot_dialect, disconnected_tables=disconnected or None
                 )
-                if value_guess and classification == "valid_empty":
+                type_notes = [r.message for r in val_results if r.context.get("type_issue")]
+                if (value_guess or type_notes) and classification == "valid_empty":
                     classification = "suspicious_empty"
                 with timed_stage("empty_result_handling") as erh_stage:
                     erh_stage["extra"] = {
@@ -1241,15 +1279,16 @@ async def execute_with_delta_repair(
                                         else ""
                                     )
                                     + (f" {value_note}" if value_note else "")
+                                    + (f" Type problems: {'; '.join(type_notes)}." if type_notes else "")
                                 ),
                                 error_type="suspicious_zero_rows",
                                 schema_context=schema_context,
                                 user_intent=query,
                                 attempt_number=next_attempt,
-                                join_context=_advisory_join_context(retriever, tables, schema_context, disconnected),
+                                join_context=_advisory_join_context(retriever, tables, schema_context, disconnected, ctx),
                             )
                             if repaired_sql and repaired_sql != current_sql:
-                                current_sql = repaired_sql
+                                current_sql = _shape(ctx, repaired_sql)
                                 continue
 
             # Result Sanity & Confidence Scoring
@@ -1342,6 +1381,14 @@ async def execute_with_delta_repair(
                 logger.warning("Delta repair ceiling (%d attempts) reached on execution error.", MAX_DELTA_REPAIR_ATTEMPTS)
                 break
 
+            # A syntax error that re-spelling the statement in the target dialect cures needs no model call (strict mode only).
+            if ctx.strict and classify_error(e) == "sql_generation_error":
+                respelled = dialect_syntax_fix(current_sql, ctx.sqlglot_dialect)
+                if respelled:
+                    _log_pipeline_event("deterministic_syntax_repair", {"before": current_sql, "after": respelled}, query=query)
+                    current_sql = respelled
+                    continue
+
             next_attempt = repair_attempt + 1
             repaired_sql = await attempt_delta_repair(
                 router=retriever._router,
@@ -1351,13 +1398,13 @@ async def execute_with_delta_repair(
                 schema_context=schema_context,
                 user_intent=query,
                 attempt_number=next_attempt,
-                join_context=_repair_join_context(retriever, tables, schema_context),
+                join_context=_repair_join_context(retriever, tables, schema_context, ctx),
             )
             if not repaired_sql:
                 logger.warning("Delta repair attempt %d returned no SQL after exec error. Halting.", next_attempt)
                 break
 
-            current_sql = repaired_sql
+            current_sql = _shape(ctx, repaired_sql)
             continue
 
     logger.warning("SQL generation failed after Delta Repair attempts. Returning empty results.")

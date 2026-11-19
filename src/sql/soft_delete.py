@@ -110,8 +110,11 @@ def enforce_soft_delete_filter(
     intent: str,
     dialect: str = "mysql",
     db_id: str = DEFAULT_DB_ID,
+    specs: dict | None = None,
 ) -> str:
     """Post-generation SQL sanitizer enforcing deterministic soft-delete compliance, for every SQL dialect.
+
+    ``specs`` are the database's soft-delete specs when the caller already resolved them (the request context); None loads them.
 
     Mandatory enforcement: for any database with discovered or declared soft-delete specifications,
     table marker columns are strictly enforced. Falls back to legacy atlas deleted_at filtering if
@@ -122,7 +125,7 @@ def enforce_soft_delete_filter(
     try:
         from src.sql.soft_delete_spec import enforce, load_specs
 
-        specs = load_specs(db_id)
+        specs = specs if specs is not None else load_specs(db_id)
         if specs:
             return enforce(sql, intent, dialect, specs)[0]
     except Exception as exc:  # noqa: BLE001 - an unparseable statement is left to the legacy path
