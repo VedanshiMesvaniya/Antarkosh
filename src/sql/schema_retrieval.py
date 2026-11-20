@@ -50,6 +50,17 @@ def _route_bridge_mode(db_id: str) -> str:
     return ""
 
 
+def _retrieval_terms_on(db_id: str) -> bool:
+    """Release 1 retrieval help (extra query words + column-level table matches): per-database ``auto_retrieval_apply``, off by default."""
+    try:
+        from src.utils.feature_flags import is_db_feature_enabled
+
+        return bool(is_db_feature_enabled("auto_retrieval_apply", db_id))
+    except Exception as exc:  # noqa: BLE001 - a flag problem must never break retrieval
+        logger.debug("Retrieval terms flag unreadable for %s: %s", db_id, exc)
+        return False
+
+
 # Tables taken from the vector index per question. 4 is the long-standing value and stays the default. With the Phase 12 prompt
 # flags on, a wider net is used: the token budget (not this number) is what bounds the prompt, and on a database with hundreds
 # of tables a question about "plants" or "teams" often has its real table ranked 5th to 8th behind look-alike names.
@@ -295,11 +306,21 @@ async def retrieve_schema_from_qdrant(
 
     try:
         route_mode = _route_bridge_mode(db_id)
-        dense_vec, sparse_vec = await embeddings.embed_query(query)
+        # Release 1: with the flag on, a few extra words (what "item" or "facility" may stand for in this database) are added to the
+        # text the question is searched with. The question itself is never changed; with the flag off, or when no word applies,
+        # search_text is exactly the question.
+        terms_on = _retrieval_terms_on(db_id)
+        extra_terms: list[str] = []
+        if terms_on:
+            from src.sql.retrieval_terms import expand_query_terms
+
+            extra_terms = expand_query_terms(query, db_id)
+        search_text = f"{query} {' '.join(extra_terms)}" if extra_terms else query
+        dense_vec, sparse_vec = await embeddings.embed_query(search_text)
         chunks = await vector_store.search_hybrid(
             query_vector=dense_vec,
             sparse_vector=sparse_vec,
-            query_text=query,
+            query_text=search_text,
             top_k=_vector_top_k(route_mode),
             filters={
                 "chunk_type": ChunkType.SQL_SCHEMA.value,
@@ -374,6 +395,43 @@ async def retrieve_schema_from_qdrant(
                         "ddl": chunk.chunk.content,
                         "source": "vector_rag",
                     })
+
+        # Release 1, column records: tables with a column whose name, comment or meaning uses words of the question (or of its extra
+        # terms) that few other tables use. At most three, added after the vector and anchor tables so they never take a place from
+        # them, and still under the token budget. Needs the catalog files (schema.json); without them nothing is added.
+        column_added: list[str] = []
+        if terms_on and full_ddls:
+            try:
+                from src.sql.retrieval_terms import find_column_tables
+
+                column_hits = find_column_tables(query, extra_terms, db_id, available=set(full_ddls), exclude=seen_tables)
+                for hit in column_hits:
+                    if hit.table in full_ddls and hit.table not in seen_tables:
+                        seen_tables.add(hit.table)
+                        retrieved_tables.add(hit.table)
+                        column_added.append(hit.table)
+                        candidate_list.append({
+                            "table_name": hit.table,
+                            "ddl": full_ddls[hit.table],
+                            "source": "column_match",
+                        })
+                if column_added:
+                    retrieved_schema += "\n\n-- Tables with columns matching the question:\n" + "\n\n".join(
+                        full_ddls[t] for t in column_added
+                    )
+                if extra_terms or column_hits:
+                    log_telemetry(
+                        query_id="",
+                        stage="retrieval_terms_applied",
+                        extra={
+                            "db_id": db_id,
+                            "extra_terms": extra_terms,
+                            "added": column_added,
+                            "matches": [[h.table, h.column, h.score, list(h.words)] for h in column_hits],
+                        },
+                    )
+            except Exception as terms_err:  # noqa: BLE001 - an extra; retrieval carries on without it
+                logger.warning("Column table matching failed for %s: %s", db_id, terms_err)
 
         if anchor_extra:
             retrieved_schema += "\n\n-- Domain Anchor & Glossary Tables:\n" + "\n\n".join(anchor_extra)

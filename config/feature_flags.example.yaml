@@ -41,6 +41,7 @@ db_defaults:
   auto_resync_apply: false
   auto_stale_chunk_cleanup: false
   auto_learning_apply: false
+  auto_retrieval_apply: false
 
 db_features:
   _example_db:
@@ -62,6 +63,7 @@ db_features:
     auto_resync_apply: false
     auto_stale_chunk_cleanup: false
     auto_learning_apply: false
+    auto_retrieval_apply: false
 
 # =============================================================================
 # FEATURE DESCRIPTIONS & USAGE GUIDE
@@ -150,3 +152,8 @@ db_features:
 #   Phase 14: lets phrases that users confirmed repeatedly (e.g. "QN" -> quality_notification) appear as hints under "Column mapping" in
 #   the prompt. Curated and generated glossary entries always win; a learned phrase needs several distinct confirmed questions on more
 #   than one day and no real thumbs-down. Undo: set false, or `python scripts/ops/term_pairs.py revoke --db-id <id> "<phrase>"`. Starts false.
+# auto_retrieval_apply:
+#   Release 1 (metadata-driven SQL accuracy): schema retrieval searches with a few extra words for what a question's everyday word
+#   may stand for in this database ("item" -> product, material; from a small generic list and the database's glossary.json), and
+#   adds up to three tables that have a column whose name, comment or generated meaning uses words of the question that few other
+#   tables use. Metadata only; the question and the prompt text are never changed. Off: retrieval is exactly as before. Starts false.

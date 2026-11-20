@@ -46,4 +46,14 @@ SYNONYM_GROUPS: tuple[tuple[str, ...], ...] = (
     ("prospect", "enquiry", "inquiry"),
 )
 
-__all__ = ["SYNONYM_GROUPS"]
+# Everyday words people use for something a database usually names differently. NOT synonym groups and NOT routing keywords:
+# ``retrieval_terms`` uses them only to ADD extra words to the text a question is searched with (never to replace the user's
+# words, never sent to the model), so a word with a second meaning is acceptable here: the worst case is one more candidate table
+# that the token budget may drop. Phrase on the left, what it may stand for on the right.
+QUERY_ALIASES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("item", ("product", "material")),
+    ("facility", ("plant", "site")),
+    ("purchase value", ("purchase amount",)),
+)
+
+__all__ = ["QUERY_ALIASES", "SYNONYM_GROUPS"]
