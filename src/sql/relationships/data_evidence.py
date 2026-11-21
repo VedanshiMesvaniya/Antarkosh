@@ -468,7 +468,7 @@ async def _probe(e: Edge, child: Table, parent: Table, dialect: str, runner: Run
     token = _PROBING.set(True)
     try:
         sql = build_probe_sql(child, e.child_column, parent, e.parent_column, dialect)
-        rows = await asyncio.wait_for(runner(sql, max_rows=1, db_id=db_id), timeout=timeout)
+        rows = await asyncio.wait_for(runner(sql, max_rows=2, db_id=db_id), timeout=timeout)
     except Exception as exc:  # noqa: BLE001 - recorded by class name only
         return _entry(e, child, parent, "error", now, error=type(exc).__name__)
     finally:
