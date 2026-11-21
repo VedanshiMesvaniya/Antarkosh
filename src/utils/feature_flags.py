@@ -117,11 +117,12 @@ DB_FEATURE_FLAGS: tuple[str, ...] = (
     "auto_stale_chunk_cleanup",  # Phase 13: remove the vector chunks of tables that no longer exist
     "auto_learning_apply",  # Phase 14: let phrases learned from confirmed answers appear as hints in the prompt (``auto_learning`` only records evidence)
     "auto_retrieval_apply",  # Release 1: search with extra query words (what "item" may stand for) and add tables found through column names/meanings
+    "auto_relationships_data_apply",  # Release 2: check likely joins against the connected database with aggregate counts only (no values), then publish the proven ones
 )
 
 # Flags that start OFF, for a new database and when added to an existing one. Everything else in DB_FEATURE_FLAGS starts on.
 OFF_BY_DEFAULT_FLAGS: frozenset[str] = frozenset(
-    {"auto_prompt_hints_apply", "auto_resync_apply", "auto_stale_chunk_cleanup", "auto_learning_apply", "auto_retrieval_apply"}
+    {"auto_prompt_hints_apply", "auto_resync_apply", "auto_stale_chunk_cleanup", "auto_learning_apply", "auto_retrieval_apply", "auto_relationships_data_apply"}
 )
 
 # Databases pinned to their curated files: these flags are always False here,

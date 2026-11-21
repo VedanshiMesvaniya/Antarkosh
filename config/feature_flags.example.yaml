@@ -42,6 +42,7 @@ db_defaults:
   auto_stale_chunk_cleanup: false
   auto_learning_apply: false
   auto_retrieval_apply: false
+  auto_relationships_data_apply: false
 
 db_features:
   _example_db:
@@ -64,6 +65,7 @@ db_features:
     auto_stale_chunk_cleanup: false
     auto_learning_apply: false
     auto_retrieval_apply: false
+    auto_relationships_data_apply: false
 
 # =============================================================================
 # FEATURE DESCRIPTIONS & USAGE GUIDE
@@ -157,3 +159,11 @@ db_features:
 #   may stand for in this database ("item" -> product, material; from a small generic list and the database's glossary.json), and
 #   adds up to three tables that have a column whose name, comment or generated meaning uses words of the question that few other
 #   tables use. Metadata only; the question and the prompt text are never changed. Off: retrieval is exactly as before. Starts false.
+# auto_relationships_data_apply:
+#   Release 2 (metadata-driven SQL accuracy): needs auto_relationships. After Phase 6 proposes joins from names, keys and procedures,
+#   a SHORT list of the likely ones (the parent column is a key, the types fit, the pair is in the schema the prompts see) is checked
+#   against the connected database with four aggregate counts per pair: rows read, not null, distinct, distinct found in the parent.
+#   No value is selected, stored, logged or sent to a model. Data that supports a join is an extra witness that can lift a
+#   name-based edge past the publishing line (with auto_relationships_apply on); data that contradicts a soft edge keeps it in
+#   inferred_relationships.json only. Declared keys and procedure joins are never queried. Bounded per sync (pairs, queries, time,
+#   failures) and cached in schema/relationship_evidence.json by table structure. Off: Phase 6 never touches the data. Starts false.

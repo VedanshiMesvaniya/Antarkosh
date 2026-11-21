@@ -1077,8 +1077,10 @@ async def _sync_live_schema_body(
         try:
             from src.sql.sa.relationships_phase import run_relationships_phase
 
+            # Release 2: with auto_relationships_data_apply on, likely joins are also checked against the database (aggregate counts only)
+            validate_kw: dict[str, Any] = {"validate": True} if is_db_feature_enabled("auto_relationships_data_apply", db_id) else {}
             relationships_report = await run_relationships_phase(
-                db_id=db_id, apply=is_db_feature_enabled("auto_relationships_apply", db_id)
+                db_id=db_id, apply=is_db_feature_enabled("auto_relationships_apply", db_id), **validate_kw
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Relationship inference failed for %s: %s", db_id, exc)

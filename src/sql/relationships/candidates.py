@@ -30,6 +30,9 @@ WEIGHTS: dict[str, float] = {
     "header_detail": 0.20,  # step 15: parent key + a line number
     "indexed": 0.05,  # step 18
     "comment": 0.15,  # step 19
+    # Release 2: the connected database itself showed (aggregate counts only) that the child column's values exist in the parent key.
+    # Never a candidate on its own: only an edge some other rule already proposed can receive it, so it cannot publish by itself.
+    "data_match": 0.55,
 }
 
 # Rules that read the same fact from the same names. They are ONE witness, not several: customer_id ->
@@ -68,6 +71,8 @@ class Edge:
     direction_known: bool = True  # False: nothing could tell parent from child; 6e must not send it to prompts
     cardinality: str = "many_to_one"  # many_to_one | one_to_one | shared_key
     ambiguous: bool = False  # the same column has more than one plausible parent
+    data_check: str | None = None  # Release 2: supported | partial | contradicted | insufficient | error; None = not checked
+    data_facts: dict[str, object] = field(default_factory=dict)  # aggregate numbers behind data_check; review file only, never a prompt
 
     @property
     def key(self) -> tuple[str, str, str, str]:

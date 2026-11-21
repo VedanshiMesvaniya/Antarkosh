@@ -11,8 +11,9 @@ Safety rules, each enforced here and tested:
 * A curated ``relationships.json`` is never replaced. The only files this module overwrites are ones it generated
   (``"generated_by": "auto_relationships"``), a missing file, or the empty placeholder the template ships.
 * An edge reaches ``relationships.json`` only if it scores at least the high threshold, its direction is known, it is
-  not ambiguous (unless a declared key or a procedure vouches for it), and both tables live in the schema the SQL
-  prompts can see. In a multi-schema database whose answering schema is unknown, nothing is applied.
+  not ambiguous (unless a declared key or a procedure vouches for it), the database's own data did not contradict it
+  (Release 2, aggregate counts only; a declared key or a procedure is never contradicted), and both tables live in the
+  schema the SQL prompts can see. In a multi-schema database whose answering schema is unknown, nothing is applied.
 * The per-table cap (default 40) never drops a declared foreign key.
 * Writes are atomic, and skipped when the inputs have not changed since the last write.
 * After ``relationships.json`` changes, the prompt caches for the database are cleared. Without that, prompts keep
@@ -77,6 +78,8 @@ def select_applied(
             held["direction_unknown"] += 1
         elif e.ambiguous and not e.has_hard_evidence:
             held["ambiguous"] += 1
+        elif e.data_check == "contradicted" and not e.has_hard_evidence:
+            held["data_contradicted"] += 1  # most child values have no parent row: a soft edge stays in the review file only
         elif not (graph.in_answering_scope(child) and graph.in_answering_scope(parent)):
             held["outside_scope"] += 1
         else:
@@ -111,17 +114,33 @@ def edge_entry(graph: CatalogGraph, e: Edge, threshold: float, *, review: bool =
             "band": band(e.score, threshold), "direction_known": e.direction_known, "ambiguous": e.ambiguous,
             "in_answering_scope": in_scope, "publishable": publishable,  # publishable: would reach relationships.json if apply were on
         })
+        if e.data_check:  # Release 2: counts only, never a value; the prompt-facing file does not carry it
+            entry["data_check"] = e.data_check
+            if e.data_facts:
+                entry["data_evidence"] = e.data_facts
     return entry
 
 
-def input_key(graph: CatalogGraph, kind: str, threshold: float, max_per_table: int) -> str:
-    """Changes only when something that would change the file changes. Timestamps are not part of it."""
-    raw = json.dumps([graph.inputs_hash, RULESET_VERSION, kind, threshold, max_per_table, MAX_INFERRED_EDGES])
+def input_key(graph: CatalogGraph, kind: str, threshold: float, max_per_table: int, evidence_key: str = "") -> str:
+    """Changes only when something that would change the file changes. Timestamps are not part of it.
+
+    ``evidence_key`` (Release 2) is what the database's data decided about edges; empty, it leaves the key exactly as it was.
+    """
+    parts: list[object] = [graph.inputs_hash, RULESET_VERSION, kind, threshold, max_per_table, MAX_INFERRED_EDGES]
+    if evidence_key:
+        parts.append(evidence_key)
+    raw = json.dumps(parts)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
 def _now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _data_stats(edges: list[Edge]) -> dict[str, int]:
+    """How many edges the data checked, by outcome (empty when Release 2 is off or nothing was checked)."""
+    seen = Counter(e.data_check for e in edges if e.data_check)
+    return {f"data_{k}": v for k, v in sorted(seen.items())}
 
 
 def inferred_document(
@@ -140,7 +159,8 @@ def inferred_document(
         "inputs_hash": graph.inputs_hash,
         "ruleset_version": RULESET_VERSION,
         "threshold": threshold,
-        "stats": {"edges": len(ranked), "high": bands["high"], "medium": bands["medium"], "low": bands["low"], "publishable": len(publishable), **gate_counts},
+        "stats": {"edges": len(ranked), "high": bands["high"], "medium": bands["medium"], "low": bands["low"], "publishable": len(publishable), **gate_counts,
+                  **_data_stats(ranked)},
         "relationships": [edge_entry(graph, e, threshold, review=True, publishable=e.key in publishable) for e in kept],
     }
     return doc, len(ranked) - len(kept)
@@ -200,6 +220,7 @@ def write_relationship_files(
     threshold: float = HIGH_THRESHOLD,
     max_per_table: int = MAX_EDGES_PER_TABLE,
     databases_dir: Path | None = None,
+    evidence_key: str = "",
 ) -> dict[str, Any]:
     """Write the review file, and the prompt-facing file when ``apply``. Counts and file names only."""
     validate_db_id(db_id)
@@ -215,7 +236,7 @@ def write_relationship_files(
     chosen, held = select_applied(graph, edges, threshold=threshold, max_per_table=max_per_table)
     inferred_path = folder / INFERRED_REL
     state = _state(inferred_path)
-    key = input_key(graph, "inferred", threshold, max_per_table)
+    key = input_key(graph, "inferred", threshold, max_per_table, evidence_key)
     if state == "foreign":
         result["skipped"][INFERRED_REL] = "a file not generated by auto_relationships is present; left untouched"
     elif state == "ours" and (_read(inferred_path) or {}).get("input_key") == key:
@@ -232,7 +253,7 @@ def write_relationship_files(
     result["applied_edges"], result["held_back"] = len(chosen), dict(held)
     applied_path = folder / APPLIED_REL
     state = _state(applied_path)
-    key = input_key(graph, "applied", threshold, max_per_table)
+    key = input_key(graph, "applied", threshold, max_per_table, evidence_key)
     if state == "foreign":
         result["skipped"][APPLIED_REL] = "a curated relationships.json is present; left untouched"
     elif state == "ours" and (_read(applied_path) or {}).get("input_key") == key:

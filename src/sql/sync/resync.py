@@ -74,6 +74,7 @@ _SWITCHES = (
     ("auto_sp_mining", "sp_mining"),
     ("auto_relationships", "relationships"),
     ("auto_relationships_apply", "relationships_apply"),
+    ("auto_relationships_data_apply", "relationships_data_apply"),
     ("auto_table_profiles", "table_profiles"),
     ("auto_join_paths", "join_paths"),
     ("auto_column_meaning", "column_meaning"),
