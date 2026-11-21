@@ -553,6 +553,46 @@ async def retrieve_schema_from_qdrant(
             if extra_ddls:
                 retrieved_schema += "\n\n-- Directly connected related tables:\n" + "\n\n".join(extra_ddls)
 
+        # Release 3, connected schema contract: tables retrieval chose that no approved join or route connects to the main tables are
+        # dropped before the budget is spent (apply mode: Phase 12 flags + auto_schema_contract_apply + compaction on); shadow mode
+        # only logs what would be dropped. Anchors, bridges, real-data tables and the top vector matches are never dropped. Needs
+        # approved relationships; without them, or on any error, nothing changes.
+        contract_applied = False
+        contract_rels: list[dict[str, Any]] = []
+        contract_chains: list[tuple[str, ...]] = [tuple(r.tables) for r in route_plan.routes] if route_plan is not None else []
+        try:
+            from src.sql import schema_contract as _contract
+
+            contract_mode = _contract.contract_mode(db_id)
+            if contract_mode:
+                contract_rels = _get_raw_relationships(db_id)
+                contract_plan = _contract.plan_contract(candidate_list, contract_rels, contract_chains)
+                if contract_plan is not None:
+                    # The prompt uses the same rule (``contract_active``): approved relationships must exist, so retrieval and the
+                    # prompt wording never disagree. Routes alone (join_paths.json) are not enough to judge a database.
+                    contract_applied = (
+                        contract_mode == "apply"
+                        and is_feature_enabled("schema_compaction_enabled")
+                        and bool(_contract.trusted_edges(contract_rels))
+                    )
+                    if contract_applied and contract_plan.dropped:
+                        gone = {t for t, _why in contract_plan.dropped}
+                        candidate_list = [c for c in candidate_list if str(c["table_name"]).lower() not in gone]
+                    log_telemetry(
+                        query_id="",
+                        stage="schema_contract_applied" if contract_applied else "schema_contract_shadow",
+                        extra={
+                            "db_id": db_id,
+                            "kept": list(contract_plan.keep),
+                            "dropped": [[t, why] for t, why in contract_plan.dropped],
+                            "groups": [list(g) for g in contract_plan.groups],
+                            "approved_edges": contract_plan.edges_known,
+                        },
+                    )
+        except Exception as contract_err:  # noqa: BLE001 - the contract is an extra; retrieval carries on without it
+            logger.warning("Schema contract planning failed for %s: %s", db_id, contract_err)
+            contract_applied = False
+
         # --- Dynamic Schema Token Budget Selection & Shadow Mode ---
         # With route bridges applied and compaction on, the budget is spent on the compacted text the model will see
         # (the raw DDL of a wide table is several times larger). Everything else keeps the original raw estimate.
@@ -603,9 +643,22 @@ async def retrieve_schema_from_qdrant(
                     route_plan.hint_lines(c["table_name"] for c in selected if isinstance(c, dict)),
                 )
 
-            compacted_schema = "\n\n".join(compact_ddls)
+            shown_lines = compact_ddls
+            contract_note = ""
+            if contract_applied:
+                try:
+                    shown_names = [str(c["table_name"]) for c in selected if isinstance(c, dict)]
+                    shown_lines = _contract.mark_unique_keys(compact_ddls, db_id)
+                    contract_note = _contract.unconnected_note(shown_names, contract_rels, contract_chains)
+                except Exception as note_err:  # noqa: BLE001 - extras only
+                    logger.warning("Schema contract note failed for %s: %s", db_id, note_err)
+                    shown_lines, contract_note = compact_ddls, ""
+
+            compacted_schema = "\n\n".join(shown_lines)
             if join_hints:
                 compacted_schema += "\n\n" + join_hints
+            if contract_note:
+                compacted_schema += "\n\n" + contract_note
 
             before_tokens = estimate_schema_tokens(budgeted_schema)
             after_tokens = estimate_schema_tokens(compacted_schema)
@@ -627,6 +680,7 @@ async def retrieve_schema_from_qdrant(
                     "table_count": len(selected),
                     "has_join_hints": bool(join_hints),
                     "uncompacted_tables": uncompacted,
+                    **({"contract_note": bool(contract_note)} if contract_applied else {}),
                 },
             )
             return compacted_schema

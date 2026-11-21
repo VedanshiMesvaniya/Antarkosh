@@ -749,6 +749,32 @@ def _table_notes_block(db_id: str, shown_tables: set[str]) -> str:
         return ""
 
 
+_GROUNDING_RULES = (
+    "\n\nSchema contract:\n"
+    "- Use only the listed tables, columns and approved joins (the Table relationships above and the Join Hints in the schema).\n"
+    "- Do not invent tables, columns or joins.\n"
+    "- If no approved route is present, do not guess: use only the connected tables to answer what they can, "
+    "or reply NO_SQL when nothing can be answered."
+)
+_NO_JOINS_LINE = "\n- No approved joins exist among the listed tables: query one listed table at a time, never join them."
+
+
+def _schema_contract_active(db_id: str) -> bool:
+    """True where the connected schema contract applies (Phase 12 apply flags + ``auto_schema_contract_apply`` + approved joins exist)."""
+    try:
+        from src.sql.schema_contract import contract_active
+
+        return contract_active(db_id)
+    except Exception as exc:  # noqa: BLE001 - on any doubt the prompt stays exactly as it always was
+        logger.debug("Schema contract state unreadable for %s: %s", db_id, exc)
+        return False
+
+
+def _grounding_block(has_joins: bool, table_count: int = 0) -> str:
+    """The three grounding lines, plus a fourth when several tables are listed and no approved join links any of them."""
+    return _GROUNDING_RULES + (_NO_JOINS_LINE if table_count > 1 and not has_joins else "")
+
+
 def _soft_delete_block(db_id: str, query: str, shown_tables: set[str], dialect: Any) -> str:
     """The prompt text naming each shown table's mandatory soft-delete column and condition; "" if none apply.
 
@@ -870,11 +896,19 @@ Schema:
         )
 
     scoped_rels = format_scoped_relationships(schema_tables, query, db_id=db_id) if schema_tables else ""
-    rels_to_inject = scoped_rels or _bounded_unscoped_relationships(relationships)
+    # Release 3: where the connected schema contract applies, the model may only use the approved joins among the tables it is
+    # shown. The whole-database relationship map (joins to tables that are not listed) is then never offered in their place.
+    contract_on = _schema_contract_active(db_id)
+    if contract_on and schema_tables:
+        rels_to_inject = scoped_rels
+    else:
+        rels_to_inject = scoped_rels or _bounded_unscoped_relationships(relationships)
     if rels_to_inject:
         system_prompt += (
             f"\n\nTable relationships:\n{rels_to_inject}"
         )
+    if contract_on:
+        system_prompt += _grounding_block(has_joins=bool(rels_to_inject) or "Join Hints:" in schema, table_count=len(schema_tables))
 
     table_notes_text = _table_notes_block(db_id, shown_tables)
     system_prompt += table_notes_text

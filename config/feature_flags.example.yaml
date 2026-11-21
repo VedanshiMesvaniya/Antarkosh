@@ -43,6 +43,7 @@ db_defaults:
   auto_learning_apply: false
   auto_retrieval_apply: false
   auto_relationships_data_apply: false
+  auto_schema_contract_apply: false
 
 db_features:
   _example_db:
@@ -66,6 +67,7 @@ db_features:
     auto_learning_apply: false
     auto_retrieval_apply: false
     auto_relationships_data_apply: false
+    auto_schema_contract_apply: false
 
 # =============================================================================
 # FEATURE DESCRIPTIONS & USAGE GUIDE
@@ -167,3 +169,11 @@ db_features:
 #   name-based edge past the publishing line (with auto_relationships_apply on); data that contradicts a soft edge keeps it in
 #   inferred_relationships.json only. Declared keys and procedure joins are never queried. Bounded per sync (pairs, queries, time,
 #   failures) and cached in schema/relationship_evidence.json by table structure. Off: Phase 6 never touches the data. Starts false.
+# auto_schema_contract_apply:
+#   Release 3 (metadata-driven SQL accuracy): needs the Phase 12 flags in apply mode (auto_prompt_inject), the global
+#   schema_compaction_enabled switch, and approved joins in relationships.json. Retrieval then (1) drops tables it chose by meaning
+#   that no approved join or route connects to the main tables (anchors, bridges, real-data tables and the question's top two vector
+#   matches are never dropped), (2) marks single-column unique keys "UQ", (3) adds one line naming groups of shown tables that no
+#   approved route connects, and the prompt states: use only listed tables, columns and approved joins; do not invent; if no approved
+#   route is present, do not guess. Metadata only; SQL validation after generation is unchanged. A database with no approved joins
+#   is left exactly as it was. With the Phase 12 flags on but this one off, it only logs what it would drop (schema_contract_shadow). Starts false.
