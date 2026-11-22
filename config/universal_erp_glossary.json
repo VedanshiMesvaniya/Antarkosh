@@ -1,0 +1,3932 @@
+{
+ "version": 1,
+ "description": "Universal ERP vocabulary: business concepts and the words people use for them. Database independent: no table, column or schema names, no codes or values, no SQL, no filters. Strong aliases and labels widen retrieval; conditional aliases are used only where the connected database's own metadata supports them; do_not_equate_with concepts are never merged.",
+ "concepts": [
+  {
+   "concept_id": "party.customer",
+   "label": "customer",
+   "domain": "party",
+   "aliases": [
+    "customer",
+    "client"
+   ],
+   "conditional_aliases": [
+    "buyer",
+    "consumer",
+    "patron",
+    "purchaser"
+   ],
+   "do_not_equate_with": [
+    "account",
+    "user",
+    "member",
+    "contact"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.account",
+   "label": "account",
+   "domain": "party",
+   "aliases": [
+    "account"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "customer",
+    "user",
+    "member",
+    "contact"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.user",
+   "label": "user",
+   "domain": "party",
+   "aliases": [
+    "user"
+   ],
+   "conditional_aliases": [
+    "login"
+   ],
+   "do_not_equate_with": [
+    "customer",
+    "account",
+    "member",
+    "contact"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.member",
+   "label": "member",
+   "domain": "party",
+   "aliases": [
+    "member"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "customer",
+    "account",
+    "user",
+    "contact"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.contact",
+   "label": "contact",
+   "domain": "party",
+   "aliases": [
+    "contact",
+    "contact person"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "customer",
+    "account",
+    "user",
+    "member"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.supplier",
+   "label": "supplier",
+   "domain": "party",
+   "aliases": [
+    "supplier"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "vendor",
+    "manufacturer",
+    "partner",
+    "seller"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.vendor",
+   "label": "vendor",
+   "domain": "party",
+   "aliases": [
+    "vendor"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "supplier",
+    "manufacturer",
+    "partner",
+    "seller"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.seller",
+   "label": "seller",
+   "domain": "party",
+   "aliases": [
+    "seller"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "vendor",
+    "supplier",
+    "manufacturer",
+    "partner"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.manufacturer",
+   "label": "manufacturer",
+   "domain": "party",
+   "aliases": [
+    "manufacturer",
+    "maker"
+   ],
+   "conditional_aliases": [
+    "producer"
+   ],
+   "do_not_equate_with": [
+    "vendor",
+    "supplier",
+    "partner",
+    "seller"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.distributor",
+   "label": "distributor",
+   "domain": "party",
+   "aliases": [
+    "distributor"
+   ],
+   "conditional_aliases": [
+    "wholesaler"
+   ],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.reseller",
+   "label": "reseller",
+   "domain": "party",
+   "aliases": [
+    "reseller"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.partner",
+   "label": "partner",
+   "domain": "party",
+   "aliases": [
+    "partner",
+    "business partner"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "vendor",
+    "supplier",
+    "manufacturer",
+    "seller"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.employee",
+   "label": "employee",
+   "domain": "party",
+   "aliases": [
+    "employee",
+    "staff member"
+   ],
+   "conditional_aliases": [
+    "worker",
+    "staff",
+    "personnel",
+    "associate"
+   ],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "party.manager",
+   "label": "manager",
+   "domain": "party",
+   "aliases": [
+    "manager"
+   ],
+   "conditional_aliases": [
+    "supervisor"
+   ],
+   "do_not_equate_with": [],
+   "kind": "role"
+  },
+  {
+   "concept_id": "party.role",
+   "label": "role",
+   "domain": "party",
+   "aliases": [
+    "role",
+    "user role"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "role"
+  },
+  {
+   "concept_id": "party.team",
+   "label": "team",
+   "domain": "party",
+   "aliases": [
+    "team"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.department",
+   "label": "department",
+   "domain": "organisation",
+   "aliases": [
+    "department"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.division",
+   "label": "division",
+   "domain": "organisation",
+   "aliases": [
+    "division"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.business_unit",
+   "label": "business unit",
+   "domain": "organisation",
+   "aliases": [
+    "business unit"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.branch",
+   "label": "branch",
+   "domain": "organisation",
+   "aliases": [
+    "branch"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "warehouse",
+    "location",
+    "site",
+    "store",
+    "bin"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.legal_entity",
+   "label": "legal entity",
+   "domain": "organisation",
+   "aliases": [
+    "legal entity"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.company",
+   "label": "company",
+   "domain": "organisation",
+   "aliases": [
+    "company"
+   ],
+   "conditional_aliases": [
+    "firm",
+    "enterprise"
+   ],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.organisation",
+   "label": "organisation",
+   "domain": "organisation",
+   "aliases": [
+    "organisation",
+    "organization"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.site",
+   "label": "site",
+   "domain": "organisation",
+   "aliases": [
+    "site"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "warehouse",
+    "location",
+    "branch",
+    "store",
+    "bin"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.location",
+   "label": "location",
+   "domain": "organisation",
+   "aliases": [
+    "location"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "warehouse",
+    "site",
+    "branch",
+    "store",
+    "bin"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "organisation.store",
+   "label": "store",
+   "domain": "organisation",
+   "aliases": [
+    "store"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "warehouse",
+    "location",
+    "site",
+    "branch",
+    "bin"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.lead",
+   "label": "lead",
+   "domain": "sales",
+   "aliases": [
+    "lead"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.prospect",
+   "label": "prospect",
+   "domain": "sales",
+   "aliases": [
+    "prospect"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.opportunity",
+   "label": "opportunity",
+   "domain": "sales",
+   "aliases": [
+    "opportunity"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.quotation",
+   "label": "quotation",
+   "domain": "sales",
+   "aliases": [
+    "quotation",
+    "quote"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "sales.estimate",
+   "label": "estimate",
+   "domain": "sales",
+   "aliases": [
+    "estimate"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "sales.proposal",
+   "label": "proposal",
+   "domain": "sales",
+   "aliases": [
+    "proposal"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "sales.sales_order",
+   "label": "sales order",
+   "domain": "sales",
+   "aliases": [
+    "sales order",
+    "customer order"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "purchase order",
+    "work order",
+    "production order",
+    "order"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "sales.order",
+   "label": "order",
+   "domain": "sales",
+   "aliases": [
+    "order"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sales order",
+    "purchase order",
+    "work order",
+    "production order"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "sales.order_line",
+   "label": "order line",
+   "domain": "sales",
+   "aliases": [
+    "order line",
+    "order item"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "sales.contract",
+   "label": "contract",
+   "domain": "sales",
+   "aliases": [
+    "contract",
+    "agreement"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "sales.subscription",
+   "label": "subscription",
+   "domain": "sales",
+   "aliases": [
+    "subscription"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.renewal",
+   "label": "renewal",
+   "domain": "sales",
+   "aliases": [
+    "renewal"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "sales.price_list",
+   "label": "price list",
+   "domain": "sales",
+   "aliases": [
+    "price list",
+    "pricelist"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.pricing",
+   "label": "pricing",
+   "domain": "sales",
+   "aliases": [
+    "pricing"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "sales.discount",
+   "label": "discount",
+   "domain": "sales",
+   "aliases": [
+    "discount"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.promotion",
+   "label": "promotion",
+   "domain": "sales",
+   "aliases": [
+    "promotion"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.coupon",
+   "label": "coupon",
+   "domain": "sales",
+   "aliases": [
+    "coupon",
+    "voucher"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.rebate",
+   "label": "rebate",
+   "domain": "sales",
+   "aliases": [
+    "rebate"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "sales.sales_representative",
+   "label": "sales representative",
+   "domain": "sales",
+   "aliases": [
+    "sales representative",
+    "salesperson",
+    "sales rep"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "role"
+  },
+  {
+   "concept_id": "crm.campaign",
+   "label": "campaign",
+   "domain": "crm",
+   "aliases": [
+    "campaign",
+    "marketing campaign"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "crm.customer_segment",
+   "label": "customer segment",
+   "domain": "crm",
+   "aliases": [
+    "customer segment"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "crm.customer_group",
+   "label": "customer group",
+   "domain": "crm",
+   "aliases": [
+    "customer group"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "crm.account_manager",
+   "label": "account manager",
+   "domain": "crm",
+   "aliases": [
+    "account manager"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "role"
+  },
+  {
+   "concept_id": "service.support_case",
+   "label": "support case",
+   "domain": "service",
+   "aliases": [
+    "support case"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "service.ticket",
+   "label": "ticket",
+   "domain": "service",
+   "aliases": [
+    "ticket",
+    "support ticket"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "service.complaint",
+   "label": "complaint",
+   "domain": "service",
+   "aliases": [
+    "complaint",
+    "grievance"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "service.feedback",
+   "label": "feedback",
+   "domain": "service",
+   "aliases": [
+    "feedback"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "service.sla",
+   "label": "sla",
+   "domain": "service",
+   "aliases": [
+    "sla",
+    "service level agreement"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "service.escalation",
+   "label": "escalation",
+   "domain": "service",
+   "aliases": [
+    "escalation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "purchasing.purchase_requisition",
+   "label": "purchase requisition",
+   "domain": "purchasing",
+   "aliases": [
+    "purchase requisition",
+    "requisition"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.purchase_order",
+   "label": "purchase order",
+   "domain": "purchasing",
+   "aliases": [
+    "purchase order"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sales order",
+    "work order",
+    "production order",
+    "order"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.purchase_order_line",
+   "label": "purchase order line",
+   "domain": "purchasing",
+   "aliases": [
+    "purchase order line"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.supplier_quotation",
+   "label": "supplier quotation",
+   "domain": "purchasing",
+   "aliases": [
+    "supplier quotation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.request_for_quotation",
+   "label": "request for quotation",
+   "domain": "purchasing",
+   "aliases": [
+    "request for quotation"
+   ],
+   "conditional_aliases": [
+    "rfq"
+   ],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.goods_receipt",
+   "label": "goods receipt",
+   "domain": "purchasing",
+   "aliases": [
+    "goods receipt",
+    "goods received note"
+   ],
+   "conditional_aliases": [
+    "grn"
+   ],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.supplier_invoice",
+   "label": "supplier invoice",
+   "domain": "purchasing",
+   "aliases": [
+    "supplier invoice"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.vendor_bill",
+   "label": "vendor bill",
+   "domain": "purchasing",
+   "aliases": [
+    "vendor bill"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.procurement",
+   "label": "procurement",
+   "domain": "purchasing",
+   "aliases": [
+    "procurement"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "purchasing.sourcing",
+   "label": "sourcing",
+   "domain": "purchasing",
+   "aliases": [
+    "sourcing"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "purchasing.approval",
+   "label": "approval",
+   "domain": "purchasing",
+   "aliases": [
+    "approval"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "purchasing.approval_workflow",
+   "label": "approval workflow",
+   "domain": "purchasing",
+   "aliases": [
+    "approval workflow"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "purchasing.supplier_performance",
+   "label": "supplier performance",
+   "domain": "purchasing",
+   "aliases": [
+    "supplier performance"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "purchasing.purchase_return",
+   "label": "purchase return",
+   "domain": "purchasing",
+   "aliases": [
+    "purchase return"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.purchase_contract",
+   "label": "purchase contract",
+   "domain": "purchasing",
+   "aliases": [
+    "purchase contract"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "purchasing.landed_cost",
+   "label": "landed cost",
+   "domain": "purchasing",
+   "aliases": [
+    "landed cost"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "inventory.product",
+   "label": "product",
+   "domain": "inventory",
+   "aliases": [
+    "product",
+    "item",
+    "goods",
+    "article"
+   ],
+   "conditional_aliases": [
+    "material",
+    "sku"
+   ],
+   "do_not_equate_with": [
+    "raw material",
+    "component",
+    "finished good",
+    "product category",
+    "brand",
+    "service item"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.service_item",
+   "label": "service item",
+   "domain": "inventory",
+   "aliases": [
+    "service item",
+    "service product"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "product"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.material",
+   "label": "material",
+   "domain": "inventory",
+   "aliases": [
+    "material",
+    "materials"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.raw_material",
+   "label": "raw material",
+   "domain": "inventory",
+   "aliases": [
+    "raw material"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "product",
+    "component",
+    "finished good",
+    "product category",
+    "brand"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.component",
+   "label": "component",
+   "domain": "inventory",
+   "aliases": [
+    "component"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "product",
+    "raw material",
+    "finished good",
+    "product category",
+    "brand"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.finished_good",
+   "label": "finished good",
+   "domain": "inventory",
+   "aliases": [
+    "finished good",
+    "finished product"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "product",
+    "raw material",
+    "component",
+    "product category",
+    "brand"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.semi_finished_good",
+   "label": "semi-finished good",
+   "domain": "inventory",
+   "aliases": [
+    "semi-finished good",
+    "semi-finished product"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.product_variant",
+   "label": "product variant",
+   "domain": "inventory",
+   "aliases": [
+    "product variant",
+    "variant"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.product_category",
+   "label": "product category",
+   "domain": "inventory",
+   "aliases": [
+    "product category"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "product",
+    "raw material",
+    "component",
+    "finished good",
+    "brand"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.brand",
+   "label": "brand",
+   "domain": "inventory",
+   "aliases": [
+    "brand"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "product",
+    "raw material",
+    "component",
+    "finished good",
+    "product category"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.unit_of_measure",
+   "label": "unit of measure",
+   "domain": "inventory",
+   "aliases": [
+    "unit of measure",
+    "unit of measurement"
+   ],
+   "conditional_aliases": [
+    "uom"
+   ],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.barcode",
+   "label": "barcode",
+   "domain": "inventory",
+   "aliases": [
+    "barcode"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sku",
+    "item code",
+    "product code",
+    "serial number",
+    "lot number"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.product_identifier",
+   "label": "product identifier",
+   "domain": "inventory",
+   "aliases": [
+    "product identifier"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.sku",
+   "label": "sku",
+   "domain": "inventory",
+   "aliases": [
+    "sku"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "barcode",
+    "item code",
+    "product code",
+    "serial number",
+    "lot number"
+   ],
+   "kind": "attribute"
+  },
+  {
+   "concept_id": "inventory.item_code",
+   "label": "item code",
+   "domain": "inventory",
+   "aliases": [
+    "item code"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sku",
+    "barcode",
+    "product code",
+    "serial number",
+    "lot number"
+   ],
+   "kind": "attribute"
+  },
+  {
+   "concept_id": "inventory.product_code",
+   "label": "product code",
+   "domain": "inventory",
+   "aliases": [
+    "product code"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sku",
+    "barcode",
+    "item code",
+    "serial number",
+    "lot number"
+   ],
+   "kind": "attribute"
+  },
+  {
+   "concept_id": "inventory.serial_number",
+   "label": "serial number",
+   "domain": "inventory",
+   "aliases": [
+    "serial number"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sku",
+    "barcode",
+    "item code",
+    "product code",
+    "lot number",
+    "batch",
+    "lot"
+   ],
+   "kind": "attribute"
+  },
+  {
+   "concept_id": "inventory.lot_number",
+   "label": "lot number",
+   "domain": "inventory",
+   "aliases": [
+    "lot number"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sku",
+    "barcode",
+    "item code",
+    "product code",
+    "serial number"
+   ],
+   "kind": "attribute"
+  },
+  {
+   "concept_id": "inventory.batch",
+   "label": "batch",
+   "domain": "inventory",
+   "aliases": [
+    "batch"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "lot",
+    "serial number"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.lot",
+   "label": "lot",
+   "domain": "inventory",
+   "aliases": [
+    "lot"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "batch",
+    "serial number"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.inventory",
+   "label": "inventory",
+   "domain": "inventory",
+   "aliases": [
+    "inventory"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.stock",
+   "label": "stock",
+   "domain": "inventory",
+   "aliases": [
+    "stock"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "available stock",
+    "reserved stock",
+    "physical stock",
+    "inventory value"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.on_hand_quantity",
+   "label": "on-hand quantity",
+   "domain": "inventory",
+   "aliases": [
+    "on-hand quantity",
+    "quantity on hand"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "inventory.available_quantity",
+   "label": "available quantity",
+   "domain": "inventory",
+   "aliases": [
+    "available quantity"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "inventory.reserved_quantity",
+   "label": "reserved quantity",
+   "domain": "inventory",
+   "aliases": [
+    "reserved quantity"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "inventory.allocated_quantity",
+   "label": "allocated quantity",
+   "domain": "inventory",
+   "aliases": [
+    "allocated quantity"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "inventory.available_stock",
+   "label": "available stock",
+   "domain": "inventory",
+   "aliases": [
+    "available stock"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "stock",
+    "reserved stock",
+    "physical stock",
+    "inventory value"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.reserved_stock",
+   "label": "reserved stock",
+   "domain": "inventory",
+   "aliases": [
+    "reserved stock"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "stock",
+    "available stock",
+    "physical stock",
+    "inventory value"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.physical_stock",
+   "label": "physical stock",
+   "domain": "inventory",
+   "aliases": [
+    "physical stock"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "stock",
+    "available stock",
+    "reserved stock",
+    "inventory value"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.inventory_value",
+   "label": "inventory value",
+   "domain": "inventory",
+   "aliases": [
+    "inventory value"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "stock",
+    "available stock",
+    "reserved stock",
+    "physical stock"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "inventory.reorder_level",
+   "label": "reorder level",
+   "domain": "inventory",
+   "aliases": [
+    "reorder level",
+    "reorder point"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "inventory.safety_stock",
+   "label": "safety stock",
+   "domain": "inventory",
+   "aliases": [
+    "safety stock"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "inventory.stock_movement",
+   "label": "stock movement",
+   "domain": "inventory",
+   "aliases": [
+    "stock movement",
+    "inventory movement"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "inventory.stock_adjustment",
+   "label": "stock adjustment",
+   "domain": "inventory",
+   "aliases": [
+    "stock adjustment",
+    "inventory adjustment"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "inventory.stock_transfer",
+   "label": "stock transfer",
+   "domain": "inventory",
+   "aliases": [
+    "stock transfer",
+    "inventory transfer"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "inventory.warehouse",
+   "label": "warehouse",
+   "domain": "inventory",
+   "aliases": [
+    "warehouse"
+   ],
+   "conditional_aliases": [
+    "godown",
+    "depot",
+    "storehouse"
+   ],
+   "do_not_equate_with": [
+    "location",
+    "site",
+    "branch",
+    "store",
+    "bin"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.bin",
+   "label": "bin",
+   "domain": "inventory",
+   "aliases": [
+    "bin"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "warehouse",
+    "location",
+    "site",
+    "branch",
+    "store"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.rack",
+   "label": "rack",
+   "domain": "inventory",
+   "aliases": [
+    "rack"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.storage_location",
+   "label": "storage location",
+   "domain": "inventory",
+   "aliases": [
+    "storage location"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "inventory.cycle_count",
+   "label": "cycle count",
+   "domain": "inventory",
+   "aliases": [
+    "cycle count"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "inventory.physical_inventory",
+   "label": "physical inventory",
+   "domain": "inventory",
+   "aliases": [
+    "physical inventory"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "inventory.inventory_valuation",
+   "label": "inventory valuation",
+   "domain": "inventory",
+   "aliases": [
+    "inventory valuation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.invoice",
+   "label": "invoice",
+   "domain": "finance",
+   "aliases": [
+    "invoice"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "receipt",
+    "payment",
+    "bill",
+    "credit note",
+    "debit note"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.customer_invoice",
+   "label": "customer invoice",
+   "domain": "finance",
+   "aliases": [
+    "customer invoice",
+    "sales invoice"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.payment",
+   "label": "payment",
+   "domain": "finance",
+   "aliases": [
+    "payment"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "invoice",
+    "receipt",
+    "bill",
+    "credit note",
+    "debit note"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.receipt",
+   "label": "receipt",
+   "domain": "finance",
+   "aliases": [
+    "receipt"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "invoice",
+    "payment",
+    "bill",
+    "credit note",
+    "debit note"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.remittance",
+   "label": "remittance",
+   "domain": "finance",
+   "aliases": [
+    "remittance"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.bill",
+   "label": "bill",
+   "domain": "finance",
+   "aliases": [
+    "bill"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "invoice",
+    "receipt",
+    "payment",
+    "credit note",
+    "debit note"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.credit_note",
+   "label": "credit note",
+   "domain": "finance",
+   "aliases": [
+    "credit note",
+    "credit memo"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "invoice",
+    "receipt",
+    "payment",
+    "bill",
+    "debit note"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.debit_note",
+   "label": "debit note",
+   "domain": "finance",
+   "aliases": [
+    "debit note",
+    "debit memo"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "invoice",
+    "receipt",
+    "payment",
+    "bill",
+    "credit note"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.refund",
+   "label": "refund",
+   "domain": "finance",
+   "aliases": [
+    "refund"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "finance.return",
+   "label": "return",
+   "domain": "finance",
+   "aliases": [
+    "return"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.tax",
+   "label": "tax",
+   "domain": "finance",
+   "aliases": [
+    "tax"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.gst",
+   "label": "gst",
+   "domain": "finance",
+   "aliases": [
+    "gst",
+    "goods and services tax"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.vat",
+   "label": "vat",
+   "domain": "finance",
+   "aliases": [
+    "vat",
+    "value added tax"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.withholding_tax",
+   "label": "withholding tax",
+   "domain": "finance",
+   "aliases": [
+    "withholding tax"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.currency",
+   "label": "currency",
+   "domain": "finance",
+   "aliases": [
+    "currency"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.exchange_rate",
+   "label": "exchange rate",
+   "domain": "finance",
+   "aliases": [
+    "exchange rate",
+    "forex rate"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.general_ledger",
+   "label": "general ledger",
+   "domain": "finance",
+   "aliases": [
+    "general ledger"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.journal_entry",
+   "label": "journal entry",
+   "domain": "finance",
+   "aliases": [
+    "journal entry",
+    "journal"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "finance.chart_of_accounts",
+   "label": "chart of accounts",
+   "domain": "finance",
+   "aliases": [
+    "chart of accounts"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.account_payable",
+   "label": "account payable",
+   "domain": "finance",
+   "aliases": [
+    "account payable",
+    "accounts payable"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.account_receivable",
+   "label": "account receivable",
+   "domain": "finance",
+   "aliases": [
+    "account receivable",
+    "accounts receivable"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.outstanding_balance",
+   "label": "outstanding balance",
+   "domain": "finance",
+   "aliases": [
+    "outstanding balance"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.due_amount",
+   "label": "due amount",
+   "domain": "finance",
+   "aliases": [
+    "due amount"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.payment_terms",
+   "label": "payment terms",
+   "domain": "finance",
+   "aliases": [
+    "payment terms"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.fiscal_year",
+   "label": "fiscal year",
+   "domain": "finance",
+   "aliases": [
+    "fiscal year",
+    "financial year"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "period"
+  },
+  {
+   "concept_id": "finance.accounting_period",
+   "label": "accounting period",
+   "domain": "finance",
+   "aliases": [
+    "accounting period"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "period"
+  },
+  {
+   "concept_id": "finance.budget",
+   "label": "budget",
+   "domain": "finance",
+   "aliases": [
+    "budget"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.cost_center",
+   "label": "cost center",
+   "domain": "finance",
+   "aliases": [
+    "cost center",
+    "cost centre"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.profit_center",
+   "label": "profit center",
+   "domain": "finance",
+   "aliases": [
+    "profit center",
+    "profit centre"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.revenue",
+   "label": "revenue",
+   "domain": "finance",
+   "aliases": [
+    "revenue"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sales amount",
+    "income",
+    "gross profit",
+    "net profit",
+    "margin"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.sales_amount",
+   "label": "sales amount",
+   "domain": "finance",
+   "aliases": [
+    "sales amount"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "revenue",
+    "income",
+    "gross profit",
+    "net profit",
+    "margin"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.income",
+   "label": "income",
+   "domain": "finance",
+   "aliases": [
+    "income"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "revenue",
+    "sales amount",
+    "gross profit",
+    "net profit",
+    "margin"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.expense",
+   "label": "expense",
+   "domain": "finance",
+   "aliases": [
+    "expense"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "cost",
+    "cost of goods sold",
+    "spend"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.cost",
+   "label": "cost",
+   "domain": "finance",
+   "aliases": [
+    "cost"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "expense",
+    "cost of goods sold",
+    "spend"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.cost_of_goods_sold",
+   "label": "cost of goods sold",
+   "domain": "finance",
+   "aliases": [
+    "cost of goods sold"
+   ],
+   "conditional_aliases": [
+    "cogs"
+   ],
+   "do_not_equate_with": [
+    "expense",
+    "cost",
+    "spend"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.spend",
+   "label": "spend",
+   "domain": "finance",
+   "aliases": [
+    "spend"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "expense",
+    "cost",
+    "cost of goods sold"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.gross_profit",
+   "label": "gross profit",
+   "domain": "finance",
+   "aliases": [
+    "gross profit"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "revenue",
+    "sales amount",
+    "income",
+    "net profit",
+    "margin"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.net_profit",
+   "label": "net profit",
+   "domain": "finance",
+   "aliases": [
+    "net profit"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "revenue",
+    "sales amount",
+    "income",
+    "gross profit",
+    "margin"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.margin",
+   "label": "margin",
+   "domain": "finance",
+   "aliases": [
+    "margin"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "revenue",
+    "sales amount",
+    "income",
+    "gross profit",
+    "net profit"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.asset",
+   "label": "asset",
+   "domain": "finance",
+   "aliases": [
+    "asset"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.fixed_asset",
+   "label": "fixed asset",
+   "domain": "finance",
+   "aliases": [
+    "fixed asset"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "finance.depreciation",
+   "label": "depreciation",
+   "domain": "finance",
+   "aliases": [
+    "depreciation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.amortization",
+   "label": "amortization",
+   "domain": "finance",
+   "aliases": [
+    "amortization",
+    "amortisation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.cash_flow",
+   "label": "cash flow",
+   "domain": "finance",
+   "aliases": [
+    "cash flow"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.quantity",
+   "label": "quantity",
+   "domain": "finance",
+   "aliases": [
+    "quantity"
+   ],
+   "conditional_aliases": [
+    "qty"
+   ],
+   "do_not_equate_with": [
+    "amount",
+    "rate",
+    "unit price",
+    "total amount"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.amount",
+   "label": "amount",
+   "domain": "finance",
+   "aliases": [
+    "amount"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "quantity",
+    "rate",
+    "unit price",
+    "total amount"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.rate",
+   "label": "rate",
+   "domain": "finance",
+   "aliases": [
+    "rate"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "quantity",
+    "amount",
+    "unit price",
+    "total amount"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.unit_price",
+   "label": "unit price",
+   "domain": "finance",
+   "aliases": [
+    "unit price"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "quantity",
+    "amount",
+    "rate",
+    "total amount"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "finance.total_amount",
+   "label": "total amount",
+   "domain": "finance",
+   "aliases": [
+    "total amount"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "quantity",
+    "amount",
+    "rate",
+    "unit price"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "manufacturing.bill_of_materials",
+   "label": "bill of materials",
+   "domain": "manufacturing",
+   "aliases": [
+    "bill of materials"
+   ],
+   "conditional_aliases": [
+    "bom"
+   ],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "manufacturing.bom_component",
+   "label": "bom component",
+   "domain": "manufacturing",
+   "aliases": [
+    "bom component"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.recipe",
+   "label": "recipe",
+   "domain": "manufacturing",
+   "aliases": [
+    "recipe"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.formulation",
+   "label": "formulation",
+   "domain": "manufacturing",
+   "aliases": [
+    "formulation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.production_order",
+   "label": "production order",
+   "domain": "manufacturing",
+   "aliases": [
+    "production order"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sales order",
+    "purchase order",
+    "work order",
+    "order"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "manufacturing.work_order",
+   "label": "work order",
+   "domain": "manufacturing",
+   "aliases": [
+    "work order"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "sales order",
+    "purchase order",
+    "production order",
+    "order"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "manufacturing.routing",
+   "label": "routing",
+   "domain": "manufacturing",
+   "aliases": [
+    "routing"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.operation",
+   "label": "operation",
+   "domain": "manufacturing",
+   "aliases": [
+    "operation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.work_center",
+   "label": "work center",
+   "domain": "manufacturing",
+   "aliases": [
+    "work center",
+    "work centre"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.machine",
+   "label": "machine",
+   "domain": "manufacturing",
+   "aliases": [
+    "machine"
+   ],
+   "conditional_aliases": [
+    "equipment"
+   ],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.production_line",
+   "label": "production line",
+   "domain": "manufacturing",
+   "aliases": [
+    "production line"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.shift",
+   "label": "shift",
+   "domain": "manufacturing",
+   "aliases": [
+    "shift"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.capacity",
+   "label": "capacity",
+   "domain": "manufacturing",
+   "aliases": [
+    "capacity"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "manufacturing.material_issue",
+   "label": "material issue",
+   "domain": "manufacturing",
+   "aliases": [
+    "material issue"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "manufacturing.material_consumption",
+   "label": "material consumption",
+   "domain": "manufacturing",
+   "aliases": [
+    "material consumption"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "manufacturing.production_output",
+   "label": "production output",
+   "domain": "manufacturing",
+   "aliases": [
+    "production output"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "manufacturing.yield",
+   "label": "yield",
+   "domain": "manufacturing",
+   "aliases": [
+    "yield"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "manufacturing.scrap",
+   "label": "scrap",
+   "domain": "manufacturing",
+   "aliases": [
+    "scrap"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "manufacturing.wastage",
+   "label": "wastage",
+   "domain": "manufacturing",
+   "aliases": [
+    "wastage",
+    "waste"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "manufacturing.rejection",
+   "label": "rejection",
+   "domain": "manufacturing",
+   "aliases": [
+    "rejection"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "manufacturing.rework",
+   "label": "rework",
+   "domain": "manufacturing",
+   "aliases": [
+    "rework"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "manufacturing.quality_inspection",
+   "label": "quality inspection",
+   "domain": "manufacturing",
+   "aliases": [
+    "quality inspection"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "manufacturing.quality_check",
+   "label": "quality check",
+   "domain": "manufacturing",
+   "aliases": [
+    "quality check"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "manufacturing.nonconformance",
+   "label": "nonconformance",
+   "domain": "manufacturing",
+   "aliases": [
+    "nonconformance",
+    "non-conformance"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "manufacturing.defect",
+   "label": "defect",
+   "domain": "manufacturing",
+   "aliases": [
+    "defect"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "manufacturing.quality_hold",
+   "label": "quality hold",
+   "domain": "manufacturing",
+   "aliases": [
+    "quality hold"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "manufacturing.maintenance",
+   "label": "maintenance",
+   "domain": "manufacturing",
+   "aliases": [
+    "maintenance"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "manufacturing.downtime",
+   "label": "downtime",
+   "domain": "manufacturing",
+   "aliases": [
+    "downtime"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "logistics.shipment",
+   "label": "shipment",
+   "domain": "logistics",
+   "aliases": [
+    "shipment"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "dispatch",
+    "delivery",
+    "freight",
+    "consignment"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "logistics.dispatch",
+   "label": "dispatch",
+   "domain": "logistics",
+   "aliases": [
+    "dispatch"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "shipment",
+    "delivery",
+    "freight",
+    "consignment"
+   ],
+   "kind": "event"
+  },
+  {
+   "concept_id": "logistics.delivery",
+   "label": "delivery",
+   "domain": "logistics",
+   "aliases": [
+    "delivery"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "shipment",
+    "dispatch",
+    "freight",
+    "consignment"
+   ],
+   "kind": "event"
+  },
+  {
+   "concept_id": "logistics.delivery_order",
+   "label": "delivery order",
+   "domain": "logistics",
+   "aliases": [
+    "delivery order"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "logistics.packing_list",
+   "label": "packing list",
+   "domain": "logistics",
+   "aliases": [
+    "packing list"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "logistics.carrier",
+   "label": "carrier",
+   "domain": "logistics",
+   "aliases": [
+    "carrier"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "logistics.courier",
+   "label": "courier",
+   "domain": "logistics",
+   "aliases": [
+    "courier"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "logistics.transporter",
+   "label": "transporter",
+   "domain": "logistics",
+   "aliases": [
+    "transporter"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "logistics.freight",
+   "label": "freight",
+   "domain": "logistics",
+   "aliases": [
+    "freight"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "shipment",
+    "dispatch",
+    "delivery",
+    "consignment"
+   ],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "logistics.consignment",
+   "label": "consignment",
+   "domain": "logistics",
+   "aliases": [
+    "consignment"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "shipment",
+    "dispatch",
+    "delivery",
+    "freight"
+   ],
+   "kind": "document"
+  },
+  {
+   "concept_id": "logistics.tracking_number",
+   "label": "tracking number",
+   "domain": "logistics",
+   "aliases": [
+    "tracking number"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "attribute"
+  },
+  {
+   "concept_id": "logistics.tracking_event",
+   "label": "tracking event",
+   "domain": "logistics",
+   "aliases": [
+    "tracking event"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "logistics.delivery_route",
+   "label": "delivery route",
+   "domain": "logistics",
+   "aliases": [
+    "delivery route"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "logistics.trip",
+   "label": "trip",
+   "domain": "logistics",
+   "aliases": [
+    "trip"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "logistics.vehicle",
+   "label": "vehicle",
+   "domain": "logistics",
+   "aliases": [
+    "vehicle"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "logistics.driver",
+   "label": "driver",
+   "domain": "logistics",
+   "aliases": [
+    "driver"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "role"
+  },
+  {
+   "concept_id": "logistics.loading",
+   "label": "loading",
+   "domain": "logistics",
+   "aliases": [
+    "loading"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "logistics.unloading",
+   "label": "unloading",
+   "domain": "logistics",
+   "aliases": [
+    "unloading"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "logistics.customs",
+   "label": "customs",
+   "domain": "logistics",
+   "aliases": [
+    "customs"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "logistics.import",
+   "label": "import",
+   "domain": "logistics",
+   "aliases": [
+    "import"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "logistics.export",
+   "label": "export",
+   "domain": "logistics",
+   "aliases": [
+    "export"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "logistics.warehouse_transfer",
+   "label": "warehouse transfer",
+   "domain": "logistics",
+   "aliases": [
+    "warehouse transfer"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "logistics.proof_of_delivery",
+   "label": "proof of delivery",
+   "domain": "logistics",
+   "aliases": [
+    "proof of delivery"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "hr.applicant",
+   "label": "applicant",
+   "domain": "hr",
+   "aliases": [
+    "applicant"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "hr.candidate",
+   "label": "candidate",
+   "domain": "hr",
+   "aliases": [
+    "candidate"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "hr.recruitment",
+   "label": "recruitment",
+   "domain": "hr",
+   "aliases": [
+    "recruitment"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "hr.onboarding",
+   "label": "onboarding",
+   "domain": "hr",
+   "aliases": [
+    "onboarding"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "hr.attendance",
+   "label": "attendance",
+   "domain": "hr",
+   "aliases": [
+    "attendance"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.time_entry",
+   "label": "time entry",
+   "domain": "hr",
+   "aliases": [
+    "time entry"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.timesheet",
+   "label": "timesheet",
+   "domain": "hr",
+   "aliases": [
+    "timesheet"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "hr.clock_in",
+   "label": "clock-in",
+   "domain": "hr",
+   "aliases": [
+    "clock-in",
+    "clock in"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.clock_out",
+   "label": "clock-out",
+   "domain": "hr",
+   "aliases": [
+    "clock-out",
+    "clock out"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.leave",
+   "label": "leave",
+   "domain": "hr",
+   "aliases": [
+    "leave"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.absence",
+   "label": "absence",
+   "domain": "hr",
+   "aliases": [
+    "absence"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.holiday",
+   "label": "holiday",
+   "domain": "hr",
+   "aliases": [
+    "holiday"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "hr.roster",
+   "label": "roster",
+   "domain": "hr",
+   "aliases": [
+    "roster"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "hr.payroll",
+   "label": "payroll",
+   "domain": "hr",
+   "aliases": [
+    "payroll"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "hr.salary",
+   "label": "salary",
+   "domain": "hr",
+   "aliases": [
+    "salary"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "hr.wage",
+   "label": "wage",
+   "domain": "hr",
+   "aliases": [
+    "wage"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "hr.compensation",
+   "label": "compensation",
+   "domain": "hr",
+   "aliases": [
+    "compensation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "hr.benefit",
+   "label": "benefit",
+   "domain": "hr",
+   "aliases": [
+    "benefit"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "hr.reimbursement",
+   "label": "reimbursement",
+   "domain": "hr",
+   "aliases": [
+    "reimbursement"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.performance_review",
+   "label": "performance review",
+   "domain": "hr",
+   "aliases": [
+    "performance review"
+   ],
+   "conditional_aliases": [
+    "appraisal"
+   ],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.goal",
+   "label": "goal",
+   "domain": "hr",
+   "aliases": [
+    "goal"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "hr.training",
+   "label": "training",
+   "domain": "hr",
+   "aliases": [
+    "training"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "event"
+  },
+  {
+   "concept_id": "hr.designation",
+   "label": "designation",
+   "domain": "hr",
+   "aliases": [
+    "designation"
+   ],
+   "conditional_aliases": [
+    "job title"
+   ],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.project",
+   "label": "project",
+   "domain": "project",
+   "aliases": [
+    "project"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.programme",
+   "label": "programme",
+   "domain": "project",
+   "aliases": [
+    "programme",
+    "program"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.job",
+   "label": "job",
+   "domain": "project",
+   "aliases": [
+    "job"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.engagement",
+   "label": "engagement",
+   "domain": "project",
+   "aliases": [
+    "engagement"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.task",
+   "label": "task",
+   "domain": "project",
+   "aliases": [
+    "task"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.milestone",
+   "label": "milestone",
+   "domain": "project",
+   "aliases": [
+    "milestone"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.activity",
+   "label": "activity",
+   "domain": "project",
+   "aliases": [
+    "activity"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.resource",
+   "label": "resource",
+   "domain": "project",
+   "aliases": [
+    "resource"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.assignment",
+   "label": "assignment",
+   "domain": "project",
+   "aliases": [
+    "assignment"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.allocation",
+   "label": "allocation",
+   "domain": "project",
+   "aliases": [
+    "allocation"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.billable_hours",
+   "label": "billable hours",
+   "domain": "project",
+   "aliases": [
+    "billable hours"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "project.non_billable_hours",
+   "label": "non-billable hours",
+   "domain": "project",
+   "aliases": [
+    "non-billable hours",
+    "nonbillable hours"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "measure"
+  },
+  {
+   "concept_id": "project.issue",
+   "label": "issue",
+   "domain": "project",
+   "aliases": [
+    "issue"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.service_request",
+   "label": "service request",
+   "domain": "project",
+   "aliases": [
+    "service request"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.incident",
+   "label": "incident",
+   "domain": "project",
+   "aliases": [
+    "incident"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.change_request",
+   "label": "change request",
+   "domain": "project",
+   "aliases": [
+    "change request"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "project.knowledge_base",
+   "label": "knowledge base",
+   "domain": "project",
+   "aliases": [
+    "knowledge base"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "project.document",
+   "label": "document",
+   "domain": "project",
+   "aliases": [
+    "document"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "document"
+  },
+  {
+   "concept_id": "project.attachment",
+   "label": "attachment",
+   "domain": "project",
+   "aliases": [
+    "attachment"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.permission",
+   "label": "permission",
+   "domain": "administration",
+   "aliases": [
+    "permission"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.access_level",
+   "label": "access level",
+   "domain": "administration",
+   "aliases": [
+    "access level"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.audit_trail",
+   "label": "audit trail",
+   "domain": "administration",
+   "aliases": [
+    "audit trail"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.audit_log",
+   "label": "audit log",
+   "domain": "administration",
+   "aliases": [
+    "audit log"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "user session",
+    "activity log"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.activity_log",
+   "label": "activity log",
+   "domain": "administration",
+   "aliases": [
+    "activity log"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "user session",
+    "audit log"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.audit_history",
+   "label": "audit history",
+   "domain": "administration",
+   "aliases": [
+    "audit history"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "archived record",
+    "soft-deleted record"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.user_session",
+   "label": "user session",
+   "domain": "administration",
+   "aliases": [
+    "user session"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "audit log",
+    "activity log"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.notification",
+   "label": "notification",
+   "domain": "administration",
+   "aliases": [
+    "notification"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.alert",
+   "label": "alert",
+   "domain": "administration",
+   "aliases": [
+    "alert"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.email",
+   "label": "email",
+   "domain": "administration",
+   "aliases": [
+    "email"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.workflow",
+   "label": "workflow",
+   "domain": "administration",
+   "aliases": [
+    "workflow"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "administration.configuration",
+   "label": "configuration",
+   "domain": "administration",
+   "aliases": [
+    "configuration"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.tenant",
+   "label": "tenant",
+   "domain": "administration",
+   "aliases": [
+    "tenant"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.data_retention",
+   "label": "data retention",
+   "domain": "administration",
+   "aliases": [
+    "data retention"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "process"
+  },
+  {
+   "concept_id": "administration.archived_record",
+   "label": "archived record",
+   "domain": "administration",
+   "aliases": [
+    "archived record"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "audit history",
+    "soft-deleted record"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.deleted_record",
+   "label": "deleted record",
+   "domain": "administration",
+   "aliases": [
+    "deleted record"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "administration.soft_deleted_record",
+   "label": "soft-deleted record",
+   "domain": "administration",
+   "aliases": [
+    "soft-deleted record"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "audit history",
+    "archived record"
+   ],
+   "kind": "entity"
+  },
+  {
+   "concept_id": "status.active",
+   "label": "active",
+   "domain": "status",
+   "aliases": [
+    "active"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "pending",
+    "open",
+    "in-progress",
+    "completed",
+    "delivered",
+    "cancelled",
+    "deleted"
+   ],
+   "kind": "state"
+  },
+  {
+   "concept_id": "status.pending",
+   "label": "pending",
+   "domain": "status",
+   "aliases": [
+    "pending"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "active",
+    "open",
+    "in-progress",
+    "completed",
+    "delivered",
+    "cancelled",
+    "deleted"
+   ],
+   "kind": "state"
+  },
+  {
+   "concept_id": "status.open",
+   "label": "open",
+   "domain": "status",
+   "aliases": [
+    "open"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "active",
+    "pending",
+    "in-progress",
+    "completed",
+    "delivered",
+    "cancelled",
+    "deleted"
+   ],
+   "kind": "state"
+  },
+  {
+   "concept_id": "status.in_progress",
+   "label": "in-progress",
+   "domain": "status",
+   "aliases": [
+    "in-progress"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "active",
+    "pending",
+    "open",
+    "completed",
+    "delivered",
+    "cancelled",
+    "deleted"
+   ],
+   "kind": "state"
+  },
+  {
+   "concept_id": "status.completed",
+   "label": "completed",
+   "domain": "status",
+   "aliases": [
+    "completed"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "active",
+    "pending",
+    "open",
+    "in-progress",
+    "delivered",
+    "cancelled",
+    "deleted"
+   ],
+   "kind": "state"
+  },
+  {
+   "concept_id": "status.delivered",
+   "label": "delivered",
+   "domain": "status",
+   "aliases": [
+    "delivered"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "active",
+    "pending",
+    "open",
+    "in-progress",
+    "completed",
+    "cancelled",
+    "deleted"
+   ],
+   "kind": "state"
+  },
+  {
+   "concept_id": "status.cancelled",
+   "label": "cancelled",
+   "domain": "status",
+   "aliases": [
+    "cancelled"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "active",
+    "pending",
+    "open",
+    "in-progress",
+    "completed",
+    "delivered",
+    "deleted"
+   ],
+   "kind": "state"
+  },
+  {
+   "concept_id": "status.deleted",
+   "label": "deleted",
+   "domain": "status",
+   "aliases": [
+    "deleted"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [
+    "active",
+    "pending",
+    "open",
+    "in-progress",
+    "completed",
+    "delivered",
+    "cancelled"
+   ],
+   "kind": "state"
+  },
+  {
+   "concept_id": "query_intent.count",
+   "label": "count",
+   "domain": "query_intent",
+   "aliases": [
+    "count"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.total",
+   "label": "total",
+   "domain": "query_intent",
+   "aliases": [
+    "total"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.sum",
+   "label": "sum",
+   "domain": "query_intent",
+   "aliases": [
+    "sum"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.average",
+   "label": "average",
+   "domain": "query_intent",
+   "aliases": [
+    "average",
+    "mean",
+    "avg"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.minimum",
+   "label": "minimum",
+   "domain": "query_intent",
+   "aliases": [
+    "minimum",
+    "min"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.maximum",
+   "label": "maximum",
+   "domain": "query_intent",
+   "aliases": [
+    "maximum",
+    "max"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.top",
+   "label": "top",
+   "domain": "query_intent",
+   "aliases": [
+    "top"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.bottom",
+   "label": "bottom",
+   "domain": "query_intent",
+   "aliases": [
+    "bottom"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.highest",
+   "label": "highest",
+   "domain": "query_intent",
+   "aliases": [
+    "highest"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.lowest",
+   "label": "lowest",
+   "domain": "query_intent",
+   "aliases": [
+    "lowest"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.latest",
+   "label": "latest",
+   "domain": "query_intent",
+   "aliases": [
+    "latest",
+    "most recent"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.oldest",
+   "label": "oldest",
+   "domain": "query_intent",
+   "aliases": [
+    "oldest"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.comparison",
+   "label": "comparison",
+   "domain": "query_intent",
+   "aliases": [
+    "comparison"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.variance",
+   "label": "variance",
+   "domain": "query_intent",
+   "aliases": [
+    "variance"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.growth",
+   "label": "growth",
+   "domain": "query_intent",
+   "aliases": [
+    "growth"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.trend",
+   "label": "trend",
+   "domain": "query_intent",
+   "aliases": [
+    "trend"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.percentage",
+   "label": "percentage",
+   "domain": "query_intent",
+   "aliases": [
+    "percentage",
+    "percent"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.ratio",
+   "label": "ratio",
+   "domain": "query_intent",
+   "aliases": [
+    "ratio"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.ranking",
+   "label": "ranking",
+   "domain": "query_intent",
+   "aliases": [
+    "ranking"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.grouped_by",
+   "label": "grouped by",
+   "domain": "query_intent",
+   "aliases": [
+    "grouped by",
+    "group by"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.monthly",
+   "label": "monthly",
+   "domain": "query_intent",
+   "aliases": [
+    "monthly"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.quarterly",
+   "label": "quarterly",
+   "domain": "query_intent",
+   "aliases": [
+    "quarterly"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.yearly",
+   "label": "yearly",
+   "domain": "query_intent",
+   "aliases": [
+    "yearly",
+    "annual"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.current_period",
+   "label": "current period",
+   "domain": "query_intent",
+   "aliases": [
+    "current period"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.previous_period",
+   "label": "previous period",
+   "domain": "query_intent",
+   "aliases": [
+    "previous period"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.upcoming",
+   "label": "upcoming",
+   "domain": "query_intent",
+   "aliases": [
+    "upcoming"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  },
+  {
+   "concept_id": "query_intent.overdue",
+   "label": "overdue",
+   "domain": "query_intent",
+   "aliases": [
+    "overdue",
+    "past due"
+   ],
+   "conditional_aliases": [],
+   "do_not_equate_with": [],
+   "kind": "query_intent"
+  }
+ ]
+}

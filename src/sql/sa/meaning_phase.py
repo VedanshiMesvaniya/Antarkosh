@@ -47,7 +47,7 @@ from src.sql.semantics.evidence import TableEvidence, collect_table_evidence, ev
 from src.sql.semantics.hints import HINTS_REL
 from src.sql.semantics.meaning import LLM, PROMPT_VERSION, apply_consistency, generate_table
 from src.sql.semantics.wiring import (
-    build_glossary_entries,
+    build_glossary_and_layer,
     changed_tables,
     embedding_extras_from,
     merge_glossary,
@@ -133,6 +133,7 @@ async def run_meaning_phase(
     databases_dir: Path | None = None,
     llm: LLM | None = None,
     inject: bool = True,
+    concepts: bool = False,
     budget_seconds: float | None = None,
     max_tables: int | None = None,
     concurrency: int | None = None,
@@ -214,15 +215,32 @@ async def run_meaning_phase(
         if report["file"].get("skipped"):
             return report
 
+    layer = None
     try:  # 9c: the prompt channel. With injection off, every auto entry is removed again.
-        entries = build_glossary_entries(doc, graph) if inject else {}
+        universal = None
+        if concepts:  # auto_semantic_glossary_apply: link meanings to the universal ERP glossary (None if the file is missing or invalid)
+            from src.sql.semantics.universal import load_universal
+
+            universal = load_universal()
+        entries, layer = build_glossary_and_layer(doc, graph, universal) if inject else ({}, None)
         report["glossary"] = await asyncio.to_thread(merge_glossary, db_id, entries, databases_dir)
+        if layer is not None:
+            report["concepts"] = layer.stats
         if report["glossary"].get("written"):
             from src.sql.prompt_builder import clear_prompt_caches
 
             clear_prompt_caches(db_id)
     except Exception as exc:  # noqa: BLE001
         report["glossary"] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
+    try:  # semantic_review.json: informational, read by nobody at question time. Only written once the concept layer is on.
+        if concepts:
+            from src.sql.semantics.review import build_review, write_review
+
+            report["review"] = await asyncio.to_thread(
+                lambda: write_review(db_id, build_review(doc, graph, evidence, layer), databases_dir)
+            )
+    except Exception as exc:  # noqa: BLE001 - a report only; never fails the phase
+        report["review"] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
     report["embed_tables"] = changed_tables(before, embedding_extras_from(doc))
     return report
 

@@ -69,7 +69,8 @@ def dbs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_generic_aliases_add_words_and_never_replace_the_question(dbs: Path) -> None:
-    assert rt.expand_query_terms("Show each item with its cost", DB) == ["product", "material"]
+    # the universal ERP glossary knows "item": strong aliases always; "material" only where the database uses that word (see below)
+    assert rt.expand_query_terms("Show each item with its cost", DB) == ["product", "good", "article"]
     assert rt.expand_query_terms("which facility is busiest", DB) == ["plant", "site"]
     assert rt.expand_query_terms("total purchase value by month", DB) == ["purchase amount"]
     assert rt.expand_query_terms("how many orders last week", DB) == []
@@ -77,7 +78,7 @@ def test_generic_aliases_add_words_and_never_replace_the_question(dbs: Path) -> 
 
 def test_alias_phrase_needs_its_words_next_to_each_other_and_skips_words_already_asked(dbs: Path) -> None:
     assert rt.expand_query_terms("value of the purchase", DB) == []
-    assert rt.expand_query_terms("item product list", DB) == ["material"]  # "product" is already in the question
+    assert rt.expand_query_terms("item product list", DB) == ["good", "article"]  # "product" is already in the question
 
 
 def test_database_glossary_adds_the_concept_a_synonym_stands_for(dbs: Path) -> None:
@@ -92,7 +93,7 @@ def test_unreadable_glossary_and_pinned_database_give_nothing(dbs: Path) -> None
     folder = dbs / DB / "semantics"
     folder.mkdir(parents=True)
     (folder / "glossary.json").write_text("{not json", encoding="utf-8")
-    assert rt.expand_query_terms("supplier item", DB) == ["product", "material"]  # the alias list still works
+    assert rt.expand_query_terms("supplier item", DB) == ["product", "good", "article"]  # the universal glossary still works
     assert rt.expand_query_terms("show item", "erp_main") == []
     assert rt.expand_query_terms("", DB) == [] and rt.expand_query_terms(None, DB) == []  # type: ignore[arg-type]
     assert rt.expand_query_terms("show item", "../escape") == []  # an invalid id has no files
@@ -121,7 +122,7 @@ def test_item_finds_material_columns_although_no_column_is_called_item(dbs: Path
 
 def test_a_word_used_by_many_tables_alone_finds_nothing(dbs: Path) -> None:
     _catalog(dbs, DB, *_stock_world())
-    assert _find("show product details") == []
+    assert [h.table for h in rt.find_column_tables("show product details", [], DB, available={f"p{i}" for i in range(8)} | {"stock_ledger"})] == []
 
 
 def test_catalog_comments_and_generated_meanings_count_as_descriptions(dbs: Path) -> None:
@@ -285,7 +286,8 @@ def test_flag_on_adds_search_words_and_the_tables_whose_columns_match(dbs: Path,
              table("issue_slip", {"id": "int", "material_no": "varchar"}, pk=("id",)))
     tables, full = _setup(monkeypatch, {"auto_retrieval_apply": True})
     on, embedded, searched = _retrieve("show each item", tables, full)
-    assert embedded == searched == ["show each item product material"]  # the question first, extra words after it
+    # the question first, extra words after it; "material" comes before the other aliases because this database uses that word
+    assert embedded == searched == ["show each item product material good article"]
     assert {"orders", "stock_ledger", "issue_slip"} <= _present(on)
     assert "misc" not in _present(on)
     assert on.index("orders") < on.index("stock_ledger")  # vector tables keep their place ahead of column matches

@@ -27,7 +27,9 @@ from src.sql import registry
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
 from src.sql.relationships.model import CatalogGraph
 from src.sql.relationships.names import learn_common_columns, normalized_column_name
+from src.sql.semantics.concepts import ConceptLayer, build_concept_layer, is_code_phrase
 from src.sql.semantics.dictionary import GENERATED_BY, read_dictionary
+from src.sql.semantics.universal import UniversalGlossary
 
 GLOSSARY_REL = "semantics/column_glossary.json"
 EMBED_EXTRA_MAX_CHARS = 1500
@@ -98,8 +100,31 @@ def changed_tables(before: dict[str, str], after: dict[str, str]) -> list[str]:
 # ---------------------------------------------------------------- 2. the glossary
 
 
-def build_glossary_entries(doc: dict[str, Any], graph: CatalogGraph) -> dict[str, dict[str, Any]]:
-    """Glossary entries for the ``high`` confidence meanings of columns that are not generic. Pure."""
+def build_glossary_entries(doc: dict[str, Any], graph: CatalogGraph, universal: UniversalGlossary | None = None) -> dict[str, dict[str, Any]]:
+    """Glossary entries for the ``high`` confidence meanings of columns that are not generic. Pure.
+
+    With a ``universal`` glossary (``auto_semantic_glossary_apply``) the entries also carry the concept layer; see
+    ``build_glossary_and_layer``. Without it the result is exactly what it always was."""
+    return build_glossary_and_layer(doc, graph, universal)[0]
+
+
+def build_glossary_and_layer(
+    doc: dict[str, Any], graph: CatalogGraph, universal: UniversalGlossary | None = None
+) -> tuple[dict[str, dict[str, Any]], ConceptLayer | None]:
+    """``(entries, concept layer)``. The layer is None without a universal glossary.
+
+    With one: a phrase that is only a code (``y``, ``0``) is never a synonym, and entries linked to universal concepts are added
+    (high confidence only; the weaker readings are in the layer's review lists)."""
+    entries = _card_entries(doc, graph, drop_codes=universal is not None)
+    if universal is None:
+        return entries, None
+    layer = build_concept_layer(doc, graph, universal, set(entries))
+    for term, entry in layer.entries.items():
+        entries[term] = {**entry, "auto": GENERATED_BY}
+    return entries, layer
+
+
+def _card_entries(doc: dict[str, Any], graph: CatalogGraph, drop_codes: bool) -> dict[str, dict[str, Any]]:
     common = learn_common_columns(graph.tables.values())
     cards: list[tuple[str, str, dict[str, Any]]] = []
     for table, entry in sorted((doc.get("tables") or {}).items()):
@@ -134,7 +159,7 @@ def build_glossary_entries(doc: dict[str, Any], graph: CatalogGraph) -> dict[str
         if term in used_terms:
             continue
         used_terms.add(term)
-        syn = [p for p in e.get("phrases") or [] if usable(p) and p != term]
+        syn = [p for p in e.get("phrases") or [] if usable(p) and p != term and not (drop_codes and is_code_phrase(p))]
         entries[term] = {
             "maps_to": f"{table}.{col}",
             "note": (e.get("meaning") or "")[:MAX_NOTE_CHARS],
@@ -190,6 +215,6 @@ def merge_glossary(db_id: str, entries: dict[str, dict[str, Any]], databases_dir
 
 
 __all__ = [
-    "EMBED_EXTRA_MAX_CHARS", "GLOSSARY_REL", "MAX_GLOSSARY_ENTRIES", "build_glossary_entries", "changed_tables",
+    "EMBED_EXTRA_MAX_CHARS", "GLOSSARY_REL", "MAX_GLOSSARY_ENTRIES", "build_glossary_and_layer", "build_glossary_entries", "changed_tables",
     "embedding_extras_from", "load_embedding_extras", "merge_glossary",
 ]

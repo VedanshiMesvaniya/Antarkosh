@@ -43,6 +43,7 @@ from src.sql.relationships.names import singular, split_identifier
 from src.sql.semantics.dictionary import DICTIONARY_REL, GENERATED_BY
 from src.sql.semantics.lexicon import QUERY_ALIASES
 from src.sql.semantics.routing import GLOSSARY_REL as SYNONYM_GLOSSARY_REL
+from src.sql.semantics.universal import load_universal
 from src.sql.semantics.wiring import GENERIC_PHRASES
 from src.sql.semantics.wiring import GLOSSARY_REL as COLUMN_GLOSSARY_REL
 
@@ -155,9 +156,12 @@ def _glossary_groups(db_id: str) -> list[tuple[list[str], list[list[str]]]]:
 
 
 def expand_query_terms(query: str, db_id: str) -> list[str]:
-    """Extra words for this question: what a word of it may stand for, per the generic alias list and this database's glossary.
+    """Extra words for this question: what a word of it may stand for, per this database's glossary, the universal ERP glossary and
+    the short generic alias list for words the universal glossary does not know.
 
-    Only words that are not already in the question are returned, at most ``MAX_EXTRA_TERMS``. Empty when nothing applies.
+    The universal glossary widens only: strong aliases always, conditional aliases only when this database's own table, column or
+    comment words use them, never a word of a concept it must not equate with. Only words that are not already in the question
+    are returned, at most ``MAX_EXTRA_TERMS``. Empty when nothing applies.
     """
     try:
         if not isinstance(query, str) or not query.strip() or not _usable_db(db_id):
@@ -169,13 +173,21 @@ def expand_query_terms(query: str, db_id: str) -> list[str]:
             if words and not _contains(q, words) and " ".join(words) not in extra:
                 extra.append(" ".join(words))
 
+        universal = load_universal()
         for phrase, stands_for in QUERY_ALIASES:
+            if universal is not None and universal.recognises(tuple(_words(phrase))):
+                continue  # the universal ERP glossary knows this word and decides what it may stand for (conditional words need local support)
             if _contains(q, _words(phrase)):
                 for term in stands_for:
                     add(_words(term))
         for concept_words, phrases in _glossary_groups(db_id):
             if any(_contains(q, p) for p in phrases):
                 add(concept_words)
+        if universal is not None:
+            vocabulary = _vocabulary(db_id)
+            supported = lambda ws: bool(ws) and all(w in vocabulary for w in ws)
+            for phrase in universal.expand(q, supported):
+                add(_words(phrase))
         return extra[:MAX_EXTRA_TERMS]
     except Exception as exc:  # noqa: BLE001 - optional help must never break retrieval
         logger.debug("Query terms unavailable for %s: %s", db_id, exc)
@@ -189,6 +201,7 @@ def expand_query_terms(query: str, db_id: str) -> list[str]:
 class ColumnIndex:
     columns: tuple[tuple[str, str, frozenset[str]], ...]  # (bare table, column, useful words)
     owners: dict[str, int]  # word -> number of tables that have a column using it
+    vocabulary: frozenset[str] = frozenset()  # every word of the real tables' own table, column and comment names
 
 
 @dataclass(frozen=True)
@@ -246,12 +259,15 @@ def _build_index(db_id: str) -> ColumnIndex | None:
     meanings = _meaning_words(db_id)
     columns: list[tuple[str, str, frozenset[str]]] = []
     owners: dict[str, set[str]] = {}
+    vocabulary: set[str] = set()
     for qualified in sorted(eligible):
         t = graph.tables[qualified]
         bare = t.name.lower()
         if not _BARE_NAME.match(bare) or bare in collisions:  # a name two tables share cannot be looked up
             continue
+        vocabulary.update(w for w in _words(t.name) if len(w) >= 3)
         for c in t.columns:
+            vocabulary.update(w for w in (*_words(c.name), *_words(c.comment)) if len(w) >= 3)
             words = _useful(c.name) | _useful(c.comment)
             words |= meanings.get((qualified.lower(), c.name.lower()), set()) | meanings.get((bare, c.name.lower()), set())
             if not words:
@@ -261,7 +277,7 @@ def _build_index(db_id: str) -> ColumnIndex | None:
                 owners.setdefault(w, set()).add(bare)
     if not columns:
         return None
-    return ColumnIndex(tuple(columns), {w: len(tables) for w, tables in owners.items()})
+    return ColumnIndex(tuple(columns), {w: len(tables) for w, tables in owners.items()}, frozenset(vocabulary))
 
 
 def load_column_index(db_id: str) -> ColumnIndex | None:
@@ -281,6 +297,12 @@ def load_column_index(db_id: str) -> ColumnIndex | None:
     except Exception as exc:  # noqa: BLE001 - an unreadable file must never break a question
         logger.warning("Column index for %s unavailable: %s: %s", db_id, type(exc).__name__, str(exc)[:200])
         return None
+
+
+def _vocabulary(db_id: str) -> frozenset[str]:
+    """The words this database's own real tables, columns and comments use: what makes a conditional alias count. Empty without a catalog."""
+    index = load_column_index(db_id)
+    return index.vocabulary if index is not None else frozenset()
 
 
 def find_column_tables(

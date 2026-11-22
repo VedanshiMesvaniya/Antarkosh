@@ -251,8 +251,8 @@ def build_column_glossary_for_query(query: str, db_id: str = DEFAULT_DB_ID) -> s
 
     lines: list[str] = []
     for term, details in data.items():
-        if not isinstance(details, dict):
-            continue
+        if not isinstance(details, dict) or details.get("safe_for_prompt") is False:
+            continue  # an entry marked not safe for prompts (the mapping is not trustworthy enough) is never shown or used to route
         candidates = [term] + details.get("synonyms", [])
         if any(matches_glossary_candidate(c, query_lower, raw_words, query_stems) for c in candidates if isinstance(c, str)):
             maps_to = details.get("maps_to")

@@ -44,6 +44,7 @@ db_defaults:
   auto_retrieval_apply: false
   auto_relationships_data_apply: false
   auto_schema_contract_apply: false
+  auto_semantic_glossary_apply: false
 
 db_features:
   _example_db:
@@ -68,6 +69,7 @@ db_features:
     auto_retrieval_apply: false
     auto_relationships_data_apply: false
     auto_schema_contract_apply: false
+    auto_semantic_glossary_apply: false
 
 # =============================================================================
 # FEATURE DESCRIPTIONS & USAGE GUIDE
@@ -177,3 +179,10 @@ db_features:
 #   approved route connects, and the prompt states: use only listed tables, columns and approved joins; do not invent; if no approved
 #   route is present, do not guess. Metadata only; SQL validation after generation is unchanged. A database with no approved joins
 #   is left exactly as it was. With the Phase 12 flags on but this one off, it only logs what it would drop (schema_contract_shadow). Starts false.
+# auto_semantic_glossary_apply:
+#   Release 4 (part): needs auto_column_meaning and auto_prompt_inject. The column meanings the sync already generated and checked are
+#   linked to the universal ERP glossary (config/universal_erp_glossary.json): concept_id, role (entity_name, identifier, amount, date,
+#   status, foreign_key), confidence, evidence and safe_for_prompt are added to the generated column_glossary.json entries, and
+#   semantics/semantic_review.json lists what is not certain (medium/low meanings, name-only readings, ambiguous aliases, stored codes
+#   without two independent signals). Only high-confidence mappings with evidence beyond the name reach a prompt. Metadata only.
+#   Off: the glossary and every prompt are exactly as before. Starts false.

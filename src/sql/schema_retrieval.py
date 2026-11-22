@@ -1194,7 +1194,11 @@ async def _sync_live_schema_body(
             from src.sql.sa.meaning_phase import run_meaning_phase
             from src.sql.semantics.wiring import load_embedding_extras
 
-            column_meaning_report = await run_meaning_phase(db_id=db_id, inject=is_db_feature_enabled("auto_prompt_inject", db_id))
+            column_meaning_report = await run_meaning_phase(
+                db_id=db_id,
+                inject=is_db_feature_enabled("auto_prompt_inject", db_id),
+                concepts=is_db_feature_enabled("auto_semantic_glossary_apply", db_id),
+            )
             changed = column_meaning_report.pop("embed_tables", [])
             if changed:
                 try:
