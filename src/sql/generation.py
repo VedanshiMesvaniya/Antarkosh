@@ -46,6 +46,7 @@ from src.sql.repair.join_context import build_repair_join_context
 from src.sql.schema_compactor import flatten_comment
 from src.sql.prompt_builder import build_sql_prompt
 from src.sql.soft_delete import detect_soft_delete_intent, enforce_soft_delete_filter
+from src.sql.soft_delete_evidence import guard_error, soft_delete_guard
 from src.sql.safety.data_recency import data_recency_note
 from src.sql.safety.empty_result_classifier import classify_empty_result
 from src.sql.safety.value_check import value_mismatch_note
@@ -580,6 +581,10 @@ async def generate_sql(
             dialect=dialect.sqlglot_dialect,
             db_id=db_id,
         )
+        # Release 4: a table whose soft-delete marker is only a possibility is not queried (flags off: never blocks; shadow: only logs)
+        blocked = soft_delete_guard(sql, soft_intent, dialect.sqlglot_dialect, db_id)
+        if blocked:
+            return "", cot_plan, guard_error(blocked)
         return sql, cot_plan, None
 
     except (TokenBudgetExceededError, QueryBudgetExceededError) as budget_err:
@@ -620,6 +625,9 @@ async def generate_sql(
                         dialect=dialect.sqlglot_dialect,
                         db_id=db_id,
                     )
+                    blocked = soft_delete_guard(sql, soft_intent, dialect.sqlglot_dialect, db_id)
+                    if blocked:
+                        return "", None, guard_error(blocked)
                     return sql, None, None
         except Exception as retry_err:
             logger.error("Compressed SQL retry failed after budget cutoff: %s", retry_err)
@@ -1210,6 +1218,11 @@ async def execute_with_delta_repair(
                     specs=ctx.soft_delete_specs or None,
                 ),
             )
+            blocked = soft_delete_guard(current_sql, detect_soft_delete_intent(query), retriever._dialect.sqlglot_dialect, retriever.db_id)
+            if blocked:  # the repair reached a table whose soft-delete marker is unconfirmed: stop, with the plain message
+                retriever.last_infra_error = guard_error(blocked)
+                retriever.last_query_status = "failed"
+                return []
             continue
 
         # Validation succeeded -> Execute read-only query

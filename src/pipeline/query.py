@@ -11,12 +11,11 @@ import re
 from pathlib import Path
 
 from src.core.config import settings
-from src.sql.learning.pipeline_metrics import log_event as _log_pipeline_event
 from src.core.provider_client import ProviderRouter
 from src.core.rate_limiter import get_shared_rate_limiter
+from src.guards.citation_guard import evaluate_rag_citations, sanitize_hallucinated_citations
 from src.models.schemas import QueryResult, RetrievedChunk, ThinkingStep
-from src.rag.stages.s10_embeddings import EmbeddingService
-from src.rag.stages.s11_vector_store import QdrantStore
+from src.models.trace import Trace
 from src.rag.retrieval import (
     Generator,
     Reranker,
@@ -25,17 +24,22 @@ from src.rag.retrieval import (
     _is_exhaustive_query,
     _source_mode,
 )
+from src.rag.stages.s10_embeddings import EmbeddingService
+from src.rag.stages.s11_vector_store import QdrantStore
 from src.sql.context import DEFAULT_DB_ID
 from src.sql.knowledge.loaders import validate_db_id
+from src.sql.learning.pipeline_metrics import log_event as _log_pipeline_event
 from src.sql.pipeline import SQLRetriever
-from src.sql.query_classifier import QueryType, classify_query
-from src.sql.semantic_cache import get_semantic_cache
+from src.sql.query_classifier import classify_query
 from src.sql.safety.sql_privacy import sanitize_assistant_turn
-from src.utils.query_budget import get_or_create_budget_controller
-from src.utils.telemetry import get_or_create_query_id, log_telemetry, set_current_query_id, timed_stage
+from src.sql.semantic_cache import get_semantic_cache
+from src.sql.soft_delete_evidence import GUARD_ERROR_PREFIX, guard_message
 from src.utils.feature_flags import is_feature_enabled
-from src.guards.citation_guard import evaluate_rag_citations, sanitize_hallucinated_citations
-from src.models.trace import Trace
+from src.utils.query_budget import get_or_create_budget_controller
+from src.utils.telemetry import (
+    set_current_query_id,
+    timed_stage,
+)
 from src.utils.trace_context import branch_context, get_current_span, start_trace
 from src.utils.trace_writer import emit_trace
 
@@ -53,6 +57,17 @@ _SQL_UNAVAILABLE_MSG = (
     "or unreachable). Your data may well contain the answer — please try again "
     "shortly."
 )
+
+
+def _sql_unavailable_message(infra_error: str | None) -> str:
+    """The reply when the SQL path produced nothing: the models were unreachable, or a soft-delete guard withheld the query."""
+    if isinstance(infra_error, str) and infra_error.startswith(GUARD_ERROR_PREFIX):  # anything else keeps the old message exactly
+        return guard_message(infra_error)
+    return _SQL_UNAVAILABLE_MSG
+
+
+def _sql_unavailable_task(infra_error: str | None) -> str:
+    return "sql_guarded" if isinstance(infra_error, str) and infra_error.startswith(GUARD_ERROR_PREFIX) else "sql_unavailable"
 
 
 _DB_KEYWORDS = {
@@ -364,9 +379,9 @@ class QueryPipeline:
                 if sql_infra_error:
                     return QueryResult(
                         query=question,
-                        answer=_SQL_UNAVAILABLE_MSG,
+                        answer=_sql_unavailable_message(sql_infra_error),
                         model_used="none",
-                        reasoning_task="sql_unavailable",
+                        reasoning_task=_sql_unavailable_task(sql_infra_error),
                     )
                 if mode == "sql":
                     fallback_msg = "No matching database records found for this query."
@@ -410,9 +425,9 @@ class QueryPipeline:
             if not reranked and sql_infra_error:
                 return QueryResult(
                     query=question,
-                    answer=_SQL_UNAVAILABLE_MSG,
+                    answer=_sql_unavailable_message(sql_infra_error),
                     model_used="none",
-                    reasoning_task="sql_unavailable",
+                    reasoning_task=_sql_unavailable_task(sql_infra_error),
                 )
 
             # Stage 14 — Generation (the user's original question + conversation,
@@ -523,7 +538,7 @@ class QueryPipeline:
                 trace.record_tokens(result.usage.input_tokens, result.usage.output_tokens)
             emit_trace(trace)
             return result, trace
-        except Exception as exc:
+        except Exception:
             trace.complete(status="FAILED")
             emit_trace(trace)
             raise
@@ -545,7 +560,6 @@ class QueryPipeline:
             mode: Knowledge source mode: "auto", "sql", "rag", or "mix".
             db_id: Optional database identifier (defaults to self.db_id).
         """
-        from typing import AsyncGenerator
         from src.models.schemas import QueryResult
 
         logger.info("=== Query Stream [%s]: %s ===", mode, question[:100])
@@ -683,12 +697,12 @@ class QueryPipeline:
 
         if not vector_chunks and not sql_chunks:
             if sql_infra_error:
-                yield _SQL_UNAVAILABLE_MSG
+                yield _sql_unavailable_message(sql_infra_error)
                 yield QueryResult(
                     query=question,
-                    answer=_SQL_UNAVAILABLE_MSG,
+                    answer=_sql_unavailable_message(sql_infra_error),
                     model_used="none",
-                    reasoning_task="sql_unavailable",
+                    reasoning_task=_sql_unavailable_task(sql_infra_error),
                     thinking=thinking,
                 )
                 return
@@ -728,12 +742,12 @@ class QueryPipeline:
         # its models were unreachable — tell the user that, don't imply the data
         # is missing.
         if not reranked and sql_infra_error:
-            yield _SQL_UNAVAILABLE_MSG
+            yield _sql_unavailable_message(sql_infra_error)
             yield QueryResult(
                 query=question,
-                answer=_SQL_UNAVAILABLE_MSG,
+                answer=_sql_unavailable_message(sql_infra_error),
                 model_used="none",
-                reasoning_task="sql_unavailable",
+                reasoning_task=_sql_unavailable_task(sql_infra_error),
                 thinking=thinking,
             )
             return
@@ -820,8 +834,9 @@ def _is_document_listing_query(question: str) -> bool:
 
 def _build_document_list_answer(user_id: str | None = None) -> str:
     """Build a human-friendly answer from the ingestion registry."""
-    from src.rag.ingestion_registry import IngestionRegistry
     import datetime
+
+    from src.rag.ingestion_registry import IngestionRegistry
 
     registry = IngestionRegistry()
     # Only the current (active) version of each document — superseded versions

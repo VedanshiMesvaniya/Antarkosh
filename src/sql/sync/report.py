@@ -36,6 +36,7 @@ PHASES: tuple[tuple[str, str], ...] = (
     ("join_paths", "join_paths"),
     ("column_meaning", "column_meaning"),
     ("routing_hints", "routing_hints"),
+    ("soft_delete", "soft_delete"),
 )
 
 

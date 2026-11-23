@@ -120,11 +120,13 @@ DB_FEATURE_FLAGS: tuple[str, ...] = (
     "auto_relationships_data_apply",  # Release 2: check likely joins against the connected database with aggregate counts only (no values), then publish the proven ones
     "auto_schema_contract_apply",  # Release 3: drop weak disconnected tables, mark unique keys, say which groups have no approved route, ground the prompt
     "auto_semantic_glossary_apply",  # Release 4 (part): link column meanings to the universal ERP glossary (concept, role, confidence, evidence) and write semantic_review.json
+    "auto_soft_delete_evidence_apply",  # Release 4: ask the database aggregate counts about likely soft-delete columns (shadow: logs what it would do)
+    "auto_soft_delete_guard_apply",  # Release 4: enforce them: verified markers filter, contradicted guesses stop, unconfirmed markers refuse the query
 )
 
 # Flags that start OFF, for a new database and when added to an existing one. Everything else in DB_FEATURE_FLAGS starts on.
 OFF_BY_DEFAULT_FLAGS: frozenset[str] = frozenset(
-    {"auto_prompt_hints_apply", "auto_resync_apply", "auto_stale_chunk_cleanup", "auto_learning_apply", "auto_retrieval_apply", "auto_relationships_data_apply", "auto_schema_contract_apply", "auto_semantic_glossary_apply"}
+    {"auto_prompt_hints_apply", "auto_resync_apply", "auto_stale_chunk_cleanup", "auto_learning_apply", "auto_retrieval_apply", "auto_relationships_data_apply", "auto_schema_contract_apply", "auto_semantic_glossary_apply", "auto_soft_delete_evidence_apply", "auto_soft_delete_guard_apply"}
 )
 
 # Databases pinned to their curated files: these flags are always False here,

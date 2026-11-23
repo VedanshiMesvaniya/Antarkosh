@@ -1225,6 +1225,19 @@ async def _sync_live_schema_body(
             logger.warning("Routing hints failed for %s: %s", db_id, exc)
             routing_hints_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 
+    # Release 4: evidence for soft-delete protection. Aggregate counts only (no value leaves the database) about the columns that
+    # look like "deleted" markers; written to semantics/soft_delete_evidence.json. Shadow first: this alone changes no answer.
+    # Per-DB flag, off by default; needs the catalog. Never fails the sync.
+    soft_delete_report: dict[str, Any] | None = None
+    if is_db_feature_enabled("auto_soft_delete_evidence_apply", db_id) and is_db_feature_enabled("auto_catalog", db_id):
+        try:
+            from src.sql.sa.soft_delete_phase import run_soft_delete_phase
+
+            soft_delete_report = await run_soft_delete_phase(db_id=db_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Soft-delete evidence failed for %s: %s", db_id, exc)
+            soft_delete_report = {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+
     # 7. Invalidate in-memory schema cache on SQLRetriever so next query picks up new schema
     try:
         from src.sql.pipeline import SQLRetriever
@@ -1267,6 +1280,8 @@ async def _sync_live_schema_body(
         result["column_meaning"] = column_meaning_report
     if routing_hints_report is not None:
         result["routing_hints"] = routing_hints_report
+    if soft_delete_report is not None:
+        result["soft_delete"] = soft_delete_report
     if orchestration_on:
         from src.sql.sync.report import schema_fingerprint
 

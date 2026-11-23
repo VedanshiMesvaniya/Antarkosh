@@ -45,6 +45,8 @@ db_defaults:
   auto_relationships_data_apply: false
   auto_schema_contract_apply: false
   auto_semantic_glossary_apply: false
+  auto_soft_delete_evidence_apply: false
+  auto_soft_delete_guard_apply: false
 
 db_features:
   _example_db:
@@ -70,6 +72,8 @@ db_features:
     auto_relationships_data_apply: false
     auto_schema_contract_apply: false
     auto_semantic_glossary_apply: false
+    auto_soft_delete_evidence_apply: false
+    auto_soft_delete_guard_apply: false
 
 # =============================================================================
 # FEATURE DESCRIPTIONS & USAGE GUIDE
@@ -186,3 +190,14 @@ db_features:
 #   semantics/semantic_review.json lists what is not certain (medium/low meanings, name-only readings, ambiguous aliases, stored codes
 #   without two independent signals). Only high-confidence mappings with evidence beyond the name reach a prompt. Metadata only.
 #   Off: the glossary and every prompt are exactly as before. Starts false.
+# auto_soft_delete_evidence_apply:
+#   Release 4 (evidence-based soft-delete protection), SHADOW stage. Needs auto_catalog. The sync asks the database, for each column that
+#   looks like a "deleted" marker (deleted_at, deleted_on, is_deleted, record_deleted, deleted, removed, rescinded ...), four or five
+#   aggregate counts over a bounded sample (rows, not NULL, distinct values, how many are spelled the usual 'Y'/'N', 1/0, TRUE/FALSE way).
+#   No value leaves the database. The result is classified per table (known active-row condition / no marker / uncertain possible marker) and
+#   written to semantics/soft_delete_evidence.json; at question time the guard only logs what it would have done
+#   (soft_delete_guard_shadow). Declared, curated and atlas soft-delete settings are never queried. No answer changes. Starts false.
+# auto_soft_delete_guard_apply:
+#   Release 4, ENFORCE stage (needs the flag above; turn it on one database at a time, after reading the shadow records). A column the counts
+#   verified becomes a soft-delete filter; a name+type guess the counts contradict is no longer enforced; a query on a table whose marker is
+#   only a possibility is refused with a plain message instead of risking deleted rows or dropping valid ones. Starts false.

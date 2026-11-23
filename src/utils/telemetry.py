@@ -45,6 +45,8 @@ ALLOWED_STAGES = frozenset({
     "route_bridge_applied",
     "schema_contract_shadow",
     "schema_contract_applied",
+    "soft_delete_guard_shadow",
+    "soft_delete_guard_applied",
     "table_authority_shadow",
     "table_authority_applied",
     "soft_delete_shadow",

@@ -54,7 +54,7 @@ class SoftDeleteSpec:
     table: str  # lower-case
     column: str  # as the catalog spells it
     kind: str
-    source: str  # curated | atlas | declared | discovered
+    source: str  # curated | atlas | declared | discovered | verified (Release 4: found by name, proved by aggregate counts)
 
     def describe(self) -> str:
         return f"{self.table}.{self.column} ({self.kind}, from {self.source})"
@@ -229,7 +229,25 @@ def _declared_column(db_id: str) -> str | None:
 
 
 def load_specs(db_id: str = DEFAULT_DB_ID, *, databases_dir: Path | None = None) -> dict[str, SoftDeleteSpec]:
-    """``{lower-case table name: spec}`` for one database (cached until a source file changes). Never raises."""
+    """``{lower-case table name: spec}`` for one database (cached until a source file changes). Never raises.
+
+    Release 4: with ``auto_soft_delete_guard_apply`` on for the database, the data's verdicts are applied on top (a column the
+    aggregate counts verified is added, a name+type guess they contradict is removed). With it off this is exactly ``load_base_specs``.
+    """
+    base = load_base_specs(db_id, databases_dir=databases_dir)
+    try:
+        from src.sql import soft_delete_evidence as ev
+
+        if not ev.guard_on(db_id):
+            return base
+        return ev.overlay(base, ev.load_view(db_id, base, databases_dir=databases_dir))
+    except Exception as exc:  # noqa: BLE001 - without the evidence the specs are exactly what they were
+        logger.debug("Soft-delete evidence overlay skipped for %s: %s", db_id, type(exc).__name__)
+        return base
+
+
+def load_base_specs(db_id: str = DEFAULT_DB_ID, *, databases_dir: Path | None = None) -> dict[str, SoftDeleteSpec]:
+    """The specs from curated, atlas, declared and name+type sources only (cached until a source file changes). Never raises."""
     try:
         validate_db_id(db_id)
         root = (Path(databases_dir) if databases_dir is not None else registry.DATABASES_DIR) / db_id
@@ -568,6 +586,7 @@ __all__ = [
     "deleted_condition",
     "discover_from_schema",
     "enforce",
+    "load_base_specs",
     "load_specs",
     "prompt_block",
     "render",
