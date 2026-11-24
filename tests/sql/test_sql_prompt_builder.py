@@ -45,7 +45,8 @@ def test_get_scoped_readability_rules_scopes():
         "What is the due date for delivery challan DC 527?",
         ["delivery_challan", "sales_order", "party"],
     )
-    assert "Mandatory Soft-Delete Rule: Excluding soft-deleted/inactive records is STRICTLY REQUIRED" in active_rules
+    assert "Mandatory Soft-Delete Rule: Apply a soft-delete condition only when this prompt supplies an exact table-specific soft-delete column and condition" in active_rules
+    assert "STRICTLY REQUIRED" in active_rules
     assert "EXPLICIT DELETED QUERY" not in active_rules and "AUDIT / HISTORY QUERY" not in active_rules
     assert "Delivery Challan (DC) vs Invoice & Due Date" in active_rules
     assert "Customer PO vs Supplier PO" in active_rules

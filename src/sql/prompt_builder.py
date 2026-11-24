@@ -374,9 +374,12 @@ def get_scoped_readability_rules(query: str, schema_tables: list[str], db_id: st
         )
     else:
         soft_delete_rule = (
-            "- Mandatory Soft-Delete Rule: Excluding soft-deleted/inactive records is STRICTLY REQUIRED for all operational queries. "
-            "ALWAYS filter out soft-deleted records using each queried table's exact marker column and condition specified below "
-            "(e.g. `is_deleted = 0`, `deleted_at IS NULL`, or flag condition). Never omit soft-delete filters."
+            "- Mandatory Soft-Delete Rule: Apply a soft-delete condition only when this prompt supplies an exact "
+            "table-specific soft-delete column and condition. Do not infer that active, status, enabled, or similar columns "
+            "mean deleted records. Use such a column only when the user explicitly asks for that status. "
+            "For every queried table that does have an exact soft-delete column and condition in this prompt "
+            "(e.g. `is_deleted = 0`, `deleted_at IS NULL`, or flag condition), that filter is STRICTLY REQUIRED for operational "
+            "queries and must never be omitted."
         )
 
     rules: list[str] = [

@@ -171,6 +171,28 @@ def _classify_auto_mode(query: str) -> str:
         return "hybrid"
 
 
+def _is_database_only(
+    mode: str,
+    search_query: str,
+    sql_chunks: list[RetrievedChunk],
+    vector_chunks: list[RetrievedChunk],
+) -> bool:
+    """True when document chunks came back beside a successful query for a question that is for the live database alone.
+
+    Then the live rows are the one authoritative result (``sql_payload``); the incidental document chunks are neither reranked nor
+    sent to a language model. An explicit ``mix`` request, and a question that also names documents (see ``_has_doc_signal``), keep
+    both sections. Without document chunks there is nothing to set aside, and without a SQL result the existing document fallback
+    applies: in both cases the answer is built exactly as before.
+    """
+    if not sql_chunks or not vector_chunks:
+        return False
+    if mode == "sql":
+        return True
+    if mode != "auto":
+        return False
+    return not _has_doc_signal(search_query)
+
+
 def _pin_sql_result_chunks(
     chunks: list[RetrievedChunk],
     sql_chunks: list[RetrievedChunk],
@@ -409,7 +431,10 @@ class QueryPipeline:
             # it always survives to generation regardless of what the reranker did
             # with the documents.
             rerank_k = settings.rerank_top_k if settings.enable_deep_rerank else min(settings.rerank_top_k, 25)
-            if exhaustive or not vector_chunks:
+            database_only = _is_database_only(mode, search_query, sql_chunks, vector_chunks)  # before `mode` is reused below
+            if database_only:
+                reranked = list(sql_chunks)  # one authoritative database result; the documents are not part of the answer
+            elif exhaustive or not vector_chunks:
                 reranked = _enforce_document_diversity(vector_chunks, rerank_k)
             else:
                 logger.info("[Tokens: %d/%d] [Stage 13] Reranking", budget_ctrl.get_current_usage(), budget_ctrl.max_tokens)
@@ -444,7 +469,8 @@ class QueryPipeline:
                 "reranked": len(reranked),
             }, query=question, db_id=target_db_id)
             result = await self._generator.generate(
-                question, reranked, history=gen_history, context_limit=context_limit, source_mode=mode
+                question, reranked, history=gen_history, context_limit=context_limit, source_mode=mode,
+                database_only=database_only,
             )
             result.chunks_retrieved = len(vector_chunks + sql_chunks)
             result.chunks_after_rerank = len(reranked)
@@ -730,7 +756,10 @@ class QueryPipeline:
 
         # Stage 13 — Reranking. SQL chunks NEVER go here — solo or blended.
         rerank_k = settings.rerank_top_k if settings.enable_deep_rerank else min(settings.rerank_top_k, 25)
-        if exhaustive or not vector_chunks:
+        database_only = _is_database_only(mode, search_query, sql_chunks, vector_chunks)  # before `mode` is reused below
+        if database_only:
+            reranked = list(sql_chunks)  # one authoritative database result; the documents are not part of the answer
+        elif exhaustive or not vector_chunks:
             reranked = _enforce_document_diversity(vector_chunks, rerank_k)
         else:
             reranked = await self._reranker.rerank(doc_subquery, vector_chunks, top_k=rerank_k)
@@ -774,7 +803,8 @@ class QueryPipeline:
             "reranked": len(reranked),
         }, query=question, db_id=target_db_id)
         async for chunk in self._generator.generate_stream(
-            question, reranked, history=gen_history, context_limit=context_limit, source_mode=mode
+            question, reranked, history=gen_history, context_limit=context_limit, source_mode=mode,
+            database_only=database_only,
         ):
             if isinstance(chunk, QueryResult):
                 if chunk.model_used:

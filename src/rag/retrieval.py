@@ -290,10 +290,14 @@ class Generator:
         history: list[dict] | None = None,
         context_limit: int | None = None,
         source_mode: str = "doc_only",
+        database_only: bool = False,
     ) -> QueryResult:
         """Generate an answer from retrieved chunks.
 
         Automatically routes to the best model for the inferred task type.
+
+        ``database_only`` is set when the question is for the live database alone and its query succeeded: the answer is then one
+        short deterministic sentence, no language model is called, and the rows travel only in ``sql_payload``.
 
         ``context_limit`` caps how many of the (already reranked) chunks are
         actually placed in the prompt; ``None`` uses them all. The top few
@@ -317,6 +321,19 @@ class Generator:
         sql_table_md = _extract_sql_table(chunks)
         sql_payload = _extract_sql_payload(chunks)
         has_other_chunks = any(c.chunk.chunk_type != ChunkType.SQL_RESULT for c in chunks)
+
+        if database_only and sql_payload:
+            return QueryResult(
+                query=query,
+                answer=_database_result_sentence(sql_payload),
+                citations=[],
+                model_used="sql/direct",
+                reasoning_task=task,
+                chunks_retrieved=len(chunks),
+                chunks_after_rerank=len(chunks),
+                usage=self._router.usage.model_copy(),
+                sql_payload=sql_payload,
+            )
 
         # When SQL and doc chunks coexist, provide up to 10 top document chunks
         # directly from the full candidate pool to ensure multi-part technical
@@ -458,6 +475,8 @@ Question: {query}"""
 
         # Extract citations and format the answer text
         citations, clean_answer = _extract_and_format_citations(response, context_chunks)
+        if sql_table_md:
+            clean_answer = _strip_markdown_tables(clean_answer)  # the only table is the system's own, from the live query
         # Append the SQL table if not already embedded in the clean answer (placed BEFORE references)
         if sql_table_md and sql_table_md not in clean_answer:
             if "**References**" in clean_answer:
@@ -491,8 +510,11 @@ Question: {query}"""
         history: list[dict] | None = None,
         context_limit: int | None = None,
         source_mode: str = "doc_only",
+        database_only: bool = False,
     ):
         """Stage 14: Answer generation via LLM stream.
+
+        ``database_only``: see generate(); the one deterministic sentence is yielded and no language model is called.
 
         Yields string chunks during generation, and a final QueryResult object
         when the stream completes. ``context_limit`` caps how many reranked
@@ -522,6 +544,22 @@ Question: {query}"""
         sql_table_md = _extract_sql_table(context_chunks)
         sql_payload = _extract_sql_payload(context_chunks)
         has_other_chunks = any(c.chunk.chunk_type != ChunkType.SQL_RESULT for c in context_chunks)
+
+        if database_only and sql_payload:
+            answer = _database_result_sentence(sql_payload)
+            yield answer
+            yield QueryResult(
+                query=query,
+                answer=answer,
+                citations=[],
+                model_used="sql/direct",
+                reasoning_task=task,
+                chunks_retrieved=len(chunks),
+                chunks_after_rerank=len(chunks),
+                usage=self._router.usage.model_copy(),
+                sql_payload=sql_payload,
+            )
+            return
 
         # When SQL and doc chunks coexist, provide up to 5 top document chunks
         # to ensure multi-part technical and policy contexts are not starved.
@@ -645,6 +683,8 @@ Question: {query}"""
 
         full_answer = "".join(full_answer_parts)
         citations, clean_answer = _extract_and_format_citations(full_answer, context_chunks)
+        if sql_table_md:
+            clean_answer = _strip_markdown_tables(clean_answer)  # the only table is the system's own, from the live query
         # Append the SQL table if not already in the clean answer (placed BEFORE references)
         if sql_table_md and sql_table_md not in clean_answer:
             if "**References**" in clean_answer:
@@ -934,6 +974,41 @@ _ANSWER_RULES = (
 )
 
 
+def _database_result_sentence(sql_payload: dict[str, Any]) -> str:
+    """The one deterministic sentence that goes with a live database result. The rows themselves stay in ``sql_payload``."""
+    count = sql_payload.get("row_count")
+    if not isinstance(count, int) or isinstance(count, bool):
+        count = len(sql_payload.get("rows") or [])
+    if count <= 0:
+        return "No matching live records were found."
+    if count == 1:
+        return "Found 1 matching live record."
+    return f"Found {count:,} matching live records."
+
+
+_TABLE_LINE = re.compile(r"^[ \t]*\|.*\|[ \t]*$")
+
+
+def _strip_markdown_tables(text: str) -> str:
+    """Remove Markdown tables (two or more consecutive ``| ... |`` lines) from a document answer written beside a live result.
+
+    The model never receives the database rows, so a table it writes is not the database's; the system appends the real one.
+    """
+    lines = text.split("\n")
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        j = i
+        while j < len(lines) and _TABLE_LINE.match(lines[j]):
+            j += 1
+        if j - i >= 2:
+            i = j
+            continue
+        out.append(lines[i])
+        i += 1
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
+
+
 def _source_mode(chunks: list[RetrievedChunk]) -> str:
     has_sql = any(c.chunk.chunk_type == ChunkType.SQL_RESULT for c in chunks)
     has_doc = any(c.chunk.chunk_type != ChunkType.SQL_RESULT for c in chunks)
@@ -951,7 +1026,8 @@ _MODE_INSTRUCTIONS = {
         "The user query is a hybrid or multi-part inquiry asking about both database metrics and document information. "
         "The live database query results are handled directly by our system and appended automatically to the final response. "
         "Focus your response entirely on answering the document and conceptual aspects of the question accurately using the provided document excerpts. "
-        "Cite document sources with their bracketed markers (e.g. [1]). Do not invent or fabricate database figures or operational numbers."
+        "Cite document sources with their bracketed markers (e.g. [1]). Do not invent or fabricate database figures or operational numbers. "
+        "Never write a table of database records and never say or imply that you have seen the live database rows; the system shows them separately."
     ),
     "doc_only": "",  # existing prompt works as-is
 }

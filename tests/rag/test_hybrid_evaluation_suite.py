@@ -232,7 +232,8 @@ def test_soft_delete_prompt_scoping():
     
     # Active query prompt rules
     active_rules = SQLRetriever._get_scoped_readability_rules("What is the sales order due date for HM TOOLS?", ["sales_order", "party"])
-    assert "Excluding soft-deleted/inactive records is STRICTLY REQUIRED" in active_rules
+    assert "Apply a soft-delete condition only when this prompt supplies an exact table-specific soft-delete column and condition" in active_rules
+    assert "STRICTLY REQUIRED" in active_rules
     assert "EXPLICIT DELETED QUERY" not in active_rules
     
     # Deleted query prompt rules

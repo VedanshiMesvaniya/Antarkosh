@@ -316,7 +316,7 @@ async def test_sql_plus_document_blends_prose_and_appends_exact_table(
     pipeline._sql_retriever.retrieve = AsyncMock(return_value=[sql_retrieved])
     pipeline._reranker.rerank = AsyncMock(return_value=[vector_retrieved])
 
-    result = await pipeline.query("Show me the live database results")
+    result = await pipeline.query("List all warehouses and explain the return policy document")
 
     assert isinstance(result, QueryResult)
     # Both sources present: LLM prose from the document, exact SQL table appended.
@@ -363,13 +363,123 @@ async def test_sql_plus_document_blends_streaming_keeps_sql_private(
     pipeline._reranker.rerank = AsyncMock(return_value=[vector_retrieved])
 
     chunks = []
-    async for chunk in pipeline.query_stream("Show me the live database results"):
+    async for chunk in pipeline.query_stream("List all warehouses and explain the return policy document"):
         chunks.append(chunk)
 
     final_result = [c for c in chunks if isinstance(c, QueryResult)][0]
     assert "Streaming answer for document context." in final_result.answer
     assert sql_table in final_result.answer
     assert final_result.sql_payload is not None
+
+
+# ---- one authoritative database result -------------------------------------------------------------------------------------------------
+
+
+_FAKE_TABLE = "| model | units |\n| --- | --- |\n| H100 | 999 |"  # what a model could invent from a document
+
+
+def _pipeline(mock_router, mock_store, mock_embeddings, *, sql=True, docs=True) -> QueryPipeline:
+    mock_store.search_hybrid = AsyncMock(return_value=[_doc_retrieved()] if docs else [])
+    pipeline = QueryPipeline(router=mock_router, vector_store=mock_store, embedding_service=mock_embeddings)
+    pipeline._sql_retriever.retrieve = AsyncMock(return_value=[_sql_retrieved()] if sql else [])
+    pipeline._reranker.rerank = AsyncMock(return_value=[_doc_retrieved()])
+    return pipeline
+
+
+@pytest.mark.asyncio
+async def test_a_database_question_with_incidental_documents_shows_one_database_result(mock_router, mock_store, mock_embeddings):
+    """The query succeeded and the question names no document: the live rows are the one result (sql_payload). Document chunks that
+    happened to come back are neither reranked nor synthesized, so no second table can appear."""
+    mock_router.chat = AsyncMock(return_value=_FAKE_TABLE)
+    pipeline = _pipeline(mock_router, mock_store, mock_embeddings)
+
+    result = await pipeline.query("Show me the live database results")
+
+    assert result.answer == "Found 1 matching live record."
+    assert "|" not in result.answer and "H100" not in result.answer  # no table in the text, and nothing invented
+    assert result.sql_payload is not None and result.sql_payload["rows"] == [{"model": "A100", "units": "12"}]
+    assert result.model_used == "sql/direct" and result.citations == []
+    assert mock_router.chat.await_count == 0  # no synthesis call at all
+    assert pipeline._reranker.rerank.await_count == 0  # the incidental documents are not even ranked
+
+
+@pytest.mark.asyncio
+async def test_a_model_that_would_write_a_table_cannot_create_a_second_table_for_a_database_question(mock_router, mock_store, mock_embeddings):
+    mock_router.chat = AsyncMock(return_value=_FAKE_TABLE)
+
+    async def _stream(*args, **kwargs):
+        yield _FAKE_TABLE
+
+    mock_router.chat_stream = _stream
+    pipeline = _pipeline(mock_router, mock_store, mock_embeddings)
+
+    streamed = [c async for c in pipeline.query_stream("Show me the live database results")]
+    final = [c for c in streamed if isinstance(c, QueryResult)][0]
+    text = "".join(c for c in streamed if isinstance(c, str))
+    assert final.answer == "Found 1 matching live record." and text == final.answer
+    assert "|" not in text and final.sql_payload is not None
+    assert mock_router.chat.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_a_zero_row_database_result_still_gets_one_plain_sentence(mock_router, mock_store, mock_embeddings):
+    empty = _sql_retrieved()
+    empty.chunk.metadata = {"sql_payload": {"query": "SELECT 1", "columns": ["a"], "rows": [], "row_count": 0}}
+    mock_router.chat = AsyncMock(return_value=_FAKE_TABLE)
+    pipeline = _pipeline(mock_router, mock_store, mock_embeddings)
+    pipeline._sql_retriever.retrieve = AsyncMock(return_value=[empty])
+    result = await pipeline.query("Show me the live database results")
+    assert result.answer == "No matching live records were found." and mock_router.chat.await_count == 0
+
+
+@pytest.mark.asyncio
+async def test_a_genuine_two_part_question_keeps_the_database_result_and_the_document_explanation_apart(mock_router, mock_store, mock_embeddings):
+    """The question names documents too: both sections stay. The document model still never sees the rows, and a table it writes
+    is removed, so the only table is the live one."""
+    mock_router.chat = AsyncMock(return_value=f"The return policy allows 30 days.\n\n{_FAKE_TABLE}\n\nSee the policy.")
+    pipeline = _pipeline(mock_router, mock_store, mock_embeddings)
+
+    result = await pipeline.query("List all warehouses and explain the return policy document")
+
+    assert "The return policy allows 30 days." in result.answer and "See the policy." in result.answer
+    assert "H100" not in result.answer  # the invented table is gone
+    assert result.answer.count(_sql_table_md()) == 1 and result.sql_payload is not None  # the live one is attached once
+    prompt = " ".join(m.get("content", "") for m in mock_router.chat.call_args.kwargs["messages"])
+    assert "A100" not in prompt and "SQL Query Executed" not in prompt
+    assert "never say or imply that you have seen the live database rows" in prompt
+
+
+@pytest.mark.asyncio
+async def test_an_explicit_mix_request_keeps_both_sections_even_without_a_document_word(mock_router, mock_store, mock_embeddings):
+    mock_router.chat = AsyncMock(return_value="Prose from the document.")
+    pipeline = _pipeline(mock_router, mock_store, mock_embeddings)
+    result = await pipeline.query("Show me the live database results", mode="mix")
+    assert "Prose from the document." in result.answer and _sql_table_md() in result.answer
+    assert mock_router.chat.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_no_sql_result_leaves_the_document_path_untouched(mock_router, mock_store, mock_embeddings):
+    mock_router.chat = AsyncMock(return_value="According to the document: Paris.")
+    pipeline = _pipeline(mock_router, mock_store, mock_embeddings, sql=False)
+    result = await pipeline.query("Show me the live database results")
+    assert "According to the document: Paris." in result.answer and result.sql_payload is None
+
+
+def test_the_one_sentence_and_the_table_stripper_are_plain_deterministic_helpers():
+    from src.rag.retrieval import _database_result_sentence, _strip_markdown_tables
+
+    assert _database_result_sentence({"row_count": 500}) == "Found 500 matching live records."
+    assert _database_result_sentence({"row_count": 1234}) == "Found 1,234 matching live records."
+    assert _database_result_sentence({"row_count": 1}) == "Found 1 matching live record."
+    assert _database_result_sentence({"row_count": 0}) == "No matching live records were found."
+    assert _database_result_sentence({"rows": [{}, {}]}) == "Found 2 matching live records."  # no count: the rows are counted
+    assert _database_result_sentence({"row_count": True, "rows": []}) == "No matching live records were found."
+    text = "Intro line.\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\nA | not a table.\n| only one line |\n\nEnd."
+    out = _strip_markdown_tables(text)
+    assert "| 1 | 2 |" not in out and "Intro line." in out and "End." in out
+    assert "A | not a table." in out and "| only one line |" in out  # a single pipe line is not a table
+    assert _strip_markdown_tables("no tables here") == "no tables here"
 
 
 @pytest.mark.asyncio

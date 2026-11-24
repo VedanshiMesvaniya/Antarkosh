@@ -481,6 +481,104 @@ _is_safe_read_query = is_safe_read_query
 # Core SQL Generation Function
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Safeguard 4: a status filter nobody asked for
+# ---------------------------------------------------------------------------
+# A column called active, status or enabled is not a soft-delete column unless the database's own soft-delete metadata says so.
+# When the model adds ``active = 'Y'`` to an ordinary lookup, the query can return nothing for a reason the user never stated.
+
+_STATUS_COLUMNS = frozenset({
+    "active", "isactive", "activeflag", "activestatus", "inactive", "isinactive",
+    "enabled", "isenabled", "enableflag", "disabled", "isdisabled", "status", "statusflag",
+})
+_STATUS_FLAG_VALUES = frozenset({  # what a yes/no style state is compared with; a business status such as 'OPEN' is not here
+    "y", "n", "yes", "no", "1", "0", "true", "false", "t", "f", "a", "i", "active", "inactive", "enabled", "disabled",
+})
+_STATUS_REQUEST_RE = re.compile(
+    r"\b(?:active|inactive|activated|deactivated|enabled?|disabled?|status(?:es)?|current(?:ly)?|live|existing|present|valid|invalid)\b",
+    re.IGNORECASE,
+)
+
+
+def _literal_texts(nodes: list[exp.Expression]) -> list[str] | None:
+    """Lower-case text of plain literals; None as soon as anything else (a column, a function, a subquery) is involved."""
+    out: list[str] = []
+    for node in nodes:
+        if isinstance(node, exp.Boolean):
+            out.append("true" if node.this else "false")
+        elif isinstance(node, exp.Literal):
+            out.append(str(node.this).strip().lower())
+        else:
+            return None
+    return out or None
+
+
+def unrequested_status_filters(sql: str, query: str, dialect: str, db_id: str = DEFAULT_DB_ID) -> list[str]:
+    """``table.column`` of every active/status/enabled style filter in ``sql`` that the question did not ask for.
+
+    Only an ordinary lookup is judged: the question names no status (active, inactive, enabled, status, current, ...) and is not about
+    deleted or archived records. A column that is the database's own soft-delete marker is never reported (its filtering is mandatory
+    and handled elsewhere), and neither is a business status such as ``status = 'OPEN'``. Only top-level AND-ed conditions of WHERE and
+    JOIN ... ON are read. Never raises; an empty list means nothing to say.
+    """
+    try:
+        if not sql or detect_soft_delete_intent(query) != "ACTIVE_ONLY" or _STATUS_REQUEST_RE.search(query or ""):
+            return []
+        from src.sql.soft_delete_spec import conjuncts, load_specs
+
+        specs = load_specs(db_id)
+        found: list[str] = []
+        for sel in sqlglot.parse_one(sql, read=dialect).find_all(exp.Select):
+            names: dict[str, str] = {}  # qualifier (alias or table name) -> table name, for this SELECT's own tables
+            for tbl in sel.find_all(exp.Table):
+                if tbl.find_ancestor(exp.Select) is sel:
+                    names[tbl.name.lower()] = tbl.name.lower()
+                    if tbl.alias:
+                        names[tbl.alias.lower()] = tbl.name.lower()
+            tables = set(names.values())
+            markers = {specs[t].column.lower() for t in tables if t in specs}
+            conds: list[exp.Expression] = []
+            where = sel.args.get("where")
+            if where is not None:
+                conds += conjuncts(where.this)
+            for join in sel.args.get("joins") or []:
+                if join.args.get("on") is not None:
+                    conds += conjuncts(join.args["on"])
+            for cond in conds:
+                if isinstance(cond, (exp.EQ, exp.NEQ)):
+                    col, values = (cond.this, [cond.expression]) if isinstance(cond.this, exp.Column) else (cond.expression, [cond.this])
+                elif isinstance(cond, exp.In) and not cond.args.get("query"):
+                    col, values = cond.this, list(cond.expressions)
+                else:
+                    continue
+                if not isinstance(col, exp.Column) or re.sub(r"[^a-z0-9]", "", col.name.lower()) not in _STATUS_COLUMNS:
+                    continue
+                literals = _literal_texts(values)
+                if literals is None or not all(v in _STATUS_FLAG_VALUES for v in literals):
+                    continue
+                qualifier = col.table.lower()
+                table = names.get(qualifier) if qualifier else (next(iter(tables)) if len(tables) == 1 else None)
+                if table is not None:
+                    spec = specs.get(table)
+                    if spec is not None and spec.column.lower() == col.name.lower():
+                        continue  # the verified soft-delete marker of that table
+                elif col.name.lower() in markers:
+                    continue  # cannot tell which table, and one of them uses this column as its soft-delete marker
+                found.append(f"{table}.{col.name}" if table else col.name)
+        return list(dict.fromkeys(found))
+    except Exception as exc:  # noqa: BLE001 - a safeguard that cannot read the SQL says nothing rather than blocking it
+        logger.debug("Status-filter check skipped: %s", exc)
+        return []
+
+
+def _status_filter_feedback(found: list[str]) -> str:
+    cols = ", ".join(f"`{c}`" for c in found)
+    return (
+        f"The SQL filtered on {cols}, but the question did not ask for that status and it is not a soft-delete column. "
+        "Write the query again without that condition; keep every other part of the query as it was."
+    )
+
+
 async def generate_sql(
     router: ProviderRouter,
     query: str,
@@ -491,8 +589,11 @@ async def generate_sql(
     relationships: str | None = None,
     pattern_learner: Any | None = None,
     budget_controller: Any | None = None,
+    _status_retry: bool = False,
 ) -> tuple[str, str | None, str | None]:
     """Prompt the reasoning LLM to generate SQL.
+
+    ``_status_retry`` is set only by the one retry made for a status filter the question did not ask for (Safeguard 4).
 
     Returns:
         (sql_query, cot_plan, infra_error)
@@ -585,6 +686,26 @@ async def generate_sql(
         blocked = soft_delete_guard(sql, soft_intent, dialect.sqlglot_dialect, db_id)
         if blocked:
             return "", cot_plan, guard_error(blocked)
+
+        # Safeguard 4: an active/status/enabled filter the question never asked for, on a column that is not a soft-delete marker,
+        # is not executed as written. The model is asked once to write the query again without it (the condition is never removed
+        # silently). If that retry gives nothing usable, the first query is kept: the safeguard never makes an answer fail.
+        if not _status_retry:
+            flagged = unrequested_status_filters(sql, query, dialect.sqlglot_dialect, db_id)
+            if flagged:
+                logger.warning("SQL filters on %s without being asked; asking for one rewrite without it.", flagged)
+                feedback = _status_filter_feedback(flagged)
+                retried_sql, retried_cot, _retried_err = await generate_sql(
+                    router, query, schema, dialect, db_id=db_id,
+                    last_error=f"{last_error}\n{feedback}" if last_error else feedback,
+                    relationships=relationships, pattern_learner=pattern_learner, budget_controller=budget_controller,
+                    _status_retry=True,
+                )
+                if retried_sql:
+                    if unrequested_status_filters(retried_sql, query, dialect.sqlglot_dialect, db_id):
+                        logger.warning("The rewrite still filters on a status nobody asked for; running it as written.")
+                    return retried_sql, retried_cot or cot_plan, None
+                logger.warning("The rewrite gave no SQL; keeping the first query.")
         return sql, cot_plan, None
 
     except (TokenBudgetExceededError, QueryBudgetExceededError) as budget_err:
