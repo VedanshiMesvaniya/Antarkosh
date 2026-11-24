@@ -338,3 +338,174 @@ def test_flag_is_registered_off_by_default_and_documented() -> None:
     cfg = yaml.safe_load((ROOT / "config" / "feature_flags.example.yaml").read_text(encoding="utf-8"))
     assert cfg["db_defaults"]["auto_retrieval_apply"] is False
     assert cfg["db_features"]["_example_db"]["auto_retrieval_apply"] is False
+
+
+# ----------------------------------------------------------------------------------------------- 5. keyword hygiene, evidence tiers, countries
+#
+# General rules only: every table, column and phrase below is invented for the test and no rule depends on any one database.
+
+
+def _card(full_name: str, phrases: list[str], confidence: str = "high") -> dict[str, Any]:
+    return {"full_name": full_name, "phrases": phrases, "confidence": confidence}
+
+
+def _dictionary(root: Path, tables: dict[str, dict[str, dict[str, Any]]]) -> None:
+    _semantics(root, DB, "column_dictionary.json", {"generated_by": GENERATED_BY, "tables": {t: {"columns": cols} for t, cols in tables.items()}})
+
+
+def _scrap_world(root: Path) -> set[str]:
+    _catalog(
+        root, DB,
+        table("nc_scrap", {"id": "int", "qty_scrap": "int"}, pk=("id",)),
+        table("commodity_master", {"id": "int", "commodity_name": "varchar"}, pk=("id",)),
+        table("pr_main", {"id": "int", "disputed": "varchar"}, pk=("id",)),
+        table("misc", {"id": "int", "created_on": "datetime"}, pk=("id",)),
+    )
+    # the generated phrase is a sentence: it used to put the word "there" in the index of pr_main
+    _dictionary(root, {"pr_main": {"disputed": _card("dispute flag", ["is there a dispute", "did containment break"])}})
+    return {"nc_scrap", "commodity_master", "pr_main", "misc"}
+
+
+def test_filler_words_are_stop_words_and_never_select_a_table(dbs: Path) -> None:
+    for word in ("there", "here", "please", "me", "us", "it", "its", "do", "does", "did", "be", "been", "being", "can", "could", "would", "should"):
+        assert word in rt._STOP or rt._useful(word) == set(), word
+    assert rt._useful("how much scrap is there per commodity, please") == {"scrap", "commodity"}
+    available = _scrap_world(dbs)
+    found = _find("How much scrap is there per commodity?", available=available)
+    assert set(found) == {"nc_scrap", "commodity_master"}
+    assert "pr_main" not in found  # "there" no longer reaches the dispute column
+    assert _find("is there anything here, please", available=available) == []  # a question that is all filler finds nothing by itself
+    assert _find("is there a dispute", available=available) == ["pr_main"]  # ... while the real word in it still does
+
+
+def test_a_generated_sentence_is_never_indexed_but_the_label_and_real_phrases_are(dbs: Path) -> None:
+    available = _scrap_world(dbs)
+    idx = rt.load_column_index(DB)
+    assert idx is not None
+    words = {w for _t, _c, ws in idx.columns for w in ws}
+    assert {"dispute", "flag", "scrap"} <= words  # the full_name label "dispute flag" is indexed
+    assert not words & {"there", "containment", "break"}  # the two sentences are not
+    assert _find("which dispute is open", available=available) == ["pr_main"]
+    assert rt._sentence_like("is there a dispute") and rt._sentence_like("did containment break") and rt._sentence_like("does this record repeat")
+    assert not rt._sentence_like("quantity scrapped") and not rt._sentence_like("list price") and not rt._sentence_like("date of birth")
+
+
+def test_exact_names_outrank_generated_meanings_and_sentences_score_nothing(dbs: Path) -> None:
+    _catalog(
+        dbs, DB,
+        table("gen_supplier_master", {"id": "int", "supplier_name": "varchar"}, pk=("id",)),
+        table("po_main", {"id": "int", "vendor_ref": "int", "supplier_name": "varchar"}, pk=("id",)),
+        table("quality_log", {"id": "int", "x1": "varchar", "x2": "varchar"}, pk=("id",)),
+        table("sentence_log", {"id": "int", "y1": "varchar"}, pk=("id",)),
+        table("misc", {"id": "int", "created_on": "datetime"}, pk=("id",)),
+    )
+    _dictionary(dbs, {
+        "quality_log": {"x1": _card("supplier complaint", [], "medium")},
+        "sentence_log": {"y1": _card("record flag", ["is it a supplier problem"], "high")},
+    })
+    ev = rt.question_evidence("show every supplier", [], DB, ["gen_supplier_master", "po_main", "quality_log", "sentence_log", "misc"])
+    assert ev["gen_supplier_master"].score == rt.EVIDENCE_TABLE_NAME and ev["gen_supplier_master"].strong_table
+    assert ev["po_main"].score == rt.EVIDENCE_COLUMN_NAME and not ev["po_main"].strong_table
+    assert ev["quality_log"].score == rt.EVIDENCE_MEANING  # a medium-confidence generated label: used, but weakest
+    assert ev["gen_supplier_master"].score > ev["po_main"].score > ev["quality_log"].score > 0
+    assert "sentence_log" not in ev and "misc" not in ev  # a generic LLM sentence adds no score at all
+
+
+def test_a_word_many_tables_use_is_no_evidence_for_a_column_but_a_table_name_always_counts(dbs: Path) -> None:
+    tables = [table(f"t{i}", {"id": "int", "supplier_id": "int"}, pk=("id",)) for i in range(8)]
+    _catalog(dbs, DB, table("gen_supplier_master", {"id": "int", "supplier_name": "varchar"}, pk=("id",)), *tables)
+    ev = rt.question_evidence("every supplier", [], DB, ["gen_supplier_master", "t0", "t1"])
+    assert set(ev) == {"gen_supplier_master"}  # supplier_id sits in eight tables: it points at none of them
+
+
+def test_medium_meanings_help_retrieval_locally_but_never_reach_the_prompt_glossary(dbs: Path) -> None:
+    from src.sql.semantics.wiring import build_glossary_entries
+
+    _catalog(
+        dbs, DB,
+        table("scrap_log", {"id": "int", "q1": "int"}, pk=("id",)),
+        table("rack_log", {"id": "int", "r1": "varchar"}, pk=("id",)),
+        table("bin_log", {"id": "int", "b1": "varchar"}, pk=("id",)),
+        table("misc", {"id": "int", "created_on": "datetime"}, pk=("id",)),
+    )
+    cards = {
+        "scrap_log": {"q1": _card("scrap quantity", ["quantity scrapped"], "medium")},
+        "rack_log": {"r1": _card("storage rack", ["rack position"], "high")},
+        "bin_log": {"b1": _card("pallet bin", ["pallet slot"], "low")},
+    }
+    _dictionary(dbs, cards)
+    available = {"scrap_log", "rack_log", "bin_log", "misc"}
+    assert _find("how much was scrapped", available=available) == ["scrap_log"]  # medium: used to find the table
+    assert _find("which storage rack", available=available) == ["rack_log"]  # high: used
+    assert _find("which pallet slot", available=available) == []  # low: left to semantic_review.json
+    graph = load_graph(DB)
+    assert graph is not None
+    doc = {"generated_by": GENERATED_BY, "tables": {t: {"columns": c} for t, c in cards.items()}}
+    mapped = {e["maps_to"] for e in build_glossary_entries(doc, graph).values()}
+    assert mapped == {"rack_log.r1"}  # only the high-confidence meaning can ever be shown to the model
+
+
+def test_a_card_without_a_confidence_is_still_used_as_before(dbs: Path) -> None:
+    _catalog(dbs, DB, table("ledger", {"id": "int", "mc": "varchar"}, pk=("id",)), table("misc", {"id": "int", "x": "int"}, pk=("id",)))
+    _semantics(dbs, DB, "column_dictionary.json", {"generated_by": GENERATED_BY, "tables": {"ledger": {"columns": {"mc": {"full_name": "warehouse bin"}}}}})
+    assert _find("which warehouse bin", available={"ledger", "misc"}) == ["ledger"]
+
+
+# ---- countries
+
+
+def test_country_names_are_detected_from_a_small_global_reference_and_ordinary_words_are_not() -> None:
+    assert rt.detect_countries("suppliers from Germany") == ["Germany"]
+    assert rt.detect_countries("orders shipped to the UK and the united states") == ["United Kingdom", "United States"]
+    assert rt.detect_countries("Cote d'Ivoire sales") == ["Cote d'Ivoire"]
+    for plain in ("how many orders are there in total", "show us it", "who is in charge", "orders by Jordan", ""):
+        assert rt.detect_countries(plain) == []
+    assert rt.detect_countries(None) == []  # type: ignore[arg-type]
+
+
+def test_the_country_reference_is_only_standard_names_and_cannot_hold_an_ordinary_word() -> None:
+    doc = json.loads((ROOT / "config" / "iso_country_terms.json").read_text(encoding="utf-8"))
+    names = [c["name"] for c in doc["countries"]]
+    assert len(names) == len(set(names)) > 150 and "Germany" in names and "India" in names
+    for entry in doc["countries"]:
+        assert set(entry) <= {"name", "aliases"}  # names and aliases only: no client data, no values, no tables
+        for label in (entry["name"], *entry.get("aliases", [])):
+            assert label.isascii() and not set(rt._words(label)) <= rt._STOP, label  # "us", "in", "it" can never be a country
+
+
+def test_a_bad_country_file_means_no_detection_and_no_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(rt, "PROJECT_ROOT", tmp_path)
+    (tmp_path / "config").mkdir()
+    rt.clear_retrieval_terms_cache()
+    assert rt.detect_countries("suppliers from Germany") == []  # missing file
+    (tmp_path / "config" / "iso_country_terms.json").write_text("{not json", encoding="utf-8")
+    rt.clear_retrieval_terms_cache()
+    assert rt.detect_countries("suppliers from Germany") == []
+    (tmp_path / "config" / "iso_country_terms.json").write_text(json.dumps({"countries": [{"name": "Us"}, {"name": "Peru", "aliases": ["in"]}, 5]}), encoding="utf-8")
+    rt.clear_retrieval_terms_cache()
+    assert rt.detect_countries("orders for us in Peru") == ["Peru"]  # "us" and "in" are filler and are skipped
+    rt.clear_retrieval_terms_cache()
+
+
+def test_a_named_country_marks_tables_that_hold_a_country_or_a_place_and_never_adds_words(dbs: Path) -> None:
+    _catalog(
+        dbs, DB,
+        table("gen_supplier_master", {"id": "int", "supplier_name": "varchar"}, pk=("id",)),
+        table("sup_address", {"id": "int", "supplier_id": "int", "country_name": "varchar"}, pk=("id",)),
+        table("plant_site", {"id": "int", "site_location": "varchar"}, pk=("id",)),
+        table("misc", {"id": "int", "created_on": "datetime"}, pk=("id",)),
+    )
+    names = ["gen_supplier_master", "sup_address", "plant_site", "misc"]
+    ev = rt.question_evidence("suppliers from Germany", [], DB, names)
+    assert ev["sup_address"].place == 0 and ev["plant_site"].place == 1 and ev["plant_site"].score == 0
+    assert "misc" not in ev and ev["gen_supplier_master"].strong_table
+    assert rt.place_tables(DB, names) == {"sup_address": 0, "plant_site": 1}
+    assert all(e.place is None for e in rt.question_evidence("suppliers from nowhere", [], DB, names).values())  # no country named: no marks
+    assert rt.expand_query_terms("suppliers from Germany", DB) == []  # the search text never gains a country word
+    assert not any("german" in r for e in ev.values() for r in e.reasons)  # the country name itself is not evidence for any table
+
+
+def test_evidence_is_empty_without_a_catalog_and_never_raises(dbs: Path) -> None:
+    assert rt.question_evidence("every supplier", [], DB, ["a"]) == {}
+    assert rt.question_evidence("every supplier", [], "erp_main", ["a"]) == {}
+    assert rt.place_tables(DB, ["a"]) == {}

@@ -557,27 +557,96 @@ async def retrieve_schema_from_qdrant(
         # dropped before the budget is spent (apply mode: Phase 12 flags + auto_schema_contract_apply + compaction on); shadow mode
         # only logs what would be dropped. Anchors, bridges, real-data tables and the top vector matches are never dropped. Needs
         # approved relationships; without them, or on any error, nothing changes.
+        #
+        # With auto_retrieval_apply also on, the contract knows how directly the question's own words point at each chosen table
+        # (a word of its name, a column, a meaning): such a table is never dropped, the main group is the one with the most of that
+        # evidence, and a country named in the question gets an approved route from the entity to a country/region/location table.
         contract_applied = False
         contract_rels: list[dict[str, Any]] = []
         contract_chains: list[tuple[str, ...]] = [tuple(r.tables) for r in route_plan.routes] if route_plan is not None else []
+        filter_route: Any = None
+        filter_added: list[str] = []
+        filter_applied = False
         try:
             from src.sql import schema_contract as _contract
 
             contract_mode = _contract.contract_mode(db_id)
             if contract_mode:
                 contract_rels = _get_raw_relationships(db_id)
-                contract_plan = _contract.plan_contract(candidate_list, contract_rels, contract_chains)
+                # The prompt uses the same rule (``contract_active``): approved relationships must exist, so retrieval and the
+                # prompt wording never disagree. Routes alone (join_paths.json) are not enough to judge a database.
+                judgeable = bool(_contract.trusted_edges(contract_rels))
+                will_apply = contract_mode == "apply" and is_feature_enabled("schema_compaction_enabled") and judgeable
+                evidence_scores: dict[str, float] = {}
+                protected: set[str] = set()
+                evidence_log: dict[str, Any] = {}
+                if terms_on and judgeable:
+                    try:
+                        from src.sql import retrieval_terms as _terms
+
+                        evidence = _terms.question_evidence(query, extra_terms, db_id, [c["table_name"] for c in candidate_list])
+                        evidence_scores = {t: e.score for t, e in evidence.items() if e.score > 0}
+                        protected = set(evidence_scores)
+                        evidence_log = {t: [e.score, list(e.reasons)] for t, e in evidence.items() if e.score > 0}
+                        if _terms.detect_countries(query):
+                            entities = sorted((t for t, e in evidence.items() if e.strong_table), key=lambda t: -evidence[t].score)[:2]
+                            filter_route = _contract.plan_filter_route(
+                                entities,
+                                _terms.place_tables(db_id, set(full_ddls)),
+                                contract_rels,
+                                available=set(full_ddls),
+                                present=seen_tables,
+                                db_id=db_id,
+                            )
+                        if filter_route is not None:
+                            protected.update(filter_route.tables)
+                            if will_apply:
+                                filter_applied = True
+                                # Route tables go ahead of the loose neighbours, so the token budget cuts neighbours first: a
+                                # table retrieval already had as a neighbour is promoted, a missing one is added.
+                                lifted: list[dict[str, Any]] = []
+                                for t in filter_route.tables:
+                                    if t not in full_ddls:
+                                        continue
+                                    current = next((c for c in candidate_list if str(c["table_name"]).lower() == t), None)
+                                    if current is None:
+                                        seen_tables.add(t)
+                                        filter_added.append(t)
+                                        lifted.append({"table_name": t, "ddl": full_ddls[t], "source": "route_bridge"})
+                                    elif current["source"] == "graph_expansion":
+                                        candidate_list.remove(current)
+                                        lifted.append({**current, "source": "route_bridge"})
+                                first_loose = next((i for i, c in enumerate(candidate_list) if c["source"] == "graph_expansion"), len(candidate_list))
+                                candidate_list[first_loose:first_loose] = lifted
+                                if filter_added:
+                                    retrieved_schema += "\n\n-- Tables on the approved route to the country named in the question:\n" + "\n\n".join(
+                                        full_ddls[t] for t in filter_added
+                                    )
+                                if len(filter_route.tables) > 2:
+                                    contract_chains.append(filter_route.tables)
+                    except Exception as evidence_err:  # noqa: BLE001 - evidence is an extra; the contract works without it
+                        logger.warning("Schema contract evidence failed for %s: %s", db_id, evidence_err)
+                        evidence_scores, protected, evidence_log, filter_route, filter_added, filter_applied = {}, set(), {}, None, [], False
+                contract_plan = _contract.plan_contract(
+                    candidate_list,
+                    contract_rels,
+                    contract_chains,
+                    evidence=evidence_scores or None,
+                    protected=protected,
+                )
                 if contract_plan is not None:
-                    # The prompt uses the same rule (``contract_active``): approved relationships must exist, so retrieval and the
-                    # prompt wording never disagree. Routes alone (join_paths.json) are not enough to judge a database.
-                    contract_applied = (
-                        contract_mode == "apply"
-                        and is_feature_enabled("schema_compaction_enabled")
-                        and bool(_contract.trusted_edges(contract_rels))
-                    )
+                    contract_applied = will_apply
                     if contract_applied and contract_plan.dropped:
                         gone = {t for t, _why in contract_plan.dropped}
                         candidate_list = [c for c in candidate_list if str(c["table_name"]).lower() not in gone]
+                    extra_log: dict[str, Any] = {}
+                    if evidence_log:
+                        extra_log["evidence"] = evidence_log
+                    if filter_route is not None:
+                        extra_log["filter_route"] = {
+                            "route": list(filter_route.tables),
+                            "added" if will_apply else "would_add": filter_added if will_apply else list(filter_route.add),
+                        }
                     log_telemetry(
                         query_id="",
                         stage="schema_contract_applied" if contract_applied else "schema_contract_shadow",
@@ -587,6 +656,7 @@ async def retrieve_schema_from_qdrant(
                             "dropped": [[t, why] for t, why in contract_plan.dropped],
                             "groups": [list(g) for g in contract_plan.groups],
                             "approved_edges": contract_plan.edges_known,
+                            **extra_log,
                         },
                     )
         except Exception as contract_err:  # noqa: BLE001 - the contract is an extra; retrieval carries on without it
@@ -642,6 +712,14 @@ async def retrieve_schema_from_qdrant(
                     join_hints,
                     route_plan.hint_lines(c["table_name"] for c in selected if isinstance(c, dict)),
                 )
+
+            if filter_applied and filter_route is not None and filter_route.hint_lines:
+                # The join conditions of the route to the named country's table, only when every table of it survived the budget.
+                from src.sql.paths.route_index import merge_join_hints
+
+                shown = {str(c["table_name"]).lower() for c in selected if isinstance(c, dict)}
+                if all(t in shown for t in filter_route.tables):
+                    join_hints = merge_join_hints(join_hints, list(filter_route.hint_lines))
 
             shown_lines = compact_ddls
             contract_note = ""

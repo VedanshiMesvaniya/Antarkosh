@@ -13,6 +13,12 @@ Schema retrieval finds tables by vector similarity over one chunk per table. Two
    by more than ``MAX_TOKEN_TABLES`` tables are ignored. This is a local keyword index, not extra vectors: it adds no points to the
    vector store, no embedding cost and no new chunk type that document search would have to learn to hide.
 
+A third job reads the same records to say, for the tables retrieval chose, how directly the question's own words point at each
+one (``question_evidence``): a word of the table name counts most, a word of a column name next, a generated meaning less. It
+decides which tables the schema contract may never drop. A question that names a country (``config/iso_country_terms.json``) also
+marks the tables that carry a country, region, location or address column, so an approved route to them can be built. Nothing in
+it ever reaches a language model, and a country name is never looked up in the data.
+
 Safety rules shared by both:
 
 * Everything is read from ``databases/<db_id>/`` for the one ``db_id`` asked about, so nothing can come from another database.
@@ -30,10 +36,12 @@ import json
 import logging
 import re
 import threading
-from dataclasses import dataclass
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from src.core.config import PROJECT_ROOT
 from src.sql import registry
 from src.sql.knowledge.loaders import DEFAULT_DB_ID, validate_db_id
 from src.sql.paths.links import select_nodes
@@ -54,14 +62,32 @@ MAX_TOKEN_TABLES = 6  # a word used by more tables than this does not say where 
 MIN_SCORE = 0.3  # one word used by at most three tables, or several words used by a few more
 MAX_COLUMN_TABLES = 3  # tables one question may add; the token budget still has the last word
 
+# How directly the question's own words point at a table (``question_evidence``). Only the order of these matters.
+EVIDENCE_TABLE_NAME = 3.0  # a word the user typed is a word of the table's name
+EVIDENCE_COLUMN_NAME = 2.0  # ... or of one of its column names
+EVIDENCE_MEANING = 1.0  # ... or of a generated meaning, comment or glossary synonym (high or medium confidence), or a word we added
+COUNTRY_WORDS = frozenset({"country", "nation"})  # columns that hold a country
+PLACE_WORDS = frozenset({"region", "location", "address"})  # columns that hold where something is
+COUNTRY_TERMS_REL = "config/iso_country_terms.json"
+
+# Conversational and question words. A question is full of them ("is there", "how much", "did it"); they say nothing about the
+# data. A generated phrase that contains one is a SENTENCE ("is there a dispute"), not a name for a column, and is never indexed.
+# (Nouns that are also verbs, such as list or show, are not here: "list price" is a real phrase.)
+_FILLER_WORDS = (
+    "there", "here", "please", "me", "us", "it", "its", "do", "does", "did", "be", "been", "being", "can", "could", "would", "should",
+    "is", "are", "was", "were", "has", "have", "had", "who", "whom", "whose", "what", "which", "when", "where", "why", "how",
+    "this", "that", "these", "those", "they", "we", "you", "i", "my", "our", "your", "their",
+)
+_FILLER = frozenset(_FILLER_WORDS) | frozenset(singular(w) for w in _FILLER_WORDS)  # words are compared in their singular form
+
 # Words that say nothing about WHERE the data is: question verbs and filler, plus the generic column words the meaning phase
 # already refuses to use as a phrase on their own.
-_STOP = frozenset(GENERIC_PHRASES) | {
-    "a", "an", "the", "is", "are", "was", "were", "of", "for", "in", "on", "at", "to", "by", "with", "and", "or", "our", "my", "your",
-    "who", "what", "which", "show", "get", "give", "list", "find", "how", "much", "many", "this", "that", "from", "tell", "each", "per",
+_STOP = frozenset(GENERIC_PHRASES) | _FILLER | {
+    "a", "an", "the", "of", "for", "in", "on", "at", "to", "by", "with", "and", "or",
+    "show", "get", "give", "list", "find", "much", "many", "from", "tell", "each", "per",
     "all", "any", "every", "top", "last", "first", "most", "least", "highest", "lowest", "average", "avg", "sum", "count", "between",
-    "than", "where", "when", "whose", "their", "have", "has", "had", "not", "also", "only", "over", "under", "more", "less", "new",
-    "old", "wise",
+    "than", "also", "only", "over", "under", "more", "less", "new",
+    "old", "wise", "not",
 }
 _BARE_NAME = re.compile(r"^[a-z0-9_]+$")  # the only table names the retrieval code can look up
 _LOCK = threading.Lock()
@@ -77,6 +103,16 @@ def _words(text: Any) -> list[str]:
 
 def _useful(text: Any) -> set[str]:
     return {w for w in _words(text) if len(w) >= 3 and w not in _STOP}
+
+
+def _sentence_like(text: Any) -> bool:
+    """A generated phrase that is a question or a sentence (``is there a dispute``, ``did containment break``), not a name."""
+    return any(w in _FILLER for w in _words(text))
+
+
+def _phrase_useful(text: Any) -> set[str]:
+    """The useful words of a generated phrase or synonym; none at all when the phrase is a sentence."""
+    return set() if _sentence_like(text) else _useful(text)
 
 
 def _contains(tokens: list[str], phrase: list[str]) -> bool:
@@ -113,6 +149,7 @@ def clear_retrieval_terms_cache(db_id: str | None = None) -> None:
         if db_id is None:
             _GROUPS_CACHE.clear()
             _INDEX_CACHE.clear()
+            _COUNTRY_CACHE.clear()
         else:
             _GROUPS_CACHE.pop(db_id, None)
             _INDEX_CACHE.pop(db_id, None)
@@ -202,6 +239,9 @@ class ColumnIndex:
     columns: tuple[tuple[str, str, frozenset[str]], ...]  # (bare table, column, useful words)
     owners: dict[str, int]  # word -> number of tables that have a column using it
     vocabulary: frozenset[str] = frozenset()  # every word of the real tables' own table, column and comment names
+    by_table: dict[str, tuple[tuple[frozenset[str], frozenset[str]], ...]] = field(default_factory=dict)  # table -> per column (name words, all words)
+    table_words: dict[str, frozenset[str]] = field(default_factory=dict)  # table -> useful words of its own name
+    places: dict[str, int] = field(default_factory=dict)  # table -> 0 when a column holds a country, 1 when one holds a region/location/address
 
 
 @dataclass(frozen=True)
@@ -217,7 +257,12 @@ _INDEX_FILES = (SCHEMA_FILE, INVENTORY_FILE, EVIDENCE_FILE, PROFILES_REL, DICTIO
 
 
 def _meaning_words(db_id: str) -> dict[tuple[str, str], set[str]]:
-    """``(table lower, column lower) -> words`` from the generated meaning cards and the column glossary, when they exist."""
+    """``(table lower, column lower) -> words`` from the generated meaning cards and the column glossary, when they exist.
+
+    High and medium confidence meanings are used here (locally, to find and rank tables; only high ones ever reach a prompt, see
+    ``wiring``). A card that says ``low`` is left to ``semantic_review.json``. The card's full name is a label and is always
+    indexed; a generated phrase or synonym that is a sentence is not.
+    """
     out: dict[tuple[str, str], set[str]] = {}
     doc = _read_json(db_id, DICTIONARY_REL)
     if isinstance(doc, dict) and doc.get("generated_by") == GENERATED_BY and isinstance(doc.get("tables"), dict):
@@ -226,11 +271,11 @@ def _meaning_words(db_id: str) -> dict[tuple[str, str], set[str]]:
             if not isinstance(cols, dict):
                 continue
             for col, card in cols.items():
-                if not isinstance(card, dict):
+                if not isinstance(card, dict) or card.get("confidence") == "low":
                     continue
                 words = _useful(card.get("full_name"))
                 for phrase in card.get("phrases") or []:
-                    words |= _useful(phrase)
+                    words |= _phrase_useful(phrase)
                 if words:
                     out.setdefault((str(table).lower(), str(col).lower()), set()).update(words)
     glossary = _read_json(db_id, COLUMN_GLOSSARY_REL)
@@ -240,9 +285,9 @@ def _meaning_words(db_id: str) -> dict[tuple[str, str], set[str]]:
             parts = target.split(".") if isinstance(target, str) else []
             if len(parts) < 2:
                 continue
-            words = _useful(term)
+            words = _phrase_useful(term)
             for syn in entry.get("synonyms") or []:
-                words |= _useful(syn)
+                words |= _phrase_useful(syn)
             if words:
                 out.setdefault((parts[-2].lower(), parts[-1].lower()), set()).update(words)
     return out
@@ -260,12 +305,20 @@ def _build_index(db_id: str) -> ColumnIndex | None:
     columns: list[tuple[str, str, frozenset[str]]] = []
     owners: dict[str, set[str]] = {}
     vocabulary: set[str] = set()
+    by_table: dict[str, list[tuple[frozenset[str], frozenset[str]]]] = {}
+    table_words: dict[str, frozenset[str]] = {}
+    places: dict[str, int] = {}
     for qualified in sorted(eligible):
         t = graph.tables[qualified]
         bare = t.name.lower()
         if not _BARE_NAME.match(bare) or bare in collisions:  # a name two tables share cannot be looked up
             continue
         vocabulary.update(w for w in _words(t.name) if len(w) >= 3)
+        table_words[bare] = frozenset(_useful(t.name))
+        if table_words[bare] & COUNTRY_WORDS:
+            places[bare] = 0  # a table named for countries
+        elif table_words[bare] & PLACE_WORDS:
+            places[bare] = 1
         for c in t.columns:
             vocabulary.update(w for w in (*_words(c.name), *_words(c.comment)) if len(w) >= 3)
             words = _useful(c.name) | _useful(c.comment)
@@ -273,11 +326,19 @@ def _build_index(db_id: str) -> ColumnIndex | None:
             if not words:
                 continue
             columns.append((bare, c.name, frozenset(words)))
+            by_table.setdefault(bare, []).append((frozenset(_useful(c.name)), frozenset(words)))
+            if words & COUNTRY_WORDS:
+                places[bare] = 0
+            elif words & PLACE_WORDS:
+                places.setdefault(bare, 1)  # never lowers a table already known to hold a country
             for w in words:
                 owners.setdefault(w, set()).add(bare)
     if not columns:
         return None
-    return ColumnIndex(tuple(columns), {w: len(tables) for w, tables in owners.items()}, frozenset(vocabulary))
+    return ColumnIndex(
+        tuple(columns), {w: len(tables) for w, tables in owners.items()}, frozenset(vocabulary),
+        {t: tuple(cols) for t, cols in by_table.items()}, table_words, places,
+    )
 
 
 def load_column_index(db_id: str) -> ColumnIndex | None:
@@ -348,11 +409,167 @@ def find_column_tables(
         return []
 
 
+# ---------------------------------------------------------------------------------------------------- 3. evidence for the tables retrieval chose
+
+
+@dataclass(frozen=True)
+class TableEvidence:
+    table: str  # bare, lower case
+    score: float  # 0 when the question's words do not point at this table
+    reasons: tuple[str, ...]
+    strong_table: bool = False  # a word the user typed is a word of this table's own name: the table is an entity the question names
+    place: int | None = None  # when the question names a country: 0 = holds a country column, 1 = holds region/location/address, else None
+
+
+_COUNTRY_CACHE: dict[str, tuple[tuple[int, int] | None, tuple[tuple[tuple[str, ...], str], ...]]] = {}
+
+
+def _load_countries() -> tuple[tuple[tuple[str, ...], str], ...]:
+    """``((phrase words, canonical name), ...)`` from ``config/iso_country_terms.json``. Empty when the file is missing or unreadable.
+
+    A name or alias made only of filler or stop words (``us``, ``in``, ``it``) is skipped, so a hand edit cannot make an ordinary word
+    look like a country.
+    """
+    path = PROJECT_ROOT / COUNTRY_TERMS_REL
+    try:
+        st = path.stat()
+        stamp: tuple[int, int] | None = (st.st_mtime_ns, st.st_size)
+    except OSError:
+        stamp = None
+    key = str(path)
+    with _LOCK:
+        cached = _COUNTRY_CACHE.get(key)
+    if cached is not None and cached[0] == stamp:
+        return cached[1]
+    found: list[tuple[tuple[str, ...], str]] = []
+    if stamp is not None:
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            for entry in doc.get("countries") or []:
+                name = entry.get("name") if isinstance(entry, dict) else None
+                if not isinstance(name, str):
+                    continue
+                aliases = [a for a in entry.get("aliases") or [] if isinstance(a, str)]
+                for label in (name, *aliases):
+                    words = tuple(_words(label))
+                    if words and not all(w in _STOP for w in words):
+                        found.append((words, name))
+        except (OSError, ValueError, AttributeError) as exc:
+            logger.warning("Country reference unreadable: %s", exc)
+            found = []
+    result = tuple(found)
+    with _LOCK:
+        _COUNTRY_CACHE[key] = (stamp, result)
+    return result
+
+
+def detect_countries(query: str) -> list[str]:
+    """Names of the countries the question mentions (``Germany``, ``UK``). Metadata routing only: the result decides which
+    columns to look at; it is not sent to a model and is never looked up in the data. Never raises."""
+    try:
+        if not isinstance(query, str) or not query.strip():
+            return []
+        tokens = _words(query)
+        out: list[str] = []
+        for words, name in _load_countries():
+            if name not in out and _contains(tokens, list(words)):
+                out.append(name)
+        return out
+    except Exception as exc:  # noqa: BLE001 - optional help must never break retrieval
+        logger.debug("Country detection failed: %s", exc)
+        return []
+
+
+def question_evidence(
+    query: str,
+    extra_terms: list[str],
+    db_id: str,
+    tables: Iterable[str],
+    *,
+    index: ColumnIndex | None = None,
+) -> dict[str, TableEvidence]:
+    """How directly the question points at each of ``tables`` (the tables retrieval chose), from metadata only.
+
+    * a word the user typed is a word of the table's name: ``EVIDENCE_TABLE_NAME`` per word;
+    * ... of a column's name: ``EVIDENCE_COLUMN_NAME`` per word;
+    * ... of a generated meaning, comment or glossary synonym (high or medium confidence; sentences are never indexed), or a word
+      we added from the glossaries: ``EVIDENCE_MEANING`` per word.
+
+    Column and meaning words count only when few tables use them (a ``supplier_id`` that sits in sixty tables points at none of
+    them); table-name words always count, because the tables are already few. When the question names a country, tables that carry
+    a country, region, location or address column are marked in ``place``. A table with nothing to show is left out. Empty on any
+    problem. Never reads data and never sends anything anywhere.
+    """
+    try:
+        idx = index if index is not None else load_column_index(db_id)
+        if idx is None:
+            return {}
+        typed = _useful(query)
+        added: set[str] = set()
+        for term in extra_terms:
+            added |= _useful(term)
+        added -= typed
+        wanted = typed | added
+        named_country = bool(detect_countries(query))
+        out: dict[str, TableEvidence] = {}
+        for raw in tables:
+            table = str(raw).lower()
+            reasons: list[str] = []
+            score = 0.0
+            name_words = idx.table_words.get(table, frozenset())
+            by_user = sorted(name_words & typed)
+            by_added = sorted((name_words & added) - set(by_user))
+            if by_user:
+                score += EVIDENCE_TABLE_NAME * len(by_user)
+                reasons.append("table name: " + ", ".join(by_user))
+            col_hits: set[str] = set()
+            meaning_hits: set[str] = set(by_added)
+            for col_name_words, col_words in idx.by_table.get(table, ()):
+                for w in col_words & wanted:
+                    if idx.owners.get(w, 0) > MAX_TOKEN_TABLES or w in name_words:
+                        continue
+                    if w in col_name_words and w in typed:
+                        col_hits.add(w)
+                    else:
+                        meaning_hits.add(w)
+            meaning_hits -= col_hits
+            if col_hits:
+                score += EVIDENCE_COLUMN_NAME * len(col_hits)
+                reasons.append("column name: " + ", ".join(sorted(col_hits)))
+            if meaning_hits:
+                score += EVIDENCE_MEANING * len(meaning_hits)
+                reasons.append("meaning: " + ", ".join(sorted(meaning_hits)))
+            place = idx.places.get(table) if named_country else None
+            if score > 0 or place is not None:
+                out[table] = TableEvidence(table, round(score, 4), tuple(reasons), bool(by_user), place)
+        return out
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Table evidence unavailable for %s: %s", db_id, exc)
+        return {}
+
+
+def place_tables(db_id: str, available: Iterable[str], *, index: ColumnIndex | None = None) -> dict[str, int]:
+    """``{table: 0 | 1}`` for the real, showable tables that hold a country (0) or a region, location or address (1) column."""
+    try:
+        idx = index if index is not None else load_column_index(db_id)
+        if idx is None:
+            return {}
+        have = {str(t).lower() for t in available}
+        return {t: tier for t, tier in idx.places.items() if t in have}
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Place tables unavailable for %s: %s", db_id, exc)
+        return {}
+
+
 __all__ = [
     "ColumnHit",
     "ColumnIndex",
+    "TableEvidence",
     "clear_retrieval_terms_cache",
+    "detect_countries",
     "expand_query_terms",
     "find_column_tables",
     "load_column_index",
+    "place_tables",
+    "question_evidence",
 ]

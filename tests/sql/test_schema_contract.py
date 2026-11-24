@@ -17,6 +17,7 @@ import pytest
 import yaml
 
 import src.sql.prompt_builder as pb
+import src.sql.retrieval_terms as rt
 import src.sql.schema_contract as sc
 import src.sql.schema_retrieval as sr
 from src.sql import registry
@@ -165,9 +166,11 @@ def dbs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(registry, "DATABASES_DIR", tmp_path)
     sc.clear_contract_cache()
     ri.clear_route_index_cache()
+    rt.clear_retrieval_terms_cache()
     yield tmp_path
     sc.clear_contract_cache()
     ri.clear_route_index_cache()
+    rt.clear_retrieval_terms_cache()
 
 
 def _catalog(root: Path, *tables: dict[str, Any]) -> None:
@@ -537,3 +540,244 @@ def test_flag_is_registered_off_by_default_and_documented() -> None:
     cfg = yaml.safe_load((ROOT / "config" / "feature_flags.example.yaml").read_text(encoding="utf-8"))
     assert cfg["db_defaults"]["auto_schema_contract_apply"] is False
     assert cfg["db_features"]["_example_db"]["auto_schema_contract_apply"] is False
+
+
+# ----------------------------------------------------------------------------------------------- 6. evidence, minimal route, country filter
+#
+# General rules only. Names such as supplier, scrap or Germany are invented examples; nothing here depends on one database.
+
+
+def test_a_table_the_question_names_is_never_dropped_because_it_sits_in_another_group() -> None:
+    cands = [cand("orders"), cand("plant"), cand("w1"), cand("w2"), cand("gen_supplier_master")]
+    old = sc.plan_contract(cands, RELS)
+    assert old is not None and "gen_supplier_master" in dict(old.dropped)  # the failure: the table the user asked for vanished
+    plan = sc.plan_contract(cands, RELS, evidence={"gen_supplier_master": 3.0})
+    assert plan is not None
+    assert "gen_supplier_master" in plan.keep and not {"gen_supplier_master"} & dict(plan.dropped).keys()
+    assert dict(plan.dropped).keys() == {"w1", "w2"}  # weak tables with no evidence and no route still go
+    assert sc.plan_contract(cands, RELS, protected={"gen_supplier_master"}) is not None  # a route end is protected the same way
+
+
+def test_without_evidence_the_plan_is_exactly_what_it_was() -> None:
+    cands = [cand("orders"), cand("plant"), cand("vendor"), cand("region"), cand("noise")]
+    base = sc.plan_contract(cands, RELS)
+    assert sc.plan_contract(cands, RELS, evidence=None, protected=()) == base
+    assert sc.plan_contract(cands, RELS, evidence={}) == base  # an empty evidence map changes nothing either
+
+
+def test_the_first_table_is_never_dropped_even_when_the_evidence_is_elsewhere() -> None:
+    cands = [cand("zzz", "graph_expansion"), cand("orders"), cand("plant")]
+    plan = sc.plan_contract(cands, RELS, evidence={"orders": 3.0, "plant": 2.0}, keep_top=0)
+    assert plan is not None and "zzz" in plan.keep and "orders" in plan.keep
+
+
+def test_the_main_group_is_the_one_with_the_most_evidence() -> None:
+    rels = [*RELS, {"from_table": "x1", "from_column": "a", "to_table": "x2", "to_column": "b"}]
+    cands = [cand("x1"), cand("x2"), cand("orders"), cand("plant"), cand("w1")]
+    plan = sc.plan_contract(cands, rels, evidence={"orders": 3.0, "plant": 2.0}, keep_top=0)
+    assert plan is not None and set(plan.keep) == {"x1", "x2", "orders", "plant"}  # x1 is first, so it stays; w1 has nothing
+    assert dict(plan.dropped).keys() == {"w1"}
+
+
+def _neighbour_world(n: int = 8) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
+    rels = [
+        {"from_table": "scrap", "from_column": "part_id", "to_table": "part", "to_column": "id"},
+        {"from_table": "part", "from_column": "commodity_id", "to_table": "commodity", "to_column": "id"},
+        *({"from_table": f"n{i}", "from_column": "part_id", "to_table": "part", "to_column": "id"} for i in range(n)),
+    ]
+    cands = [cand("scrap"), cand("commodity"), cand("part", "graph_expansion"), *(cand(f"n{i}", "graph_expansion") for i in range(n))]
+    return cands, rels
+
+
+def test_the_contract_keeps_a_small_connected_route_not_every_neighbour_of_a_big_graph() -> None:
+    cands, rels = _neighbour_world()
+    everything = sc.plan_contract(cands, rels)
+    assert everything is not None and len(everything.keep) == 11 and not everything.dropped  # old: the whole connected graph
+    plan = sc.plan_contract(cands, rels, evidence={"scrap": 2.0, "commodity": 3.0})
+    assert plan is not None
+    assert {"scrap", "part", "commodity"} <= set(plan.keep)  # both ends and the table between them: the smallest approved route
+    assert len(plan.keep) == 3 + sc.MAX_LOOSE_NEIGHBORS  # plus a few neighbours only
+    assert all(why == "not on the approved route between the requested tables" for _t, why in plan.dropped)
+    assert plan.groups == (tuple(plan.keep),)  # and what is left is one connected group
+
+
+def test_neighbours_with_evidence_are_not_loose_and_nothing_is_cut_when_the_named_tables_are_not_connected() -> None:
+    cands, rels = _neighbour_world()
+    plan = sc.plan_contract(cands, rels, evidence={"scrap": 2.0, "commodity": 3.0, "n7": 1.0})
+    assert plan is not None and "n7" in plan.keep and "n0" in plan.keep
+    apart = [cand("scrap"), cand("lone", "vector_rag"), cand("part", "graph_expansion"), *(cand(f"n{i}", "graph_expansion") for i in range(8))]
+    cut = sc.plan_contract(apart, rels, evidence={"scrap": 2.0, "lone": 3.0})
+    assert cut is not None and {f"n{i}" for i in range(8)} <= set(cut.keep)  # two named tables nothing joins: no route to shrink to
+
+
+def test_route_tables_finds_the_shortest_approved_route_and_gives_up_when_there_is_none() -> None:
+    edges = sc.trusted_edges(RELS)
+    within = {"orders", "plant", "region", "invoice", "island"}
+    assert sc.route_tables(["invoice", "region"], edges, within) == {"invoice", "orders", "plant", "region"}
+    assert sc.route_tables(["invoice", "island"], edges, within) is None  # nothing approved reaches it
+    assert sc.route_tables(["invoice", "region"], edges, {"invoice", "region"}) is None  # the middle is not among the chosen tables
+    assert sc.route_tables(["orders"], edges, within) is None and sc.route_tables([], edges, within) is None
+
+
+SUPPLIER_RELS = [{"from_table": "sup_address", "from_column": "supplier_id", "to_table": "gen_supplier_master", "to_column": "supplier_id"}]
+PLACES = {"sup_address": 0, "plant_site": 1}
+EXIST = {"gen_supplier_master", "sup_address", "plant_site", "gen_supplier_codes"}
+
+
+def test_a_named_country_is_routed_from_the_entity_through_approved_joins_only() -> None:
+    route = sc.plan_filter_route(["gen_supplier_master"], PLACES, SUPPLIER_RELS, available=EXIST, present={"gen_supplier_master"})
+    assert route is not None and route.tables == ("gen_supplier_master", "sup_address") and route.add == ("sup_address",)
+    assert sc.plan_filter_route(["gen_supplier_master"], PLACES, SUPPLIER_RELS, available=EXIST, present=EXIST) is not None  # already there: nothing to add
+    assert sc.plan_filter_route(["gen_supplier_master"], PLACES, SUPPLIER_RELS, available=EXIST, present=EXIST).add == ()  # type: ignore[union-attr]
+    # no approved join, no route: a table that merely has a country column is never joined by guesswork
+    assert sc.plan_filter_route(["gen_supplier_codes"], PLACES, SUPPLIER_RELS, available=EXIST) is None
+    assert sc.plan_filter_route(["gen_supplier_master"], PLACES, [], available=EXIST) is None
+    assert sc.plan_filter_route(["gen_supplier_master"], PLACES, SUPPLIER_RELS, available={"gen_supplier_master"}) is None  # the table is not in the live schema
+    # the entity that holds the country itself needs no route; nothing to route gives nothing
+    assert sc.plan_filter_route(["sup_address"], PLACES, SUPPLIER_RELS, available=EXIST) is None
+    assert sc.plan_filter_route([], PLACES, SUPPLIER_RELS, available=EXIST) is None and sc.plan_filter_route(["x"], {}, SUPPLIER_RELS, available=EXIST) is None
+
+
+def test_a_table_that_holds_a_country_beats_one_that_only_holds_an_address_and_a_long_route_is_capped() -> None:
+    rels = [
+        *SUPPLIER_RELS,
+        {"from_table": "gen_supplier_master", "from_column": "site_id", "to_table": "plant_site", "to_column": "id"},
+        {"from_table": "sup_address", "from_column": "geo_id", "to_table": "geo_country", "to_column": "id"},
+    ]
+    places = {"geo_country": 0, "plant_site": 1}
+    got = sc.plan_filter_route(["gen_supplier_master"], places, rels, available=EXIST | {"geo_country"}, present={"gen_supplier_master"})
+    assert got is not None and got.place == "plant_site"  # geo_country is two joins away and no Phase 8 route vouches for it: only the direct join is used
+
+    class _Index:
+        def best(self, a: str, b: str) -> ri.IndexedRoute | None:
+            if (a, b) == ("gen_supplier_master", "geo_country"):
+                return ri.IndexedRoute(("gen_supplier_master", "sup_address", "geo_country"), 0.8, "chain",
+                                       (("gen_supplier_master.supplier_id", "sup_address.supplier_id"), ("sup_address.geo_id", "geo_country.id")))
+            return None
+
+    got = sc.plan_filter_route(["gen_supplier_master"], places, rels, available=EXIST | {"geo_country"}, present={"gen_supplier_master"}, index=_Index())
+    assert got is not None and got.place == "geo_country" and got.add == ("sup_address", "geo_country")  # the country table wins over the nearer address table
+    assert got.hint_lines == ("- gen_supplier_master.supplier_id -> sup_address.supplier_id", "- sup_address.geo_id -> geo_country.id")
+    capped = sc.plan_filter_route(["gen_supplier_master"], places, rels, available=EXIST | {"geo_country"}, present={"gen_supplier_master"}, index=_Index(), max_add=1)
+    assert capped is not None and capped.place == "plant_site"  # a route that would add too many tables is skipped for the direct join
+    weak = type("W", (), {"best": lambda self, a, b: ri.IndexedRoute((a, "m", b), 0.2, "chain", ((a, "m"), ("m", b)))})()
+    assert sc.plan_filter_route(["gen_supplier_master"], {"geo_country": 0}, rels, available=EXIST | {"geo_country"}, index=weak) is None  # a weak route is no route
+
+
+# ---- through retrieval
+
+
+def _supplier_catalog(root: Path, *, address_has_supplier_id: bool = True) -> list[dict[str, Any]]:
+    addr = {"addr_id": "int", "country_name": "varchar"} | ({"supplier_id": "int"} if address_has_supplier_id else {"link_id": "int"})
+    _catalog(
+        root,
+        table("gen_supplier_master", {"supplier_id": "int", "supplier_name": "varchar"}, pk=("supplier_id",)),
+        table("gen_supplier_codes", {"code_id": "int", "code_value": "varchar", "plant_id": "int"}, pk=("code_id",)),
+        table("plant_master", {"plant_id": "int", "plant_name": "varchar"}, pk=("plant_id",)),
+        table("sup_address", addr, pk=("addr_id",)),
+        table("sup_link", {"link_id": "int", "supplier_id": "int", "geo_id": "int"}, pk=("link_id",)),
+        table("geo_country", {"geo_id": "int", "country_name": "varchar"}, pk=("geo_id",)),
+        *(table(f"n{i}", {"nid": "int", "nval": "varchar"}, pk=("nid",)) for i in range(1, 4)),
+    )
+    return [
+        {"from_table": "gen_supplier_codes", "from_column": "plant_id", "to_table": "plant_master", "to_column": "plant_id"},
+        {"from_table": "sup_address" if address_has_supplier_id else "sup_link", "from_column": "supplier_id", "to_table": "gen_supplier_master", "to_column": "supplier_id"},
+        {"from_table": "sup_link", "from_column": "geo_id", "to_table": "geo_country", "to_column": "geo_id"},
+    ]
+
+
+def _supplier_world(monkeypatch: pytest.MonkeyPatch, raw: list[dict[str, Any]], flags: dict[str, bool]) -> tuple[dict[str, str], str]:
+    names = ["gen_supplier_master", "gen_supplier_codes", "plant_master", "sup_address", "sup_link", "geo_country", "n1", "n2", "n3"]
+    tables = {t: _ddl(t) for t in names}
+    monkeypatch.setattr(pb, "get_raw_relationships", lambda db_id=DB: raw)
+    monkeypatch.setattr(pb, "build_column_glossary_for_query", lambda q, db_id=DB: "")
+    monkeypatch.setattr(sr, "route_anchor_tables", lambda q, db_id=DB: set())
+    monkeypatch.setattr(sr, "is_feature_enabled", lambda f: True)
+    _flags(monkeypatch, **flags)
+    return tables, "\n\n".join(tables.values())
+
+
+def _ask(query: str, tables: dict[str, str], full: str, hits: list[str]) -> str:
+    return asyncio.run(sr.retrieve_schema_from_qdrant(query, full, _store(tables, hits), _Emb(), db_id=DB))
+
+
+HITS = ["gen_supplier_codes", "plant_master", "n1", "n2", "gen_supplier_master"]
+SUPPLIER_APPLY = {**APPLY, "auto_retrieval_apply": True}
+
+
+def test_the_entity_the_question_names_survives_and_its_country_table_comes_with_it(dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = _supplier_catalog(dbs)
+    tables, full = _supplier_world(monkeypatch, raw, APPLY)
+    before = _ask("suppliers from Germany", tables, full, HITS)
+    assert "gen_supplier_master" not in _present(before)  # the bug: a vector hit in its own graph component was pruned away
+
+    tables, full = _supplier_world(monkeypatch, raw, SUPPLIER_APPLY)
+    after = _ask("suppliers from Germany", tables, full, HITS)
+    assert {"gen_supplier_master", "sup_address", "gen_supplier_codes"} <= _present(after)
+    assert not {"n1", "n2"} & _present(after)  # weak matches with no evidence and no route are still dropped
+    assert "germany" not in after.lower()  # the country name never reaches the prompt
+
+
+def test_a_missing_country_table_is_added_only_through_an_approved_route_and_its_joins_are_shown(dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = _supplier_catalog(dbs, address_has_supplier_id=False)
+    folder = dbs / DB / "schema"
+    chain = ["gen_supplier_master", "sup_link", "geo_country"]
+    joins = [
+        {"from": "gen_supplier_master.supplier_id", "to": "sup_link.supplier_id", "confidence": 0.9, "evidence": ["declared"], "direction": "many_to_one"},
+        {"from": "sup_link.geo_id", "to": "geo_country.geo_id", "confidence": 0.9, "evidence": ["declared"], "direction": "many_to_one"},
+    ]
+    pair = {"a": chain[0], "b": chain[-1], "hops": 2, "score": 0.8, "tier": "near", "routes": [{"score": 0.8, "shape": "chain", "tables": chain, "joins": joins}]}
+    (folder / "join_paths.json").write_text(json.dumps({"generated_by": "auto_join_paths", "pairs": [pair]}), encoding="utf-8")
+    tables, full = _supplier_world(monkeypatch, raw, SUPPLIER_APPLY)
+    out = _ask("how many suppliers from Germany", tables, full, ["gen_supplier_master", "gen_supplier_codes", "plant_master", "n1"])
+    assert {"gen_supplier_master", "sup_link", "geo_country"} <= _present(out)  # country table reached by the approved route
+    assert "- sup_link.geo_id -> geo_country.geo_id" in out  # and how to join it
+    no_route = _ask("how many suppliers", tables, full, ["gen_supplier_master", "gen_supplier_codes", "plant_master", "n1"])
+    assert "- sup_link.geo_id -> geo_country.geo_id" not in no_route  # no country named: no country route, no route joins
+
+    (folder / "join_paths.json").unlink()
+    ri.clear_route_index_cache()
+    raw_without_link = [r for r in raw if r["from_table"] != "sup_link"]  # no approved join to the country table at all
+    tables, full = _supplier_world(monkeypatch, raw_without_link, SUPPLIER_APPLY)
+    nothing = _ask("how many suppliers from Germany", tables, full, ["gen_supplier_master", "gen_supplier_codes", "plant_master", "n1"])
+    assert "geo_country" not in _present(nothing)  # a country column alone never creates a join
+
+
+def test_shadow_mode_only_logs_the_country_route_and_the_evidence(dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = _supplier_catalog(dbs, address_has_supplier_id=False)
+    tables, full = _supplier_world(monkeypatch, raw, {"auto_prompt_inject": True, "auto_retrieval_apply": True})  # contract flag off
+    seen: list[tuple[str, dict]] = []
+    monkeypatch.setattr(sr, "log_telemetry", lambda **kw: seen.append((kw.get("stage", ""), kw.get("extra") or {})))
+    out = _ask("suppliers from Germany", tables, full, HITS)
+    assert {"n1", "n2"} <= _present(out)  # nothing is dropped in shadow mode
+    shadow = [e for stage, e in seen if stage == "schema_contract_shadow"]
+    assert shadow and "evidence" in shadow[0] and "gen_supplier_master" in shadow[0]["evidence"]
+    assert not [1 for stage, _ in seen if stage == "schema_contract_applied"]
+    assert "germany" not in json.dumps(shadow).lower()  # telemetry carries table names and scores, not the question's values
+
+
+def test_naming_a_country_never_touches_the_database_or_the_model(dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = _supplier_catalog(dbs)
+    tables, full = _supplier_world(monkeypatch, raw, SUPPLIER_APPLY)
+
+    def forbidden(*_a: Any, **_k: Any) -> None:
+        raise AssertionError("retrieval must never read data")
+
+    monkeypatch.setattr(sr, "run_readonly_query", forbidden)
+    out = _ask("suppliers from Germany", tables, full, HITS)
+    assert "gen_supplier_master" in _present(out)
+    from src.sql import retrieval_terms as terms
+
+    assert terms.detect_countries("suppliers from Germany") == ["Germany"]  # detection reads the question and a static list only
+
+
+def test_the_new_rules_do_nothing_unless_the_retrieval_flag_is_on(dbs: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = _supplier_catalog(dbs)
+    tables, full = _supplier_world(monkeypatch, raw, APPLY)
+    base = _ask("suppliers from Germany", tables, full, HITS)
+    tables, full = _supplier_world(monkeypatch, raw, {**APPLY, "auto_retrieval_apply": False})
+    assert _ask("suppliers from Germany", tables, full, HITS) == base
+    monkeypatch.setattr(rt, "question_evidence", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom")))
+    tables, full = _supplier_world(monkeypatch, raw, SUPPLIER_APPLY)
+    broken = _ask("suppliers from Germany", tables, full, HITS)
+    assert {"gen_supplier_codes", "plant_master"} <= _present(broken)  # an evidence failure falls back to the plain contract

@@ -166,7 +166,12 @@ db_features:
 #   Release 1 (metadata-driven SQL accuracy): schema retrieval searches with a few extra words for what a question's everyday word
 #   may stand for in this database ("item" -> product, material; from a small generic list and the database's glossary.json), and
 #   adds up to three tables that have a column whose name, comment or generated meaning uses words of the question that few other
-#   tables use. Metadata only; the question and the prompt text are never changed. Off: retrieval is exactly as before. Starts false.
+#   tables use. Question filler ("there", "did", "please") and generated sentences ("is there a dispute") are never indexed, and
+#   generated meanings of low confidence are left to semantic_review.json. With auto_schema_contract_apply also on or in shadow,
+#   the tables the question's own words point at (a word of a table name, a column name, a high or medium meaning) are scored and
+#   protected from pruning, and a country named in the question (config/iso_country_terms.json, local only) gets the shortest
+#   approved route to a table with a country, region, location or address column. Metadata only; the question and the prompt text
+#   are never changed and no data is read. Off: retrieval is exactly as before. Starts false.
 # auto_relationships_data_apply:
 #   Release 2 (metadata-driven SQL accuracy): needs auto_relationships. After Phase 6 proposes joins from names, keys and procedures,
 #   a SHORT list of the likely ones (the parent column is a key, the types fit, the pair is in the schema the prompts see) is checked
@@ -182,7 +187,9 @@ db_features:
 #   matches are never dropped), (2) marks single-column unique keys "UQ", (3) adds one line naming groups of shown tables that no
 #   approved route connects, and the prompt states: use only listed tables, columns and approved joins; do not invent; if no approved
 #   route is present, do not guess. Metadata only; SQL validation after generation is unchanged. A database with no approved joins
-#   is left exactly as it was. With the Phase 12 flags on but this one off, it only logs what it would drop (schema_contract_shadow). Starts false.
+#   is left exactly as it was. With the Phase 12 flags on but this one off, it only logs what it would drop (schema_contract_shadow).
+#   Together with auto_retrieval_apply, a table the question names is never dropped, and when two or more such tables are joined by
+#   approved relationships only a few loosely related neighbours are kept beside the route between them. Starts false.
 # auto_semantic_glossary_apply:
 #   Release 4 (part): needs auto_column_meaning and auto_prompt_inject. The column meanings the sync already generated and checked are
 #   linked to the universal ERP glossary (config/universal_erp_glossary.json): concept_id, role (entity_name, identifier, amount, date,

@@ -5,12 +5,20 @@ side, the model joins them anyway and invents the join. This module keeps what t
 using only what the database already approved: ``relationships.json`` (through ``get_raw_relationships``) and the routes of
 ``join_paths.json`` that retrieval turned into bridge tables. Nothing here reads data, calls a model or changes validation.
 
-Three small jobs, each a pure function:
+Four small jobs, each a pure function:
 
 * ``plan_contract`` (before the token budget): the tables retrieval chose form groups connected by approved joins. The group that
   holds the most relevant table is the main one. Another group is dropped unless it holds a table that is there on purpose (a
   glossary or domain anchor, a bridge, the real table of a look-alike copy, or one of the question's top vector matches). A weak
-  match that nothing approved connects therefore never reaches the prompt.
+  match that nothing approved connects therefore never reaches the prompt. When the caller also passes ``evidence`` (how directly
+  the question's own words point at each table, see ``retrieval_terms.question_evidence``): the main group is the one with the
+  most evidence, not the one whose vector chunk came first; a table with direct evidence (a word of its name, a column, a meaning)
+  is never dropped, so an entity the question names is never lost because it sits in a separate graph component; and when two or
+  more such tables are joined by approved relationships, only a few loosely related neighbours are kept beside the route between
+  them, not every neighbour of a large connected graph.
+* ``plan_filter_route``: when the question names a country, the shortest approved route from the entity table to a table that
+  carries a country, region, location or address column. Approved relationships and ``join_paths.json`` routes only; no join is
+  ever invented.
 * ``unconnected_note`` (after the budget, on what will really be shown): when the shown tables still fall into groups with no
   approved route between them, one line says so, so the model is told not to join across them instead of left to guess.
 * ``mark_unique_keys``: single-column unique keys (not primary) are marked ``UQ`` in the compact table lines, so a business key
@@ -37,7 +45,7 @@ import itertools
 import logging
 import re
 import threading
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -48,6 +56,8 @@ logger = logging.getLogger(__name__)
 
 KEEP_TOP_VECTOR = 2  # vector matches ranked this high are the question's subject: kept even when nothing connects them
 STRONG_SOURCES = frozenset({"domain_anchor", "table_authority", "route_bridge"})  # there on purpose: never judged by connectivity
+MAX_LOOSE_NEIGHBORS = 4  # neighbours without evidence kept beside a route between tables the question names (the old 1-hop intent)
+MAX_FILTER_ADD = 3  # tables one filter route may add
 MAX_NOTE_GROUPS = 6
 MAX_NOTE_TABLES = 6  # per group in the note; the rest are counted
 
@@ -156,11 +166,18 @@ def plan_contract(
     chains: Iterable[Sequence[str]] = (),
     *,
     keep_top: int = KEEP_TOP_VECTOR,
+    evidence: Mapping[str, float] | None = None,
+    protected: Collection[str] = (),
+    max_loose: int = MAX_LOOSE_NEIGHBORS,
 ) -> ContractPlan | None:
     """Which candidate tables to keep. ``candidates`` are in priority order, each with ``table_name`` and ``source``.
 
     None when the approved graph is empty (nothing can be judged). Otherwise the group holding the first candidate is kept whole,
     and any other group only if one of its tables is there on purpose.
+
+    With ``evidence`` (table -> how directly the question's words point at it) the main group is the one with the most evidence
+    (the first one on a tie or when there is none), and ``protected`` tables (direct evidence, ends of an approved route) count as
+    there on purpose. The first candidate is always protected. Without ``evidence`` nothing changes.
     """
     source: dict[str, str] = {}
     vector_rank: dict[str, int] = {}
@@ -178,20 +195,154 @@ def plan_contract(
     edges = trusted_edges(rels, chains)
     if not edges:
         return None
+    scored = {str(t).lower(): float(v) for t, v in (evidence or {}).items() if v and v > 0}
+    safe = {str(t).lower() for t in protected} | set(scored)
+    if evidence is not None:
+        safe.add(order[0])  # the most relevant table is never dropped
 
     def on_purpose(t: str) -> bool:
-        return source[t] in STRONG_SOURCES or (t in vector_rank and vector_rank[t] < keep_top)
+        return source[t] in STRONG_SOURCES or (t in vector_rank and vector_rank[t] < keep_top) or t in safe
 
     groups = connected_groups(order, edges)
-    keep: set[str] = set(groups[0])  # the group that holds the most relevant table
+    main = 0
+    if scored:
+        totals = [sum(scored.get(t, 0.0) for t in g) for g in groups]
+        main = max(range(len(groups)), key=lambda i: (totals[i], -i))  # most evidence; the earliest group on a tie
+    keep: set[str] = set(groups[main])
     dropped: list[tuple[str, str]] = []
-    for group in groups[1:]:
+    for i, group in enumerate(groups):
+        if i == main:
+            continue
         if any(on_purpose(t) for t in group):
             keep.update(group)
         else:
             dropped.extend((t, "no approved route to the main tables") for t in group)
+    if evidence is not None:
+        # The smallest connected subgraph: with two or more tables the question names, joined by approved relationships, the
+        # neighbours that were only added because they touch something retrieved are limited to a few.
+        targets = [t for t in order if t in keep and t in safe]
+        needed = route_tables(targets, edges, keep) if len(targets) >= 2 else None
+        if needed is not None:
+            loose = [t for t in order if t in keep and source[t] == "graph_expansion" and t not in needed and t not in safe]
+            for t in loose[max(0, max_loose):]:
+                keep.discard(t)
+                dropped.append((t, "not on the approved route between the requested tables"))
     kept = tuple(t for t in order if t in keep)
     return ContractPlan(kept, tuple(dropped), tuple(tuple(g) for g in connected_groups(kept, edges)), len(edges))
+
+
+def route_tables(targets: Sequence[str], edges: set[frozenset[str]], within: Collection[str]) -> set[str] | None:
+    """The tables of the smallest approved route that connects every one of ``targets``, walking only through ``within``.
+
+    Greedy: start from the first target and add the shortest path to each next one (ties broken by name, so it is deterministic).
+    None when some target cannot be reached through approved edges: the caller then does nothing extra. Pure.
+    """
+    allowed = {str(t).lower() for t in within}
+    goals = [t for t in dict.fromkeys(str(t).lower() for t in targets) if t in allowed]
+    if len(goals) < 2:
+        return None
+    neighbours: dict[str, set[str]] = {}
+    for edge in edges:
+        pair = [t for t in edge if t in allowed]
+        if len(pair) == 2:
+            neighbours.setdefault(pair[0], set()).add(pair[1])
+            neighbours.setdefault(pair[1], set()).add(pair[0])
+    joined = {goals[0]}
+    for goal in goals[1:]:
+        if goal in joined:
+            continue
+        previous: dict[str, str | None] = {t: None for t in joined}
+        frontier = sorted(joined)
+        reached = False
+        while frontier and not reached:
+            nxt: list[str] = []
+            for node in frontier:
+                for n in sorted(neighbours.get(node, ())):
+                    if n in previous:
+                        continue
+                    previous[n] = node
+                    if n == goal:
+                        reached = True
+                        break
+                    nxt.append(n)
+                if reached:
+                    break
+            frontier = nxt
+        if not reached:
+            return None
+        node: str | None = goal
+        while node is not None and node not in joined:
+            joined.add(node)
+            node = previous[node]
+    return joined
+
+
+@dataclass(frozen=True)
+class FilterRoute:
+    entity: str
+    place: str  # the table that carries the country / region / location / address column
+    tables: tuple[str, ...]  # the whole route, entity first
+    add: tuple[str, ...]  # tables of the route retrieval did not already have
+    hint_lines: tuple[str, ...] = ()  # ``- a.col -> b.col`` for a route read from join_paths.json (a direct join is shown by the prompt already)
+
+
+def plan_filter_route(
+    entities: Sequence[str],
+    places: Mapping[str, int],
+    rels: Iterable[dict[str, Any]] | None,
+    *,
+    available: Iterable[str],
+    present: Iterable[str] = (),
+    index: Any | None = None,
+    db_id: str | None = None,
+    max_add: int = MAX_FILTER_ADD,
+) -> FilterRoute | None:
+    """The shortest approved route from an entity table to a table that holds a country/region/location/address column.
+
+    ``entities`` are the tables the question names; ``places`` maps tables to 0 (holds a country) or 1 (region, location, address).
+    A route is a direct approved relationship, or a ``join_paths.json`` route that is convincing and not a sibling route. Every table
+    of it must exist in ``available``. A table that holds a country always beats one that only holds an address; then fewer joins,
+    then the better route score, then names. None when the entity already holds the country itself, when there is no approved
+    route, or when the route would add more than ``max_add`` tables. Nothing is guessed, and no data is read. Pure.
+    """
+    try:
+        ents = [e for e in dict.fromkeys(str(e).lower() for e in entities) if e]
+        flt = {str(t).lower(): int(v) for t, v in places.items()}
+        if not ents or not flt or any(e in flt for e in ents):
+            return None  # nothing to route, or the entity holds the country itself
+        exist = {str(t).lower() for t in available}
+        have = {str(t).lower() for t in present}
+        edges = trusted_edges(rels)
+        if index is None and db_id:
+            from src.sql.paths.route_index import load_route_index
+
+            index = load_route_index(db_id)
+        from src.sql.paths.route_index import EXCLUDED_SHAPES, MIN_ROUTE_SCORE
+
+        options: list[tuple[tuple[Any, ...], FilterRoute]] = []
+        for e in ents:
+            for f in sorted(flt):
+                if f == e or f not in exist:
+                    continue
+                if frozenset((e, f)) in edges:
+                    tables, hints, score = (e, f), (), 1.0
+                else:
+                    route = index.best(e, f) if index is not None else None
+                    if route is None or route.score < MIN_ROUTE_SCORE or route.shape in EXCLUDED_SHAPES:
+                        continue
+                    if any(t not in exist for t in route.tables):
+                        continue
+                    tables, hints, score = route.tables, tuple(f"- {a} -> {b}" for a, b in route.steps), route.score
+                add = tuple(t for t in tables if t not in have)
+                if len(add) > max_add:
+                    continue
+                options.append(((flt[f], len(tables), -score, e, f), FilterRoute(e, f, tuple(tables), add, hints)))
+        if not options:
+            return None
+        return min(options, key=lambda o: o[0])[1]
+    except Exception as exc:  # noqa: BLE001 - an extra; the caller carries on without it
+        logger.debug("Filter route planning skipped: %s", exc)
+        return None
 
 
 # ---------------------------------------------------------------------------------------------------- 2. say what is not connected
@@ -311,14 +462,19 @@ def _mark_line(line: str, unique: dict[str, frozenset[str]]) -> str:
 
 __all__ = [
     "KEEP_TOP_VECTOR",
+    "MAX_FILTER_ADD",
+    "MAX_LOOSE_NEIGHBORS",
     "STRONG_SOURCES",
     "ContractPlan",
+    "FilterRoute",
     "clear_contract_cache",
     "connected_groups",
     "contract_active",
     "contract_mode",
     "mark_unique_keys",
     "plan_contract",
+    "plan_filter_route",
+    "route_tables",
     "trusted_edges",
     "unconnected_note",
     "unique_columns",
