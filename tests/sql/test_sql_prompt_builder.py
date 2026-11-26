@@ -57,7 +57,7 @@ def test_get_scoped_readability_rules_scopes():
         ["stock", "purchase", "party"],
     )
     assert "Mandatory Soft-Delete Rule (EXPLICIT DELETED QUERY)" in deleted_rules
-    assert "WHERE <alias>.deleted_at IS NOT NULL" in deleted_rules
+    assert "exact deleted-record condition from the soft-delete section" in deleted_rules
     assert "CRITICAL INTENT OVERRIDE: The user explicitly requested DELETED records" in deleted_rules
 
     # Audit / History query
@@ -66,7 +66,7 @@ def test_get_scoped_readability_rules_scopes():
         ["product"],
     )
     assert "Mandatory Soft-Delete Rule (AUDIT / HISTORY QUERY)" in history_rules
-    assert "DO NOT use `deleted_at IS NULL`" in history_rules
+    assert "Do not apply a soft-delete exclusion condition" in history_rules
     assert "CRITICAL INTENT OVERRIDE: The user explicitly requested AUDIT / HISTORY" in history_rules
 
 

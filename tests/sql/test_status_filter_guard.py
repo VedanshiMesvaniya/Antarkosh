@@ -82,7 +82,11 @@ def test_a_verified_soft_delete_marker_and_a_business_status_are_never_reported(
     assert _flagged("SELECT id FROM invoices WHERE active = 'Y'", "list invoices") == ["invoices.active"]  # is_deleted is the marker, not active
     assert _flagged("SELECT id FROM suppliers WHERE status = 'OPEN'", "list suppliers") == []  # a business value, not a yes/no state
     assert _flagged("SELECT id FROM suppliers WHERE active = country", "list suppliers") == []  # not a literal
-    assert _flagged("SELECT id FROM suppliers WHERE active = 'Y' OR country = 'DE'", "list suppliers") == []  # only AND-ed conditions are read
+    assert _flagged("SELECT id FROM suppliers WHERE active = 'Y' OR country = 'DE'", "list suppliers") == ["suppliers.active"]
+    assert _flagged(
+        "SELECT id FROM suppliers WHERE country = 'MX' AND (active = 'Y' OR active IS NULL)", "list suppliers"
+    ) == ["suppliers.active"]
+    assert _flagged("SELECT id FROM suppliers WHERE active IS NULL", "list suppliers") == ["suppliers.active"]
     assert _flagged("SELECT id FROM suppliers WHERE country = 'DE'", "list suppliers") == []
 
 

@@ -109,12 +109,11 @@ def test_a_non_erp_database_in_apply_mode_is_never_told_to_use_deleted_at(monkey
 
 @pytest.mark.parametrize("value", ["apply", "shadow", None])
 @pytest.mark.parametrize("intent", list(INTENTS))
-def test_the_erp_database_keeps_its_deleted_at_rules_for_deleted_and_history_questions(monkeypatch: pytest.MonkeyPatch, intent: str, value: str | None):
+def test_the_erp_database_uses_the_universal_deleted_and_history_rules(monkeypatch: pytest.MonkeyPatch, intent: str, value: str | None):
     text = prompt_lines(monkeypatch, "erp_main", value, INTENTS[intent])
-    # the default rule is now the one universal rule (the exact condition comes from the soft-delete block); the explicit
-    # deleted / history rules still name deleted_at for the ERP database
+    # Every database now receives the exact same instructions; the typed soft-delete block supplies ERP's deleted_at condition.
     assert "Use only the exact table-specific soft-delete condition supplied below" in text
-    assert "`WHERE alias.deleted_at IS NOT NULL`" in text and "soft-delete section" not in text
+    assert "`WHERE alias.deleted_at IS NOT NULL`" not in text and "soft-delete section" not in text
 
 
 @pytest.mark.parametrize("value", ["shadow", None])

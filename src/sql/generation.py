@@ -520,13 +520,14 @@ def unrequested_status_filters(sql: str, query: str, dialect: str, db_id: str = 
 
     Only an ordinary lookup is judged: the question names no status (active, inactive, enabled, status, current, ...) and is not about
     deleted or archived records. A column that is the database's own soft-delete marker is never reported (its filtering is mandatory
-    and handled elsewhere), and neither is a business status such as ``status = 'OPEN'``. Only top-level AND-ed conditions of WHERE and
-    JOIN ... ON are read. Never raises; an empty list means nothing to say.
+    and handled elsewhere), and neither is a business status such as ``status = 'OPEN'``. Predicates nested inside parentheses or
+    ``OR`` groups are also read: the guard only refuses the SQL, never rewrites its boolean logic. Never raises; an empty list means
+    nothing to say.
     """
     try:
         if not sql or detect_soft_delete_intent(query) != "ACTIVE_ONLY" or _STATUS_REQUEST_RE.search(query or ""):
             return []
-        from src.sql.soft_delete_spec import conjuncts, load_specs
+        from src.sql.soft_delete_spec import load_specs
 
         specs = load_specs(db_id)
         found: list[str] = []
@@ -539,34 +540,44 @@ def unrequested_status_filters(sql: str, query: str, dialect: str, db_id: str = 
                         names[tbl.alias.lower()] = tbl.name.lower()
             tables = set(names.values())
             markers = {specs[t].column.lower() for t in tables if t in specs}
-            conds: list[exp.Expression] = []
+            predicate_roots: list[exp.Expression] = []
             where = sel.args.get("where")
             if where is not None:
-                conds += conjuncts(where.this)
+                predicate_roots.append(where.this)
             for join in sel.args.get("joins") or []:
                 if join.args.get("on") is not None:
-                    conds += conjuncts(join.args["on"])
-            for cond in conds:
-                if isinstance(cond, (exp.EQ, exp.NEQ)):
-                    col, values = (cond.this, [cond.expression]) if isinstance(cond.this, exp.Column) else (cond.expression, [cond.this])
-                elif isinstance(cond, exp.In) and not cond.args.get("query"):
-                    col, values = cond.this, list(cond.expressions)
-                else:
-                    continue
-                if not isinstance(col, exp.Column) or re.sub(r"[^a-z0-9]", "", col.name.lower()) not in _STATUS_COLUMNS:
-                    continue
-                literals = _literal_texts(values)
-                if literals is None or not all(v in _STATUS_FLAG_VALUES for v in literals):
-                    continue
-                qualifier = col.table.lower()
-                table = names.get(qualifier) if qualifier else (next(iter(tables)) if len(tables) == 1 else None)
-                if table is not None:
-                    spec = specs.get(table)
-                    if spec is not None and spec.column.lower() == col.name.lower():
-                        continue  # the verified soft-delete marker of that table
-                elif col.name.lower() in markers:
-                    continue  # cannot tell which table, and one of them uses this column as its soft-delete marker
-                found.append(f"{table}.{col.name}" if table else col.name)
+                    predicate_roots.append(join.args["on"])
+            for root in predicate_roots:
+                # Do not read a nested SELECT through its parent. That SELECT is handled in its own loop with its own aliases.
+                conds = (
+                    cond for cond in root.find_all(exp.EQ, exp.NEQ, exp.In, exp.Is)
+                    if cond.find_ancestor(exp.Select) is sel
+                )
+                for cond in conds:
+                    is_null_check = False
+                    if isinstance(cond, (exp.EQ, exp.NEQ)):
+                        col, values = (cond.this, [cond.expression]) if isinstance(cond.this, exp.Column) else (cond.expression, [cond.this])
+                    elif isinstance(cond, exp.In) and not cond.args.get("query"):
+                        col, values = cond.this, list(cond.expressions)
+                    elif isinstance(cond, exp.Is) and isinstance(cond.expression, exp.Null):
+                        col, values, is_null_check = cond.this, [], True
+                    else:
+                        continue
+                    if not isinstance(col, exp.Column) or re.sub(r"[^a-z0-9]", "", col.name.lower()) not in _STATUS_COLUMNS:
+                        continue
+                    if not is_null_check:
+                        literals = _literal_texts(values)
+                        if literals is None or not all(v in _STATUS_FLAG_VALUES for v in literals):
+                            continue
+                    qualifier = col.table.lower()
+                    table = names.get(qualifier) if qualifier else (next(iter(tables)) if len(tables) == 1 else None)
+                    if table is not None:
+                        spec = specs.get(table)
+                        if spec is not None and spec.column.lower() == col.name.lower():
+                            continue  # the verified soft-delete marker of that table
+                    elif col.name.lower() in markers:
+                        continue  # cannot tell which table, and one of them uses this column as its soft-delete marker
+                    found.append(f"{table}.{col.name}" if table else col.name)
         return list(dict.fromkeys(found))
     except Exception as exc:  # noqa: BLE001 - a safeguard that cannot read the SQL says nothing rather than blocking it
         logger.debug("Status-filter check skipped: %s", exc)
