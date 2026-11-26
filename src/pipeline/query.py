@@ -27,6 +27,7 @@ from src.rag.retrieval import (
 from src.rag.stages.s10_embeddings import EmbeddingService
 from src.rag.stages.s11_vector_store import QdrantStore
 from src.sql.context import DEFAULT_DB_ID
+from src.sql.generation import STATUS_FILTER_ERROR
 from src.sql.knowledge.loaders import validate_db_id
 from src.sql.learning.pipeline_metrics import log_event as _log_pipeline_event
 from src.sql.pipeline import SQLRetriever
@@ -59,14 +60,21 @@ _SQL_UNAVAILABLE_MSG = (
 )
 
 
+_SQL_STATUS_FILTER_MSG = "I could not generate a reliable query without an unrequested status filter. Please try again."
+
+
 def _sql_unavailable_message(infra_error: str | None) -> str:
     """The reply when the SQL path produced nothing: the models were unreachable, or a soft-delete guard withheld the query."""
     if isinstance(infra_error, str) and infra_error.startswith(GUARD_ERROR_PREFIX):  # anything else keeps the old message exactly
         return guard_message(infra_error)
+    if infra_error == STATUS_FILTER_ERROR:
+        return _SQL_STATUS_FILTER_MSG
     return _SQL_UNAVAILABLE_MSG
 
 
 def _sql_unavailable_task(infra_error: str | None) -> str:
+    if infra_error == STATUS_FILTER_ERROR:
+        return "sql_status_filter"
     return "sql_guarded" if isinstance(infra_error, str) and infra_error.startswith(GUARD_ERROR_PREFIX) else "sql_unavailable"
 
 

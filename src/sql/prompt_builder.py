@@ -552,7 +552,7 @@ Core SQL Generation & Schema Mapping Protocol:
   4. Relationship & Join Graph: How should the tables be joined? (Follow verified foreign keys directly: `stock_adjustment.category_id = category.id`; `stock_adjustment.product_id = product.id`; `stock_adjustment.product_color_id = product_color.id`; `packagings.warehouse_id = warehouse.id`; `delivery_challan.sales_order_id = sales_order.id` for due dates; `delivery_challan.party_id = party.id`; `production.product_color_id = product_color.id`; `production.product_id = product.id`; `production.machine_id = machine.id`; `stock.party_id = party.id` for invoices).
 - SELECT read-only queries only.
 - Primary Key & Column Projection: For non-aggregate record queries, ALWAYS include the primary key column (e.g. table.id AS id) as the first selected column to serve as an anchor reference point, unless explicitly excluded by the user. Do not alias it confusingly (use alias.id AS id, not alias.id AS something_id unless requested). Follow the ID with only the specific columns or metrics asked by the user. Never bloat results with unsolicited columns (e.g. status, created_at, deleted_at). Never return raw foreign key ID columns without their human-readable name (use AS descriptive_alias).
-- Dynamic Soft-Delete Filtering: For standard operational queries, always filter soft-deleted records (WHERE alias.deleted_at IS NULL). If the user query explicitly mentions 'deleted', 'removed', or 'dropped', filter WHERE alias.deleted_at IS NOT NULL; if asking for 'history', 'audit', or 'archived', omit the deleted_at filter to return all records.
+- Dynamic Soft-Delete Filtering: For standard operational queries, use only the exact table-specific soft-delete condition supplied below. If no condition is supplied for a table, do not invent a delete, active, status, enabled, or inactive filter. If the user query explicitly mentions 'deleted', 'removed', or 'dropped', filter WHERE alias.deleted_at IS NOT NULL; if asking for 'history', 'audit', or 'archived', omit the deleted_at filter to return all records.
 - Status flags: party.status, product.status, category.status use 'Y'/'N'. Stock booked='B', dispatched='D'.
 - In party table, customer/supplier name is `party.party_name` (NEVER party.name). Contact persons are `party.contact_person1`.
 - In lead table, search `(lead.contact_name LIKE '%<name>%' OR lead.company_name LIKE '%<name>%')`.
@@ -666,12 +666,10 @@ def _trim_erp_rules(db_id: str) -> bool:
 # The ERP database stores soft deletes in `deleted_at`; other databases use record_deleted, is_deleted and so on. For them these
 # lines (by their opening words) say "use the table's own marker condition" instead, and the typed soft-delete section names it.
 _NEUTRAL_SOFT_DELETE = {
-    "  * Default Rule (Active Operational Data):": "  * Default Rule (Active Operational Data): For standard operational queries, filter out soft-deleted records using, for each table, the exact marker column and condition given in the soft-delete section below (a table with none there needs no filter). Never invent a `deleted_at` column.",
     "  * Exception Rule (Explicit Deleted Records):": "  * Exception Rule (Explicit Deleted Records): If the user explicitly asks for 'deleted', 'removed', 'dropped' or 'gone' records, filter for each table's deleted condition from the soft-delete section instead.",
     "  * Exception Rule (Audit / History / Archived Data):": "  * Exception Rule (Audit / History / Archived Data): For 'archived', 'history', 'audit' or 'past records', add no soft-delete filter and return both active and deleted rows.",
     "- Record Status / Soft-Delete Scope: EXPLICIT DELETED": "- Record Status / Soft-Delete Scope: EXPLICIT DELETED RECORDS (The user asked for deleted/removed records: use each table's deleted condition from the soft-delete section.)",
     "- Record Status / Soft-Delete Scope: AUDIT / HISTORY": "- Record Status / Soft-Delete Scope: AUDIT / HISTORY / ARCHIVED (The user asked for history or audit records: add no soft-delete filter; return both active and deleted rows.)",
-    "- Record Status / Soft-Delete Scope: ACTIVE OPERATIONAL": "- Record Status / Soft-Delete Scope: ACTIVE OPERATIONAL (Default: filter out soft-deleted records using each table's exact marker condition from the soft-delete section.)",
 }
 
 
@@ -847,7 +845,7 @@ def build_sql_prompt(
         )
     else:
         intent_summary_lines.append(
-            "- Record Status / Soft-Delete Scope: ACTIVE OPERATIONAL (Default rule. Filter out soft-deleted records using `WHERE alias.deleted_at IS NULL` on all tables with a deleted_at column.)"
+            "- Record Status / Soft-Delete Scope: ACTIVE OPERATIONAL (Default rule. Use only the exact table-specific soft-delete condition supplied below. If no condition is supplied for a table, do not invent a delete, active, status, enabled, or inactive filter.)"
         )
 
     intent_section = (
@@ -876,7 +874,7 @@ Rules:
 - Read-Only: SELECT statements only.
 - Mixed / Multi-part queries: If the user question contains both document/system questions (e.g. OCR, RAG architecture, policies, tax rates, general docs) and database questions (e.g. products, machines, orders, stock, production), IGNORE the document/system questions and generate SQL ONLY for the database portion! Only respond with NO_SQL if NO part of the question relates to the database schema.
 - Dynamic Soft-Delete & Record Status:
-  * Default Rule (Active Operational Data): For standard operational queries, or when asking for 'active', 'current', 'present', 'live', or 'existing' data, ALWAYS filter out soft-deleted records by adding `alias.deleted_at IS NULL` on all tables with a `deleted_at` column.
+  * Default Rule (Active Operational Data): Use only the exact table-specific soft-delete condition supplied below. If no condition is supplied for a table, do not invent a delete, active, status, enabled, or inactive filter.
   * Exception Rule (Explicit Deleted Records): If the user query explicitly mentions 'deleted', 'removed', 'dropped', or 'gone', DO NOT add the `deleted_at IS NULL` filter. Instead, filter specifically for deleted records using `WHERE alias.deleted_at IS NOT NULL` (or omit `deleted_at IS NULL` for joined lookup entities).
   * Exception Rule (Audit / History / Archived Data): If the user query explicitly mentions 'archived', 'history', 'audit', or 'past records', DO NOT add the `deleted_at IS NULL` filter. Allow all records (both active and deleted) to be returned.
 - Casting: Use CAST(col AS DECIMAL(10,2)) for numeric operations on VARCHAR columns (e.g. stock.qty).

@@ -487,6 +487,8 @@ _is_safe_read_query = is_safe_read_query
 # A column called active, status or enabled is not a soft-delete column unless the database's own soft-delete metadata says so.
 # When the model adds ``active = 'Y'`` to an ordinary lookup, the query can return nothing for a reason the user never stated.
 
+STATUS_FILTER_ERROR = "unrequested_status_filter"  # the error a query is refused with; the answer path shows a plain message for it
+
 _STATUS_COLUMNS = frozenset({
     "active", "isactive", "activeflag", "activestatus", "inactive", "isinactive",
     "enabled", "isenabled", "enableflag", "disabled", "isdisabled", "status", "statusflag",
@@ -688,24 +690,25 @@ async def generate_sql(
             return "", cot_plan, guard_error(blocked)
 
         # Safeguard 4: an active/status/enabled filter the question never asked for, on a column that is not a soft-delete marker,
-        # is not executed as written. The model is asked once to write the query again without it (the condition is never removed
-        # silently). If that retry gives nothing usable, the first query is kept: the safeguard never makes an answer fail.
-        if not _status_retry:
-            flagged = unrequested_status_filters(sql, query, dialect.sqlglot_dialect, db_id)
-            if flagged:
-                logger.warning("SQL filters on %s without being asked; asking for one rewrite without it.", flagged)
-                feedback = _status_filter_feedback(flagged)
-                retried_sql, retried_cot, _retried_err = await generate_sql(
-                    router, query, schema, dialect, db_id=db_id,
-                    last_error=f"{last_error}\n{feedback}" if last_error else feedback,
-                    relationships=relationships, pattern_learner=pattern_learner, budget_controller=budget_controller,
-                    _status_retry=True,
-                )
-                if retried_sql:
-                    if unrequested_status_filters(retried_sql, query, dialect.sqlglot_dialect, db_id):
-                        logger.warning("The rewrite still filters on a status nobody asked for; running it as written.")
-                    return retried_sql, retried_cot or cot_plan, None
-                logger.warning("The rewrite gave no SQL; keeping the first query.")
+        # is never executed. The model is asked once to write the query again without it (the condition is never removed silently);
+        # only a clean rewrite is used. A rewrite that still has the filter, or that fails, ends in STATUS_FILTER_ERROR.
+        flagged = unrequested_status_filters(sql, query, dialect.sqlglot_dialect, db_id)
+        if flagged:
+            if _status_retry:
+                logger.warning("The rewrite still filters on %s without being asked; not executing it.", flagged)
+                return "", cot_plan, STATUS_FILTER_ERROR
+            logger.warning("SQL filters on %s without being asked; asking for one rewrite without it.", flagged)
+            feedback = _status_filter_feedback(flagged)
+            retried_sql, retried_cot, _retried_err = await generate_sql(
+                router, query, schema, dialect, db_id=db_id,
+                last_error=f"{last_error}\n{feedback}" if last_error else feedback,
+                relationships=relationships, pattern_learner=pattern_learner, budget_controller=budget_controller,
+                _status_retry=True,
+            )
+            if retried_sql:
+                return retried_sql, retried_cot or cot_plan, None
+            logger.warning("The rewrite gave no usable SQL; not executing the first query.")
+            return "", cot_plan, STATUS_FILTER_ERROR
         return sql, cot_plan, None
 
     except (TokenBudgetExceededError, QueryBudgetExceededError) as budget_err:
@@ -749,6 +752,8 @@ async def generate_sql(
                     blocked = soft_delete_guard(sql, soft_intent, dialect.sqlglot_dialect, db_id)
                     if blocked:
                         return "", None, guard_error(blocked)
+                    if unrequested_status_filters(sql, query, dialect.sqlglot_dialect, db_id):
+                        return "", None, STATUS_FILTER_ERROR  # no budget left for a rewrite: the query is not run
                     return sql, None, None
         except Exception as retry_err:
             logger.error("Compressed SQL retry failed after budget cutoff: %s", retry_err)
@@ -1122,6 +1127,12 @@ async def execute_with_delta_repair(
     first_error: str | None = None
 
     for repair_attempt in range(MAX_DELTA_REPAIR_ATTEMPTS + 1):
+        # Every repair below comes back to this point, so a status filter nobody asked for that a repair brings back is never run.
+        if unrequested_status_filters(current_sql, query, retriever._dialect.sqlglot_dialect, retriever.db_id):
+            logger.warning("Delta repair attempt %d filters on a status nobody asked for; not executing it.", repair_attempt)
+            retriever.last_infra_error = STATUS_FILTER_ERROR
+            retriever.last_query_status = "failed"
+            return []
         tables = _extract_table_names(current_sql, retriever._dialect.sqlglot_dialect)
         # A real table the model named but retrieval missed is shown to validation and repair instead of being rejected
         # (Phase 12 flags only; unchanged otherwise).
