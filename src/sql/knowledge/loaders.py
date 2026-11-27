@@ -43,6 +43,7 @@ _KNOWLEDGE_PATHS: dict[str, str] = {
     "column_glossary": "semantics/column_glossary.json",
     "behavioral_atlas": "semantics/behavioral_atlas.json",
     "routing_hints": "semantics/routing_hints.json",
+    "column_hints": "schema/column_hints.json",
 }
 
 

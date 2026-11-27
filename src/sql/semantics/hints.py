@@ -175,7 +175,7 @@ class HintsCollector:
             for pair in pairs:
                 slot[pair] = slot.get(pair, 0) + 1
 
-    def document(self, db_id: str) -> dict[str, Any]:
+    def document(self, db_id: str, *, policy_mappings: list[dict[str, str]] | None = None) -> dict[str, Any]:
         keys = sorted(set(self.aliases) | set(self.params) | set(self.case_labels))
         rows: list[dict[str, Any]] = []
         for table, column in keys[:MAX_COLUMNS]:
@@ -190,7 +190,7 @@ class HintsCollector:
                     for (v, lab), n in sorted(self.case_labels.get(key, {}).items(), key=lambda kv: (-kv[1], kv[0]))[:MAX_CASE_PAIRS]
                 ],
             })
-        return {
+        doc: dict[str, Any] = {
             "generated_by": GENERATED_BY,
             "kind": "column_hints",
             "version": 1,
@@ -199,6 +199,13 @@ class HintsCollector:
             "stats": {"routines": self.routines, "routines_failed": self.failed, "columns": len(rows)},
             "columns": rows,
         }
+        if policy_mappings:
+            # The existing column-hints contract remains unchanged unless a local
+            # policy script supplied validated static mappings.
+            doc["version"] = 2
+            doc["policy_mappings"] = policy_mappings
+            doc["stats"]["policy_mappings"] = len(policy_mappings)
+        return doc
 
 
 def write_hints(db_id: str, doc: dict[str, Any], databases_dir: Path | None = None) -> dict[str, Any]:

@@ -36,6 +36,17 @@ on a plain integer, a varchar flag with no evidence. When a table has several ca
   questions are left alone.
 * **The prompt names the real columns** of the tables it shows, so the model stops guessing `deleted_at` where the column is `IsDeleted`.
 
+## Status is not soft-delete
+
+`active`, `status`, `enabled`, and similar business-state columns are not soft-delete evidence. Antarkosh only adds a default
+soft-delete condition when the table has an exact verified marker from the sources above. If the user did not explicitly ask for a
+business status, generation rejects an SQL candidate that adds an unrequested `active`/`status`/`enabled` predicate (including one
+nested inside an `OR` expression) and retries without it.
+
+An explicit question such as “inactive suppliers” may use a documented status mapping, but that filter remains a business-status
+filter; it does not change the soft-delete policy. Local policy mappings are documented in
+[Static policy mappings](policy_procedure_mappings.md).
+
 ## Inspecting and Overriding
 
 1. Soft-delete filtering is **mandatory and always enforced** across all databases (there is no toggle flag).

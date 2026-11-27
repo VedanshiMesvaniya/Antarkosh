@@ -29,6 +29,14 @@ it reads that an earlier phase writes is unchanged, checked just before it would
 4. **Apply chunk removal.** After reviewing `would_remove` over a few syncs, set `auto_stale_chunk_cleanup: true` for the database. It refuses when the
    schema read may have been cut short, when there is no earlier record, or when more than half the tables vanish at once.
 
+### Local policy script changes
+
+Changing a file under `procedures/` is an input change, not a database deployment. Run a normal sync after editing it: the
+procedure phase re-reads the file and the mining phase regenerates `schema/column_hints.json`. For a
+`Policy_GetColumnValueMappings` script, the report includes `column_hints.policy_mappings`; a positive count confirms that valid
+static mappings were catalog-checked and saved. See [Static policy mappings](policy_procedure_mappings.md) for the exact format and
+the no-live-data boundary.
+
 ## Rolling back
 
 ```

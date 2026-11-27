@@ -31,12 +31,14 @@ _LOAD_RELATIONSHIPS_CACHE: dict[str, str] = {}
 _LOAD_GLOSSARY_CACHE: dict[str, str] = {}
 _RAW_COLUMN_GLOSSARY_CACHE: dict[str, dict] = {}
 _BEHAVIORAL_ATLAS_CACHE: dict[str, dict[str, Any]] = {}
+_RAW_COLUMN_HINTS_CACHE: dict[str, dict[str, Any]] = {}
 
 RAW_RELATIONSHIPS_CACHE = _RAW_RELATIONSHIPS_CACHE
 LOAD_RELATIONSHIPS_CACHE = _LOAD_RELATIONSHIPS_CACHE
 LOAD_GLOSSARY_CACHE = _LOAD_GLOSSARY_CACHE
 RAW_COLUMN_GLOSSARY_CACHE = _RAW_COLUMN_GLOSSARY_CACHE
 BEHAVIORAL_ATLAS_CACHE = _BEHAVIORAL_ATLAS_CACHE
+RAW_COLUMN_HINTS_CACHE = _RAW_COLUMN_HINTS_CACHE
 
 
 def get_raw_relationships(db_id: str = DEFAULT_DB_ID) -> list[dict[str, Any]]:
@@ -185,6 +187,29 @@ def clear_behavioral_atlas_cache(db_id: str | None = None) -> None:
 get_raw_behavioral_atlas.cache_clear = clear_behavioral_atlas_cache  # type: ignore[attr-defined]
 
 
+def get_raw_column_hints(db_id: str = DEFAULT_DB_ID) -> dict[str, Any]:
+    """Load generated column hints and static local policy mappings, cached per database."""
+    normalized_id = (db_id or DEFAULT_DB_ID).strip()
+    if normalized_id not in _RAW_COLUMN_HINTS_CACHE:
+        try:
+            path = get_knowledge_path("column_hints", db_id=normalized_id)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            _RAW_COLUMN_HINTS_CACHE[normalized_id] = data if isinstance(data, dict) else {}
+        except Exception:  # noqa: BLE001 - optional prompt guidance must never block SQL generation
+            _RAW_COLUMN_HINTS_CACHE[normalized_id] = {}
+    return _RAW_COLUMN_HINTS_CACHE[normalized_id]
+
+
+def clear_raw_column_hints_cache(db_id: str | None = None) -> None:
+    if db_id is None:
+        _RAW_COLUMN_HINTS_CACHE.clear()
+    else:
+        _RAW_COLUMN_HINTS_CACHE.pop((db_id or DEFAULT_DB_ID).strip(), None)
+
+
+get_raw_column_hints.cache_clear = clear_raw_column_hints_cache  # type: ignore[attr-defined]
+
+
 def clear_prompt_caches(db_id: str | None = None) -> None:
     """Clear all prompt-related knowledge caches for db_id or globally."""
     clear_raw_relationships_cache(db_id)
@@ -192,6 +217,7 @@ def clear_prompt_caches(db_id: str | None = None) -> None:
     clear_glossary_cache(db_id)
     clear_raw_column_glossary_cache(db_id)
     clear_behavioral_atlas_cache(db_id)
+    clear_raw_column_hints_cache(db_id)
 
 
 # ---------------------------------------------------------------------------
@@ -617,6 +643,86 @@ def _prompt_table_names(schema: str) -> set[str]:
     return names
 
 
+_POLICY_PROMPT_MAX_ROWS = 8
+_POLICY_PROMPT_FIELD_CHARS = 440
+_POLICY_STOP_WORDS = GLOSSARY_STOP_WORDS | frozenset({"all", "data", "detail", "details", "record", "records", "please"})
+
+
+def _bare_table_name(name: str) -> str:
+    return str(name).strip().strip("[]`\"").lower().rsplit(".", 1)[-1].strip("[]`\"")
+
+
+def _policy_text(value: Any) -> str:
+    """Keep local policy prose readable and bounded before it reaches a prompt."""
+    return " ".join(str(value or "").split())[:_POLICY_PROMPT_FIELD_CHARS]
+
+
+def _policy_mapping_block(db_id: str, query: str, shown_tables: set[str]) -> str:
+    """Return query-relevant static local policy mappings for tables in this prompt.
+
+    The mappings are metadata extracted during sync from a literal VALUES table in a
+    folder script.  This function neither reads procedure text nor contacts a
+    database, and it deliberately omits ``UNRESOLVED`` rows.
+    """
+    try:
+        mappings = get_raw_column_hints(db_id).get("policy_mappings", [])
+    except Exception:  # noqa: BLE001 - optional prompt context must never break a request
+        return ""
+    if not isinstance(mappings, list) or not shown_tables:
+        return ""
+
+    visible_tables = {_bare_table_name(table) for table in shown_tables}
+    query_words = {
+        stem_word(word)
+        for word in re.findall(r"[a-z0-9]+", query.lower())
+        if len(word) >= 3 and word not in _POLICY_STOP_WORDS
+    }
+    if not query_words:
+        return ""
+
+    scored: list[tuple[int, int, dict[str, str]]] = []
+    confidence_rank = {"CONFIRMED": 1, "INFERRED": 0}
+    for row in mappings:
+        if not isinstance(row, dict):
+            continue
+        confidence = str(row.get("confidence", "")).upper()
+        table = _policy_text(row.get("table"))
+        column = _policy_text(row.get("column"))
+        if confidence not in confidence_rank or not table or not column or _bare_table_name(table) not in visible_tables:
+            continue
+        # Do not make every query about a table carry unrelated policy lines.  A
+        # user term must match the column, values, explanation, or SQL guidance.
+        searchable = " ".join(_policy_text(row.get(field)).lower().replace("_", " ") for field in ("column", "stored_value", "meaning", "query_hint"))
+        policy_words = {stem_word(word) for word in re.findall(r"[a-z0-9]+", searchable) if len(word) >= 3}
+        score = len(query_words & policy_words)
+        if score:
+            scored.append((score, confidence_rank[confidence], {
+                "table": table,
+                "column": column,
+                "stored_value": _policy_text(row.get("stored_value")),
+                "meaning": _policy_text(row.get("meaning")),
+                "confidence": confidence,
+                "query_hint": _policy_text(row.get("query_hint")),
+            }))
+    if not scored:
+        return ""
+
+    scored.sort(key=lambda item: (-item[0], -item[1], item[2]["table"], item[2]["column"]))
+    lines: list[str] = []
+    for _, _, row in scored[:_POLICY_PROMPT_MAX_ROWS]:
+        guidance = f" SQL guidance: {row['query_hint']}" if row["query_hint"] else ""
+        lines.append(
+            f"- `{row['table']}.{row['column']}` [{row['confidence']} policy]: "
+            f"Stored value(s): {row['stored_value']}. Meaning: {row['meaning']}.{guidance}"
+        )
+    return (
+        "\n\nStatic policy mappings (local authored metadata, not live query results):\n"
+        "Use a mapping only when it matches the user's requested value. These mappings do not imply a soft-delete rule; "
+        "never add an active/status filter unless the user explicitly asks for that status.\n"
+        + "\n".join(lines)
+    )
+
+
 # Largest whole-database relationship map (in characters, about 4 per token) that may be placed in the prompt when no
 # per-table scoping is possible. A small database fits and behaves exactly as before; a large one (hundreds of tables)
 # would add thousands of tokens and push the prompt over the free-tier limits of the fallback models, so it is left out.
@@ -914,6 +1020,8 @@ Schema:
     table_notes_text = _table_notes_block(db_id, shown_tables)
     system_prompt += table_notes_text
     system_prompt += _soft_delete_block(db_id, query, shown_tables, dialect)
+    policy_mappings_text = _policy_mapping_block(db_id, query, shown_tables)
+    system_prompt += policy_mappings_text
 
     if column_glossary:
         system_prompt += (
@@ -941,6 +1049,7 @@ Schema:
             "schema": schema,
             "behavioral_atlas": behavioral_atlas_text,
             "column_glossary": column_glossary,
+            "policy_mappings": policy_mappings_text,
             "relationships": rels_to_inject or "",
             "readability_rules": readability_text,
             "total_prompt": system_prompt,
@@ -967,6 +1076,8 @@ _build_column_glossary_for_query = build_column_glossary_for_query
 _get_raw_behavioral_atlas = get_raw_behavioral_atlas
 _clear_behavioral_atlas_cache = clear_behavioral_atlas_cache
 _build_behavioral_atlas_for_query = build_behavioral_atlas_for_query
+_get_raw_column_hints = get_raw_column_hints
+_clear_raw_column_hints_cache = clear_raw_column_hints_cache
 _get_scoped_readability_rules = get_scoped_readability_rules
 _OUTPUT_READABILITY_RULES = OUTPUT_READABILITY_RULES
 _build_sql_prompt = build_sql_prompt

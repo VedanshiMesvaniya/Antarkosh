@@ -29,6 +29,7 @@ from src.sql.mining.extractor import extract_routine_facts
 from src.sql.mining.splitter import split_statements
 from src.sql.sa.routines import Routine
 from src.sql.semantics.hints import HintsCollector, write_hints
+from src.sql.semantics.policy_mappings import extract_policy_mappings
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +100,13 @@ async def run_mining_phase(
     doc = evidence.document(db_id, engine_key)
     report = {"ok": True, **summary(doc)}
     report["files"] = write_evidence(db_id, doc, databases_dir)
-    if collector is not None:
+    # Only literal metadata in a developer-provided folder script is considered.
+    # In particular, no procedure is executed and live-database routines are not
+    # eligible for this path.
+    policy_mappings = extract_policy_mappings(routines, catalog)
+    if collector is not None or policy_mappings:
         try:
-            hints_doc = collector.document(db_id)
+            hints_doc = (collector or HintsCollector()).document(db_id, policy_mappings=policy_mappings)
             report["column_hints"] = {**hints_doc["stats"], "files": write_hints(db_id, hints_doc, databases_dir)}
         except Exception as exc:  # noqa: BLE001 - optional output: it can never fail the mining phase
             report["column_hints"] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
